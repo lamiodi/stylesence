@@ -5,7 +5,7 @@ import { promoInput } from '@/lib/validators'
 
 /**
  * GET  /api/admin/promos — all codes, newest first.
- * POST /api/admin/promos — create a code (singleUsePerCustomer optional, default false).
+ * POST /api/admin/promos — create a code (singleUsePerCustomer/stackable optional, default false).
  */
 export async function GET() {
   const admin = await requireAdmin()
@@ -23,6 +23,7 @@ export async function GET() {
       maxUsage: p.maxUsage,
       usageCount: p.usageCount,
       singleUsePerCustomer: p.singleUsePerCustomer,
+      stackable: p.stackable,
       isActive: p.isActive,
       expiresAt: p.expiresAt,
       createdAt: p.createdAt,
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
       minSubtotal: input.minSubtotal,
       maxUsage: input.maxUsage ?? null,
       singleUsePerCustomer: input.singleUsePerCustomer ?? false,
+      stackable: input.stackable ?? false,
       isActive: input.isActive ?? true,
       expiresAt: input.expiresAt ?? null,
     },

@@ -141,7 +141,10 @@ model Order {
   shipping      Int         @default(0)
   subtotal      Int
   discount      Int         @default(0)
+  /** Primary applied code (the money-saving one when stacked) — legacy/queries/stats. */
   promoCode     String?
+  /** ALL applied codes, comma-separated uppercase ("SS-FRIEND,SENCE-SHIP") — stacked promos since Round 12. */
+  promoCodes    String?
   total         Int
   status        String      @default("PAID")
   items         OrderItem[]
@@ -181,6 +184,8 @@ model PromoCode {
   usageCount  Int       @default(0)
   /** One redemption per customer email (checked against past orders at checkout). */
   singleUsePerCustomer Boolean @default(false)
+  /** Stacking: a code flagged stackable may combine with ONE other stackable code of a different type class (money-saving × shipping). */
+  stackable     Boolean   @default(false)
   isActive    Boolean   @default(true)
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())

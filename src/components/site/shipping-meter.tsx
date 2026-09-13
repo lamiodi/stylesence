@@ -14,11 +14,21 @@ export const FREE_SHIPPING_THRESHOLD = 150_000
 /**
  * Editorial progress meter toward complimentary shipping.
  * `compact` tightens the padding for the cart sheet drawer.
+ * `unlockedByPromo` short-circuits the meter when a shipping promo code
+ * (e.g. SENCE-SHIP) already waives the fee.
  */
-export function FreeShippingMeter({ subtotal, compact = false }: { subtotal: number; compact?: boolean }) {
+export function FreeShippingMeter({
+  subtotal,
+  compact = false,
+  unlockedByPromo = false,
+}: {
+  subtotal: number
+  compact?: boolean
+  unlockedByPromo?: boolean
+}) {
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal)
   const pct = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)
-  const unlocked = remaining === 0
+  const unlocked = remaining === 0 || unlockedByPromo
 
   if (unlocked) {
     return (
@@ -31,7 +41,9 @@ export function FreeShippingMeter({ subtotal, compact = false }: { subtotal: num
       >
         <Check className="h-3.5 w-3.5 shrink-0 text-espresso" strokeWidth={2} aria-hidden />
         <p className="text-[0.74rem] leading-snug text-espresso">
-          Complimentary standard shipping unlocked — our thanks.
+          {unlockedByPromo
+            ? 'Complimentary standard shipping unlocked — your code covers it.'
+            : 'Complimentary standard shipping unlocked — our thanks.'}
         </p>
       </div>
     )

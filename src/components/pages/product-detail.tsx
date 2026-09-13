@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail, ShoppingBag } from 'lucide-react'
+import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail, ShoppingBag, Maximize2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ import { RatingStars } from '@/components/site/rating-stars'
 import { QuantityStepper } from '@/components/site/quantity-stepper'
 import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { ProductCard } from '@/components/site/product-card'
+import { GalleryLightbox } from '@/components/site/gallery-lightbox'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import { Reveal } from '@/components/site/reveal'
 import { useAddToCart, useAddLookToCart } from '@/lib/cart-client'
@@ -381,6 +382,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
   )
   const [qty, setQty] = useState(1)
   const [imgIndex, setImgIndex] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const addToCart = useAddToCart()
   const addLook = useAddLookToCart()
   const toggleWish = useWishlist((s) => s.toggle)
@@ -488,15 +490,25 @@ function ProductInner({ product }: { product: ProductDetail }) {
               }
             }}
           >
-            <ProductImage
-              key={product.images[imgIndex]?.url ?? 'none'}
-              src={product.images[imgIndex]?.url}
-              alt={product.images[imgIndex]?.alt ?? product.name}
-              label={product.name}
-              ratio="aspect-[3/4]"
-              eager
-              className="w-full"
-            />
+            <button
+              type="button"
+              aria-label="Expand image"
+              aria-haspopup="dialog"
+              onClick={() => {
+                if (product.images.length > 0) setLightboxOpen(true)
+              }}
+              className="block w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <ProductImage
+                key={product.images[imgIndex]?.url ?? 'none'}
+                src={product.images[imgIndex]?.url}
+                alt={product.images[imgIndex]?.alt ?? product.name}
+                label={product.name}
+                ratio="aspect-[3/4]"
+                eager
+                className="w-full"
+              />
+            </button>
             {product.compareAtPrice && product.compareAtPrice > product.price ? (
               <span className="eyebrow absolute left-4 top-4 bg-espresso px-2.5 py-1 !text-[0.55rem] text-background">
                 Archive price
@@ -509,6 +521,17 @@ function ProductInner({ product }: { product: ProductDetail }) {
               >
                 {String(imgIndex + 1).padStart(2, '0')} / {String(product.images.length).padStart(2, '0')}
               </span>
+            ) : null}
+            {product.images.length > 0 ? (
+              <button
+                type="button"
+                aria-label="Expand image"
+                aria-haspopup="dialog"
+                onClick={() => setLightboxOpen(true)}
+                className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center border border-line bg-background/85 text-muted-foreground backdrop-blur-sm transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              </button>
             ) : null}
           </div>
           {product.images.length > 1 ? (
@@ -530,6 +553,16 @@ function ProductInner({ product }: { product: ProductDetail }) {
               ))}
             </div>
           ) : null}
+
+          {/* ————— zoom lightbox (shares imgIndex with the gallery) ————— */}
+          <GalleryLightbox
+            images={product.images}
+            index={imgIndex}
+            open={lightboxOpen}
+            onOpenChange={setLightboxOpen}
+            onNavigate={setImgIndex}
+            label={product.name}
+          />
         </div>
 
         {/* ————— info ————— */}

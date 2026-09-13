@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Clock3 } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { Reveal } from '@/components/site/reveal'
 import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card'
@@ -139,6 +139,18 @@ export function HomePage() {
                   Read the edit
                 </button>
               </div>
+              {/* house meta line — quiet mono sign-off under the hero actions */}
+              <p className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.6rem] uppercase tracking-[0.26em] text-primary-foreground/65">
+                <span>Lagos</span>
+                <span className="text-primary-foreground/40" aria-hidden>
+                  ·
+                </span>
+                <span>Est. 2026</span>
+                <span className="text-primary-foreground/40" aria-hidden>
+                  ·
+                </span>
+                <span>Ships nationwide</span>
+              </p>
             </Reveal>
           </div>
           {/* scroll cue — a quiet invitation (static; honours reduced-motion by design) */}
@@ -411,7 +423,9 @@ export function HomePage() {
                   className="transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
                 />
                 <p className="eyebrow mt-4">
-                  {post.category} · {post.readTime} min read
+                  <span className="text-espresso">№ {String(i + 1).padStart(2, '0')}</span>
+                  <span aria-hidden> — </span>
+                  {post.category}
                 </p>
                 <h3 className="mt-2 font-display text-xl font-light leading-snug tracking-tight group-hover:text-espresso">
                   {post.title}
@@ -419,8 +433,17 @@ export function HomePage() {
                 <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                   {post.excerpt}
                 </p>
-                <p className="mt-3 text-[0.68rem] uppercase tracking-[0.16em] text-muted-foreground/70">
-                  {formatDate(post.publishedAt)}
+                <p className="mt-3 flex flex-wrap items-center gap-2 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-muted-foreground/80">
+                  <Clock3
+                    className="h-3 w-3 shrink-0 text-muted-foreground/60"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                  <span className="tabular-nums">{post.readTime} min read</span>
+                  <span className="text-muted-foreground/40" aria-hidden>
+                    ·
+                  </span>
+                  <span>{formatDate(post.publishedAt)}</span>
                 </p>
               </Link>
             </Reveal>

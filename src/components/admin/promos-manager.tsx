@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Tag, Plus, Trash2, Infinity as InfinityIcon } from 'lucide-react'
+import { Tag, Plus, Trash2, Infinity as InfinityIcon, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNaira, formatDateShort } from '@/lib/money'
 import { Button } from '@/components/ui/button'
@@ -47,6 +47,7 @@ interface AdminPromo {
   maxUsage: number | null
   usageCount: number
   singleUsePerCustomer: boolean
+  stackable: boolean
   isActive: boolean
   expiresAt: string | null
   createdAt: string
@@ -67,6 +68,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
   const [minSubtotal, setMinSubtotal] = useState('0')
   const [maxUsage, setMaxUsage] = useState('')
   const [singleUse, setSingleUse] = useState(false)
+  const [stackable, setStackable] = useState(false)
   const [expiresAt, setExpiresAt] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -83,6 +85,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
           minSubtotal: Math.max(0, Number(minSubtotal) || 0),
           maxUsage: maxUsage.trim() ? Math.max(1, Number(maxUsage)) : null,
           singleUsePerCustomer: singleUse,
+          stackable,
           expiresAt: expiresAt || undefined,
         }),
       })
@@ -101,6 +104,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
       setMinSubtotal('0')
       setMaxUsage('')
       setSingleUse(false)
+      setStackable(false)
       setExpiresAt('')
       onCreated()
     },
@@ -221,6 +225,20 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
               aria-label="Restrict this code to one use per customer email"
             />
           </div>
+          <div className="flex items-center justify-between gap-4 border border-line bg-secondary/40 px-4 py-3.5">
+            <div className="min-w-0">
+              <Label htmlFor="np-stack" className="eyebrow">Stackable</Label>
+              <p className="mt-1 text-[0.7rem] leading-relaxed text-muted-foreground">
+                May combine with ONE other stackable code of a different type — a saving + a shipping code.
+              </p>
+            </div>
+            <Switch
+              id="np-stack"
+              checked={stackable}
+              onCheckedChange={setStackable}
+              aria-label="Allow this code to stack with one other code"
+            />
+          </div>
           <DialogFooter className="pt-2">
             <Button type="submit" disabled={busy} className="uppercase tracking-[0.16em] text-[0.62rem]">
               {busy ? 'Creating…' : 'Create code'}
@@ -276,6 +294,36 @@ export function PromosManager() {
     onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'promos'] }),
   })
 
+  const toggleStackable = useMutation({
+    mutationFn: async (p: AdminPromo) => {
+      const res = await fetch(`/api/admin/promos/${p.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stackable: !p.stackable }),
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.error ?? 'Could not update the code')
+      return body.promo
+    },
+    onMutate: async (p) => {
+      await qc.cancelQueries({ queryKey: ['admin', 'promos'] })
+      const prev = qc.getQueryData<{ promos: AdminPromo[] }>(['admin', 'promos'])
+      qc.setQueryData(['admin', 'promos'], {
+        promos: (prev?.promos ?? []).map((x) => (x.id === p.id ? { ...x, stackable: !x.stackable } : x)),
+      })
+      return { prev }
+    },
+    onError: (e: Error, _p, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['admin', 'promos'], ctx.prev)
+      toast.error(e.message)
+    },
+    onSuccess: (promo) => {
+      const p = promo as AdminPromo
+      toast.success(p.stackable ? `${p.code} may now stack.` : `${p.code} now travels alone.`)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'promos'] }),
+  })
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/admin/promos/${id}`, { method: 'DELETE' })
@@ -323,6 +371,7 @@ export function PromosManager() {
                 <th scope="col" className="eyebrow px-4 py-3">Min basket</th>
                 <th scope="col" className="eyebrow px-4 py-3">Usage</th>
                 <th scope="col" className="eyebrow px-4 py-3">Expires</th>
+                <th scope="col" className="eyebrow px-4 py-3 text-center">Stacks</th>
                 <th scope="col" className="eyebrow px-4 py-3 text-center">Active</th>
                 <th scope="col" className="eyebrow px-4 py-3 text-right">Remove</th>
               </tr>
@@ -331,7 +380,7 @@ export function PromosManager() {
               {isLoading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="border-b border-line">
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 8 }).map((_, j) => (
                         <td key={j} className="px-4 py-4">
                           <Skeleton className="h-4 w-full" />
                         </td>
@@ -357,6 +406,15 @@ export function PromosManager() {
                               title="One redemption per customer email"
                             >
                               1×/customer
+                            </span>
+                          ) : null}
+                          {p.stackable ? (
+                            <span
+                              className="inline-flex items-center gap-1 border border-espresso/40 px-1.5 py-0.5 text-[0.56rem] font-medium uppercase tracking-[0.14em] text-espresso"
+                              title="May combine with one other stackable code of a different type"
+                            >
+                              <Layers className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+                              Stacks
                             </span>
                           ) : null}
                         </span>
@@ -387,6 +445,13 @@ export function PromosManager() {
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         <Switch
+                          checked={p.stackable}
+                          onCheckedChange={() => toggleStackable.mutate(p)}
+                          aria-label={`${p.stackable ? 'Forbid' : 'Allow'} ${p.code} to stack with another code`}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <Switch
                           checked={p.isActive}
                           onCheckedChange={() => toggleActive.mutate(p)}
                           aria-label={`${p.isActive ? 'Pause' : 'Activate'} ${p.code}`}
@@ -406,7 +471,7 @@ export function PromosManager() {
                   ))}
               {!isLoading && promos.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
+                  <td colSpan={8} className="px-4 py-16 text-center">
                     <p className="font-display text-lg italic text-muted-foreground">
                       No codes on the books yet.
                     </p>

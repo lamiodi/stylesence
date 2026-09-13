@@ -33,6 +33,7 @@ export async function GET() {
       status: true,
       createdAt: true,
       promoCode: true,
+      promoCodes: true,
       discount: true,
       items: { select: { qty: true } },
     },
@@ -98,15 +99,23 @@ export async function GET() {
   const customers = new Set(orders.map((o) => o.email)).size
 
   // Promo performance: order-derived usage (CANCELLED excluded from impact figures).
-  const promoOrders = orders.filter((o) => o.promoCode && o.status !== 'CANCELLED')
+  // Stacked orders (Round 12) attribute ONE order to EACH applied code; the order's
+  // discount value counts once per code (a shipping code contributes 0 by nature).
+  const promoOrders = orders.filter(
+    (o) => (o.promoCode || o.promoCodes) && o.status !== 'CANCELLED',
+  )
   const promoDiscountTotal = promoOrders.reduce((sum, o) => sum + (o.discount ?? 0), 0)
   const promoByCode = new Map<string, { orderCount: number; discountTotal: number }>()
   for (const o of promoOrders) {
-    const code = o.promoCode as string
-    const entry = promoByCode.get(code) ?? { orderCount: 0, discountTotal: 0 }
-    entry.orderCount += 1
-    entry.discountTotal += o.discount ?? 0
-    promoByCode.set(code, entry)
+    const codes = new Set<string>()
+    if (o.promoCode) codes.add(o.promoCode)
+    if (o.promoCodes) for (const c of o.promoCodes.split(',')) codes.add(c.trim())
+    for (const code of codes) {
+      const entry = promoByCode.get(code) ?? { orderCount: 0, discountTotal: 0 }
+      entry.orderCount += 1
+      entry.discountTotal += o.discount ?? 0
+      promoByCode.set(code, entry)
+    }
   }
   const promoCodes = await db.promoCode.findMany({
     select: { code: true, label: true, type: true, value: true, usageCount: true, maxUsage: true, isActive: true },

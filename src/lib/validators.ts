@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PROMO_STACK_MAX } from '@/lib/promo'
 
 /**
  * Zod schemas for every mutating endpoint (API contract v1).
@@ -77,16 +78,19 @@ export const checkoutInput = z.object({
   state: requiredText(2, 80, 'State'),
   notes: optionalText(500, 'Notes'),
   shippingMethod: z.enum(['standard', 'express']),
-  promoCode: z
-    .string()
-    .trim()
-    .max(40, 'Promo code is too long')
+  promoCodes: z
+    .array(z.string().trim().min(1).max(40))
+    .max(2, 'At most two promo codes per order')
     .optional()
-    .transform((v) => (v === '' ? undefined : v)),
+    .transform((v) => (v === undefined || v.length === 0 ? undefined : v)),
 })
 
+/** POST /api/promo/validate — the full applied stack (1–2 codes). */
 export const promoValidateInput = z.object({
-  code: z.string().trim().min(1, 'Promo code is required').max(40, 'Promo code is too long'),
+  codes: z
+    .array(z.string().trim().min(1, 'Promo code is required').max(40, 'Promo code is too long'))
+    .min(1, 'At least one code is required')
+    .max(PROMO_STACK_MAX, `At most ${PROMO_STACK_MAX} codes per bag`),
   subtotal: z.number().int('Subtotal must be a whole number').min(0).max(100_000_000),
   /** Optional — enables the single-use-per-customer check for signed-in / typed emails. */
   email: optionalEmailInput,
@@ -120,6 +124,8 @@ export const promoInput = z.object({
     .optional()
     .transform((v) => (v === undefined ? null : v)),
   singleUsePerCustomer: z.boolean().optional(),
+  /** Round 12 — allows combining with one other stackable code of a different type class. */
+  stackable: z.boolean().optional(),
   isActive: z.boolean().optional(),
   expiresAt: z
     .string()
@@ -141,6 +147,7 @@ export const promoPatchInput = z.object({
     .nullable()
     .optional(),
   singleUsePerCustomer: z.boolean().optional(),
+  stackable: z.boolean().optional(),
   isActive: z.boolean().optional(),
   expiresAt: z
     .string()

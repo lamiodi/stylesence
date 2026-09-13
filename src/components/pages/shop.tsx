@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueries, keepPreviousData } from '@tanstack/react-query'
-import { SlidersHorizontal, X, Search } from 'lucide-react'
+import { SlidersHorizontal, X, Search, Truck, Check } from 'lucide-react'
 import { useRoute, navigate, Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
@@ -71,10 +71,17 @@ function FilterRail({
 }: {
   categories: Category[]
   facets: ProductsResponse['facets'] | undefined
-  params: { category: string; size: string; color: string; minPrice: string; maxPrice: string }
+  params: {
+    category: string
+    size: string
+    color: string
+    minPrice: string
+    maxPrice: string
+    inStock: string
+  }
   onNavigate?: () => void
 }) {
-  const hasFilters = !!(params.size || params.color || params.minPrice || params.maxPrice)
+  const hasFilters = !!(params.size || params.color || params.minPrice || params.maxPrice || params.inStock)
   const priceSteps = [50000, 100000, 150000, 200000, 250000]
 
   return (
@@ -119,6 +126,42 @@ function FilterRail({
           </li>
         ))}
       </ul>
+
+      {/* ————— availability: in-stock-only toggle ("Ready to ship") ————— */}
+      <div className="border-b border-line py-5">
+        <p className="eyebrow mb-3">Availability</p>
+        <button
+          type="button"
+          onClick={() => {
+            setParam({ inStock: params.inStock ? null : '1' })
+            onNavigate?.()
+          }}
+          aria-pressed={!!params.inStock}
+          className={cn(
+            'flex w-full items-center gap-3 border px-3.5 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+            params.inStock
+              ? 'border-foreground text-foreground'
+              : 'border-line-strong text-muted-foreground hover:border-foreground hover:text-foreground',
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'flex h-4 w-4 shrink-0 items-center justify-center border transition-colors',
+              params.inStock
+                ? 'border-foreground bg-foreground text-background'
+                : 'border-line-strong text-transparent',
+            )}
+          >
+            <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+          </span>
+          <Truck className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
+          <span className="text-sm">Ready to ship</span>
+        </button>
+        <p className="mt-2 text-[0.68rem] leading-relaxed text-muted-foreground/80">
+          Only pieces with a size on the shelf — no waitlists.
+        </p>
+      </div>
 
       {facets && facets.sizes.length > 0 ? (
         <div className="border-b border-line py-5">
@@ -217,10 +260,10 @@ function FilterRail({
           {hasFilters ? (
             <button
               type="button"
-              onClick={() => setParam({ size: null, color: null, minPrice: null, maxPrice: null })}
+              onClick={() => setParam({ size: null, color: null, minPrice: null, maxPrice: null, inStock: null })}
               className="eyebrow mt-4 !text-espresso hover:underline"
             >
-              Clear size · colour · price
+              Clear size · colour · price · availability
             </button>
           ) : null}
         </div>
@@ -242,6 +285,7 @@ export function ShopPage() {
     const color = q.get('color') ?? ''
     const minPrice = q.get('minPrice') ?? ''
     const maxPrice = q.get('maxPrice') ?? ''
+    const inStock = q.get('inStock') ?? ''
     const sort = (q.get('sort') as SortKey) || 'featured'
     if (category) p.set('category', category)
     if (search) p.set('q', search)
@@ -249,8 +293,9 @@ export function ShopPage() {
     if (color) p.set('color', color)
     if (minPrice) p.set('minPrice', minPrice)
     if (maxPrice) p.set('maxPrice', maxPrice)
+    if (inStock) p.set('inStock', inStock)
     if (sort) p.set('sort', sort)
-    return { category, search, size, color, minPrice, maxPrice, sort, key: p.toString() }
+    return { category, search, size, color, minPrice, maxPrice, inStock, sort, key: p.toString() }
   }, [route.query])
 
   useEffect(() => {
@@ -306,6 +351,8 @@ export function ShopPage() {
   const activeChips: { label: string; clear: () => void }[] = []
   if (params.search)
     activeChips.push({ label: `“${params.search}”`, clear: () => setParam({ q: null }) })
+  if (params.inStock)
+    activeChips.push({ label: 'Ready to ship', clear: () => setParam({ inStock: null }) })
   if (params.size)
     activeChips.push({ label: `Size ${params.size}`, clear: () => setParam({ size: null }) })
   if (params.color)

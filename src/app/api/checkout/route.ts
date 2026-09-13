@@ -2,13 +2,14 @@ import { db } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { getCartFromCookie } from '@/lib/cart'
 import { checkoutInput } from '@/lib/validators'
-import { evaluatePromo } from '@/lib/promo'
+import { evaluatePromoStack } from '@/lib/promo'
 
 /**
  * POST /api/checkout
  * Re-checks stock, atomically decrements it, snapshots order items,
  * creates a PAID order (dev placeholder payment), clears the cart.
- * Optional `promoCode` is validated, applied and usage-incremented.
+ * Optional `promoCodes` (up to 2 — one money-saving + one shipping, both
+ * stackable) is validated, applied and usage-incremented per code.
  * → 201 `{ order: { orderNumber, total, discount } }`.
  */
 
@@ -55,20 +56,27 @@ export async function POST(req: Request) {
 
   const subtotal = items.reduce((sum, i) => sum + i.variant.product.price * i.qty, 0)
 
-  // Validate the promo against this cart before the transaction (server is authoritative).
-  // The order email participates — single-use-per-customer codes reject repeat redeemers.
+  // Validate the promo stack against this cart before the transaction (server is
+  // authoritative). The order email participates — single-use-per-customer codes
+  // reject repeat redeemers.
   let discount = 0
   let promoCode: string | null = null
-  let promoId: string | null = null
+  let promoCodes: string | null = null
+  let promoIds: string[] = []
   let freeShipping = false
-  if (input.promoCode) {
-    const promoEval = await evaluatePromo(input.promoCode, subtotal, input.email)
-    if (!promoEval.ok) return fail(promoEval.status, promoEval.error)
-    discount = promoEval.promo.discount
-    freeShipping = promoEval.promo.freeShipping
-    promoCode = promoEval.promo.code
-    const row = await db.promoCode.findUnique({ where: { code: promoCode }, select: { id: true } })
-    promoId = row?.id ?? null
+  if (input.promoCodes) {
+    const stackEval = await evaluatePromoStack(input.promoCodes, subtotal, input.email)
+    if (!stackEval.ok) return fail(stackEval.status, stackEval.error)
+    discount = stackEval.discount
+    freeShipping = stackEval.freeShipping
+    promoCodes = stackEval.promos.map((p) => p.code).join(',')
+    // Primary code: the money-saving one when stacked, else the only code.
+    promoCode = stackEval.promos.find((p) => p.type !== 'SHIPPING')?.code ?? stackEval.promos[0].code
+    const rows = await db.promoCode.findMany({
+      where: { code: { in: stackEval.promos.map((p) => p.code) } },
+      select: { id: true },
+    })
+    promoIds = rows.map((r) => r.id)
   }
 
   // Complimentary standard shipping over the threshold (matches the storefront
@@ -116,14 +124,15 @@ export async function POST(req: Request) {
             subtotal,
             discount,
             promoCode,
+            promoCodes,
             total,
             status: 'PAID',
           },
           select: { orderNumber: true, id: true },
         })
-        if (promoId) {
+        for (const id of promoIds) {
           await tx.promoCode.update({
-            where: { id: promoId },
+            where: { id },
             data: { usageCount: { increment: 1 } },
           })
         }

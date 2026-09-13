@@ -31,13 +31,14 @@ export function CartPage() {
   const update = useUpdateCartItem()
   const remove = useRemoveCartItem()
   const clear = useClearCart()
-  const promoCode = usePromoStore((s) => s.code)
-  const { data: promoData } = usePromoValidation(promoCode, cart?.subtotal ?? 0)
-  const promo = promoData?.promo
+  const promoCodes = usePromoStore((s) => s.codes)
+  const { data: promoData } = usePromoValidation(promoCodes, cart?.subtotal ?? 0)
+  const promos = promoData?.promos ?? []
 
   const items = cart?.items ?? []
   const subtotal = cart?.subtotal ?? 0
-  const discount = promo?.discount ?? 0
+  const discount = promoData?.discount ?? 0
+  const stackFreeShipping = promoData?.freeShipping ?? false
 
   return (
     <div className="container-site py-10 sm:py-14">
@@ -81,7 +82,7 @@ export function CartPage() {
         <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
           {/* items */}
           <div>
-            <FreeShippingMeter subtotal={subtotal} />
+            <FreeShippingMeter subtotal={subtotal} unlockedByPromo={stackFreeShipping} />
 
             <ul className="divide-y divide-line border-t border-line">
               {items.map((item) => (
@@ -164,28 +165,32 @@ export function CartPage() {
                   <dt className="text-muted-foreground">Subtotal ({cart?.itemCount ?? 0} items)</dt>
                   <dd className="font-mono tabular-nums">{formatNaira(subtotal)}</dd>
                 </div>
-                {promo && discount > 0 ? (
-                  <div className="flex justify-between text-espresso">
-                    <dt className="flex items-center gap-1.5">
-                      <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
-                      {promo.code}
-                    </dt>
-                    <dd className="font-mono tabular-nums">−{formatNaira(discount)}</dd>
-                  </div>
-                ) : null}
-                {promo?.freeShipping ? (
-                  <div className="flex justify-between text-espresso">
-                    <dt className="flex items-center gap-1.5">
-                      <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
-                      {promo.code}
-                    </dt>
-                    <dd>Complimentary shipping</dd>
-                  </div>
-                ) : null}
+                {promos
+                  .filter((p) => p.discount > 0)
+                  .map((p) => (
+                    <div key={`money-${p.code}`} className="flex justify-between text-espresso">
+                      <dt className="flex items-center gap-1.5">
+                        <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                        {p.code}
+                      </dt>
+                      <dd className="font-mono tabular-nums">−{formatNaira(p.discount)}</dd>
+                    </div>
+                  ))}
+                {promos
+                  .filter((p) => p.freeShipping)
+                  .map((p) => (
+                    <div key={`ship-${p.code}`} className="flex justify-between text-espresso">
+                      <dt className="flex items-center gap-1.5">
+                        <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                        {p.code}
+                      </dt>
+                      <dd>Complimentary shipping</dd>
+                    </div>
+                  ))}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Shipping</dt>
                   <dd className="text-[0.78rem] text-muted-foreground">
-                    {promo?.freeShipping ? 'Complimentary' : 'Calculated at checkout'}
+                    {stackFreeShipping ? 'Complimentary' : 'Calculated at checkout'}
                   </dd>
                 </div>
               </dl>

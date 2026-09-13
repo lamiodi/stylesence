@@ -9,7 +9,8 @@ import { formatDate } from '@/lib/money'
 import { Button } from '@/components/ui/button'
 import { ProductImage } from '@/components/site/price'
 import { Reveal } from '@/components/site/reveal'
-import type { JournalPostView } from '@/lib/types'
+import { issueNo } from '@/components/site/journal-meta'
+import type { JournalCard, JournalPostView } from '@/lib/types'
 
 /**
  * Hairline reading-progress bar pinned under the sticky header while the
@@ -52,6 +53,89 @@ function ReadingProgress() {
         style={{ width: `${progress}%` }}
       />
     </div>
+  )
+}
+
+/**
+ * Cross-link strip at the end of a piece — one or two other posts from the
+ * journal (same ['journal'] query the index uses). Silent on error: a piece
+ * ends gracefully without its reading suggestions.
+ */
+function NextFromJournal({ currentSlug }: { currentSlug: string }) {
+  const { data } = useQuery({
+    queryKey: ['journal'],
+    queryFn: async () => {
+      const res = await fetch('/api/journal')
+      if (!res.ok) throw new Error('Failed')
+      return (await res.json()) as { posts: JournalCard[] }
+    },
+    staleTime: 5 * 60_000,
+  })
+
+  const all = data?.posts ?? []
+  const others = all.filter((p) => p.slug !== currentSlug).slice(0, 2)
+  if (others.length === 0) return null
+
+  return (
+    <section className="mt-16 border-t border-line pt-10" aria-label="Next from the journal">
+      <Reveal>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Keep reading</p>
+            <h2 className="mt-2 font-display text-2xl font-light tracking-tight sm:text-3xl">
+              Next from the journal
+            </h2>
+          </div>
+          <Link
+            to="/journal"
+            className="eyebrow-ink hidden items-center gap-1.5 border-b border-foreground pb-1 transition-colors hover:border-espresso hover:text-espresso sm:inline-flex"
+          >
+            The whole journal
+            <ArrowRight className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+          </Link>
+        </div>
+      </Reveal>
+      <div className="mt-8 grid gap-8 sm:grid-cols-2 sm:gap-10">
+        {others.map((post, i) => {
+          const idx = all.findIndex((p) => p.slug === post.slug)
+          return (
+            <Reveal key={post.slug} delay={i * 0.07}>
+              <Link to={`/journal/${post.slug}`} className="group flex gap-5">
+                <div className="w-24 shrink-0 overflow-hidden sm:w-28">
+                  <ProductImage
+                    src={post.coverImage}
+                    alt={post.title}
+                    label={post.title}
+                    ratio="aspect-[4/5]"
+                    className="transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-safe:group-hover:scale-[1.03]"
+                  />
+                </div>
+                <div className="min-w-0 flex-1 self-center">
+                  <p className="eyebrow">
+                    {idx >= 0 ? (
+                      <>
+                        <span className="text-espresso">{issueNo(idx)}</span>
+                        <span aria-hidden> — </span>
+                      </>
+                    ) : null}
+                    {post.category}
+                  </p>
+                  <h3 className="mt-2 font-display text-lg font-light leading-snug tracking-tight group-hover:text-espresso">
+                    {post.title}
+                  </h3>
+                  <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                    {post.excerpt}
+                  </p>
+                  <p className="mt-3 font-mono text-[0.64rem] uppercase tracking-[0.12em] text-muted-foreground/75">
+                    {post.readTime} min read · {formatDate(post.publishedAt)}
+                  </p>
+                </div>
+              </Link>
+            </Reveal>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -203,12 +287,28 @@ export function JournalPostPage({ slug }: { slug: string }) {
               )
             }
             // Editorial pull-quote — lines opening with "> " render between
-            // hairline rules in oversized display italic.
+            // hairline rules under an espresso diamond, in oversized display
+            // italic. Multi-line quotes keep their line breaks.
             if (block.startsWith('> ')) {
+              const lines = block
+                .replace(/^>\s+/, '')
+                .split('\n')
+                .map((l) => l.trim())
+                .filter(Boolean)
               return (
-                <blockquote key={i} className="my-12 border-y border-line py-8 text-center">
+                <blockquote key={i} className="my-12 border-y border-line py-10 text-center">
+                  <div className="mb-6 flex items-center justify-center gap-3" aria-hidden>
+                    <span className="h-px w-10 bg-line-strong" />
+                    <span className="h-1.5 w-1.5 rotate-45 bg-espresso" />
+                    <span className="h-px w-10 bg-line-strong" />
+                  </div>
                   <p className="mx-auto max-w-xl font-display text-[1.45rem] font-light italic leading-snug text-balance text-foreground sm:text-[1.7rem]">
-                    {block.replace(/^>\s+/, '')}
+                    {lines.map((line, j) => (
+                      <span key={j}>
+                        {j > 0 ? <br /> : null}
+                        {line}
+                      </span>
+                    ))}
                   </p>
                 </blockquote>
               )
@@ -219,6 +319,15 @@ export function JournalPostPage({ slug }: { slug: string }) {
               </p>
             )
           })}
+        </div>
+      </Reveal>
+
+      {/* end-mark — the piece closes on a hairline diamond */}
+      <Reveal delay={0.16}>
+        <div className="mt-12 flex items-center justify-center gap-4" aria-hidden>
+          <span className="h-px w-14 bg-line-strong" />
+          <span className="h-1.5 w-1.5 rotate-45 bg-espresso" />
+          <span className="h-px w-14 bg-line-strong" />
         </div>
       </Reveal>
 
@@ -235,6 +344,8 @@ export function JournalPostPage({ slug }: { slug: string }) {
           </button>
         </div>
       </Reveal>
+
+      <NextFromJournal currentSlug={slug} />
     </article>
   )
 }

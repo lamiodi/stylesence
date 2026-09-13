@@ -27,6 +27,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orderNu
       subtotal: order.subtotal,
       discount: order.discount,
       promoCode: order.promoCode,
+      promoCodes: order.promoCodes
+        ? order.promoCodes.split(',').map((c) => c.trim()).filter(Boolean)
+        : null,
       total: order.total,
       createdAt: order.createdAt,
       items: order.items.map((i) => ({

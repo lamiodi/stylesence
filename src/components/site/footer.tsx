@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
-import { ArrowRight, Check, Sun, Moon } from 'lucide-react'
+import { ArrowRight, Check, Lock, Sun, Moon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from '@/lib/router'
 import type { Category } from '@/lib/types'
@@ -126,7 +126,7 @@ function ClientCareLinks() {
 function PaymentMarks() {
   return (
     <div className="flex flex-wrap items-center gap-2" aria-label="Accepted payment methods (dev placeholder)">
-      {['PAYSTACK', 'VISA', 'MASTERCARD', 'TRANSFER'].map((m) => (
+      {['VISA', 'MASTERCARD', 'VERVE', 'PAYSTACK'].map((m) => (
         <span
           key={m}
           className="border border-dashed border-line-strong px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground/70"
@@ -135,6 +135,70 @@ function PaymentMarks() {
           {m}
         </span>
       ))}
+    </div>
+  )
+}
+
+/** Fine-print band — trust, currency, studio and payment details above the
+ *  bottom line. Hairline grid; mono labels; quiet copy. */
+function FinePrint() {
+  return (
+    <div className="border-t border-line py-6">
+      <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground/70">
+            Secure checkout
+          </dt>
+          <dd className="mt-2.5 flex items-start gap-2 text-[0.72rem] leading-relaxed text-muted-foreground">
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
+            <span>
+              Every checkout is encrypted over SSL. Client care answers within one
+              business day.
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground/70">
+            Prices &amp; tax
+          </dt>
+          <dd className="mt-2.5 text-[0.72rem] leading-relaxed text-muted-foreground">
+            All prices in <span className="text-foreground">₦ — Nigerian Naira</span>, shown
+            incl. VAT.
+            <span className="mt-1 block text-[0.64rem] text-muted-foreground/70">
+              VAT-inclusive display is a dev placeholder — tax handling is not wired in
+              this preview.
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground/70">
+            The studio
+          </dt>
+          <dd className="mt-2.5 text-[0.72rem] leading-relaxed text-muted-foreground">
+            14A Awolowo Road, Ikoyi, Lagos
+            <span className="mt-1 block">Tue – Sat · 10:00 – 18:00 WAT</span>
+            <span className="mt-1 block text-[0.64rem] text-muted-foreground/70">
+              Private fittings by appointment.
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground/70">
+            Payment methods
+          </dt>
+          <dd className="mt-2.5">
+            <PaymentMarks />
+            <div className="mt-2.5">
+              <DevPlaceholder compact title="Checkout is simulated">
+                <span className="text-[0.72rem]">
+                  No live card charging in this preview — Paystack / Verve integration
+                  pending.
+                </span>
+              </DevPlaceholder>
+            </div>
+          </dd>
+        </div>
+      </dl>
     </div>
   )
 }
@@ -254,6 +318,9 @@ export function Footer() {
           </div>
         </div>
 
+        {/* fine print — trust, currency, studio, payments */}
+        <FinePrint />
+
         {/* bottom bar */}
         <div className="flex flex-col items-start justify-between gap-4 border-t border-line py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -267,7 +334,6 @@ export function Footer() {
             </p>
           </div>
           <div className="flex items-center gap-5">
-            <PaymentMarks />
             <button
               type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

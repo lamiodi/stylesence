@@ -136,6 +136,8 @@ export interface OrderView {
   subtotal: number
   discount: number
   promoCode: string | null
+  /** All applied codes (stacking, Round 12) — null on legacy single-code orders. */
+  promoCodes: string[] | null
   total: number
   createdAt: string
   items: OrderItemView[]
@@ -163,6 +165,15 @@ export interface PromoInfo {
   type: string
   value: number
   minSubtotal: number
+  discount: number
+  freeShipping: boolean
+  /** May combine with one other stackable code of a different type class. */
+  stackable: boolean
+}
+
+/** POST /api/promo/validate response — the whole applied stack. */
+export interface PromoStackInfo {
+  promos: PromoInfo[]
   discount: number
   freeShipping: boolean
 }

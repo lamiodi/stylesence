@@ -50,7 +50,7 @@ export function CheckoutPage() {
   const { data: customer } = useCustomer()
   const items = cart?.items ?? []
 
-  const promoCode = usePromoStore((s) => s.code)
+  const promoCodes = usePromoStore((s) => s.codes)
   const clearPromo = usePromoStore((s) => s.clear)
 
   // Signed-in customers get their saved details prefilled — but only into
@@ -70,16 +70,17 @@ export function CheckoutPage() {
 
   // The checkout email participates in promo validation so single-use-per-customer
   // codes fail visibly here (the server re-checks authoritatively with this email).
-  const { data: promoData } = usePromoValidation(promoCode, cart?.subtotal ?? 0, email)
-  const promo = promoData?.promo
+  const { data: promoData } = usePromoValidation(promoCodes, cart?.subtotal ?? 0, email)
+  const promos = promoData?.promos ?? []
 
   const subtotal = cart?.subtotal ?? 0
-  const discount = promo?.discount ?? 0
+  const discount = promoData?.discount ?? 0
+  const stackFreeShipping = promoData?.freeShipping ?? false
 
   /** Complimentary standard shipping over ₦150,000 (merchandise subtotal, pre-discount)
    *  — mirrors the server-side rule in /api/checkout and the cart-page promise. */
   const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && shipping === 'standard'
-  const shippingPrice = promo?.freeShipping || thresholdFree ? 0 : SHIPPING_METHODS[shipping].price
+  const shippingPrice = stackFreeShipping || thresholdFree ? 0 : SHIPPING_METHODS[shipping].price
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice
 
   const validate = (): boolean => {
@@ -117,7 +118,7 @@ export function CheckoutPage() {
           state,
           notes: notes.trim() || undefined,
           shippingMethod: shipping,
-          promoCode: promoCode ?? undefined,
+          promoCodes: promoCodes.length > 0 ? promoCodes : undefined,
         }),
       })
       const data = await res.json()
@@ -290,7 +291,9 @@ export function CheckoutPage() {
               >
                 {(Object.keys(SHIPPING_METHODS) as ShippingMethod[]).map((key) => {
                   const m = SHIPPING_METHODS[key]
-                  const methodFree = key === 'standard' && (promo?.freeShipping || thresholdFree)
+                  // A shipping promo waives EVERY method (mirrors the server rule);
+                  // the ₦150k threshold only unlocks standard.
+                  const methodFree = stackFreeShipping || (key === 'standard' && thresholdFree)
                   return (
                     <Label
                       key={key}
@@ -314,7 +317,9 @@ export function CheckoutPage() {
                         </p>
                         {methodFree ? (
                           <p className="mt-1 text-[0.66rem] uppercase tracking-[0.14em] text-espresso">
-                            Unlocked — orders over ₦150,000
+                            {stackFreeShipping
+                              ? 'Unlocked — your code covers delivery'
+                              : 'Unlocked — orders over ₦150,000'}
                           </p>
                         ) : null}
                       </div>
@@ -380,15 +385,28 @@ export function CheckoutPage() {
                     <dt className="text-muted-foreground">Subtotal</dt>
                     <dd className="font-mono tabular-nums">{formatNaira(subtotal)}</dd>
                   </div>
-                  {promo && discount > 0 ? (
-                    <div className="flex justify-between text-espresso">
-                      <dt className="flex items-center gap-1.5">
-                        <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
-                        {promo.code}
-                      </dt>
-                      <dd className="font-mono tabular-nums">−{formatNaira(discount)}</dd>
-                    </div>
-                  ) : null}
+                  {promos
+                    .filter((p) => p.discount > 0)
+                    .map((p) => (
+                      <div key={`money-${p.code}`} className="flex justify-between text-espresso">
+                        <dt className="flex items-center gap-1.5">
+                          <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                          {p.code}
+                        </dt>
+                        <dd className="font-mono tabular-nums">−{formatNaira(p.discount)}</dd>
+                      </div>
+                    ))}
+                  {promos
+                    .filter((p) => p.freeShipping)
+                    .map((p) => (
+                      <div key={`ship-${p.code}`} className="flex justify-between text-espresso">
+                        <dt className="flex items-center gap-1.5">
+                          <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                          {p.code}
+                        </dt>
+                        <dd>Complimentary</dd>
+                      </div>
+                    ))}
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">
                       {SHIPPING_METHODS[shipping].label}

@@ -11,6 +11,7 @@ const CODES = [
     value: 10,
     minSubtotal: 0,
     maxUsage: null as number | null,
+    stackable: true, // pairs with SENCE-SHIP — the canonical stacking demo
   },
   {
     code: 'HARMATTAN-20',
@@ -35,6 +36,7 @@ const CODES = [
     value: 0,
     minSubtotal: 100000,
     maxUsage: null as number | null,
+    stackable: true, // pairs with SS-FRIEND
   },
   {
     code: 'SAMPLE-EXPIRED',
@@ -59,6 +61,7 @@ async function main() {
         value: c.value,
         minSubtotal: c.minSubtotal,
         maxUsage: c.maxUsage,
+        stackable: c.stackable ?? false,
         isActive: c.isActive ?? true,
         expiresAt: c.expiresAt ?? null,
       },

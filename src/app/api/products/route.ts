@@ -5,8 +5,11 @@ import { ok, isNewProduct, orderSizes, round1 } from '@/lib/api-helpers'
 /**
  * GET /api/products
  * Query: category, q, size, color, minPrice, maxPrice,
+ *        inStock ("1"/"true" — keep only products with ≥1 variant having stock > 0),
  *        sort (featured|newest|price-asc|price-desc|rating), page (1), perPage (12, max 48).
- * Only ACTIVE products. Facet base scope = category + q filters ONLY.
+ * Only ACTIVE products. Facet base scope = category + q filters ONLY — inStock is a
+ * user filter (like size/color/price), so facet counts and priceRange keep their
+ * existing base-scope semantics and are NOT narrowed by it.
  */
 
 const SORTS = ['featured', 'newest', 'price-asc', 'price-desc', 'rating'] as const
@@ -68,6 +71,9 @@ export async function GET(req: Request) {
   const colorFilter = url.searchParams.get('color')?.trim() || null
   const minPrice = parseIntParam(url.searchParams.get('minPrice'))
   const maxPrice = parseIntParam(url.searchParams.get('maxPrice'))
+  // "Ready to ship" — in-stock-only filter ("1" / "true" enable it; anything else is ignored).
+  const inStockParam = (url.searchParams.get('inStock') ?? '').trim().toLowerCase()
+  const inStockOnly = inStockParam === '1' || inStockParam === 'true'
   const sortParam = url.searchParams.get('sort')?.trim() || 'featured'
   const sort: Sort = (SORTS as readonly string[]).includes(sortParam) ? (sortParam as Sort) : 'featured'
   const page = Math.max(1, parseIntParam(url.searchParams.get('page')) ?? 1)
@@ -123,8 +129,9 @@ export async function GET(req: Request) {
     },
   }
 
-  // User filters (size/color/price) applied on top of the base scope.
+  // User filters (size/color/price/inStock) applied on top of the base scope.
   let rows = products.map((product) => ({ product, card: toCard(product) }))
+  if (inStockOnly) rows = rows.filter((r) => r.product.variants.some((v) => v.stock > 0))
   if (sizeFilter) rows = rows.filter((r) => r.product.variants.some((v) => v.size === sizeFilter))
   if (colorFilter) rows = rows.filter((r) => r.product.variants.some((v) => v.color === colorFilter))
   if (minPrice !== null) rows = rows.filter((r) => r.product.price >= minPrice)

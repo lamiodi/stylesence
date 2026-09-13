@@ -232,7 +232,9 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
                 <div className="flex justify-between text-espresso">
                   <dt className="flex items-center gap-1.5">
                     <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
-                    {order.promoCode ?? 'Promo'}
+                    {order.promoCodes && order.promoCodes.length > 0
+                      ? order.promoCodes.join(' + ')
+                      : (order.promoCode ?? 'Promo')}
                   </dt>
                   <dd className="font-mono tabular-nums">−{formatNaira(order.discount)}</dd>
                 </div>

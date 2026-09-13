@@ -93,7 +93,14 @@ export function AboutPage() {
               “I never wanted a label. I wanted a wardrobe — mine, then yours. Ivory and
               charcoal, nothing orphaned, nothing loud.”
             </blockquote>
-            <p className="mt-5 text-sm text-primary-foreground/75">SKR — Founder & Creative Director</p>
+            {/* pull-quote attribution — hairline rule, display name, mono role */}
+            <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="h-px w-8 bg-primary-foreground/40" aria-hidden />
+              <p className="font-display text-base italic text-primary-foreground">SKR</p>
+              <p className="font-mono text-[0.62rem] uppercase tracking-[0.2em] text-primary-foreground/60">
+                Founder & Creative Director
+              </p>
+            </div>
             <DevPlaceholder
               className="mt-8 !border-primary-foreground/30 bg-transparent"
               title="Press & collaborations"
@@ -110,6 +117,27 @@ export function AboutPage() {
               className="w-full"
             />
           </Reveal>
+        </div>
+      </section>
+
+      {/* studio colophon — hairline meta band */}
+      <section aria-label="Studio facts" className="border-y border-line">
+        <div className="container-site">
+          <dl className="grid grid-cols-2 gap-px bg-line sm:grid-cols-4">
+            {([
+              ['Est.', '2026'],
+              ['Studio', 'Ikoyi, Lagos'],
+              ['Cadence', 'Two collections a year'],
+              ['Batch', 'One week of finish'],
+            ] as [string, string][]).map(([dt, dd]) => (
+              <div key={dt} className="bg-background p-5 sm:p-6">
+                <dt className="eyebrow !text-[0.58rem]">{dt}</dt>
+                <dd className="mt-2 font-display text-xl font-light tracking-tight sm:text-[1.35rem]">
+                  {dd}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 

@@ -163,6 +163,7 @@ export function toAdminOrder(o: Order & { items: OrderItem[] }) {
     subtotal: o.subtotal,
     discount: o.discount,
     promoCode: o.promoCode,
+    promoCodes: o.promoCodes ? o.promoCodes.split(',').map((c) => c.trim()).filter(Boolean) : null,
     total: o.total,
     status: o.status,
     createdAt: o.createdAt,
