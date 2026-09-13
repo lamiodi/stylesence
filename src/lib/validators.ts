@@ -90,6 +90,11 @@ export const promoValidateInput = z.object({
   subtotal: z.number().int('Subtotal must be a whole number').min(0).max(100_000_000),
 })
 
+/** GET /api/orders?email= — public guest order-history lookup. */
+export const emailLookupInput = z.object({
+  email: emailInput,
+})
+
 export const promoInput = z.object({
   code: z
     .string()
@@ -255,6 +260,11 @@ export const productPatchInput = z.object({
   ),
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
+  /** Curated "Complete the look" pieces — product slugs, in display order; [] clears. */
+  relatedSlugs: z
+    .array(z.string().trim().min(1, 'Related slug cannot be empty'))
+    .max(8, 'At most 8 curated pieces')
+    .optional(),
   variantStocks: z
     .array(
       z.object({

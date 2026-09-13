@@ -9,6 +9,10 @@ const PRODUCT_INCLUDE = {
   images: { orderBy: { position: 'asc' as const } },
   variants: true,
   reviews: { select: { status: true } },
+  curatedRelations: {
+    orderBy: { position: 'asc' as const },
+    select: { position: true, related: { select: { slug: true } } },
+  },
 } as const
 
 /** GET /api/admin/products — ALL products (incl. inactive), newest first. */

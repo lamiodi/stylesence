@@ -83,7 +83,7 @@ function Router() {
       break
     case 'track':
       page = <TrackOrderPage />
-      key = `track:${route.query.get('order') ?? ''}`
+      key = `track:${route.query.get('mode') ?? ''}:${route.query.get('order') ?? ''}:${route.query.get('email') ?? ''}`
       break
     case 'admin':
       page = <AdminApp />

@@ -1,6 +1,17 @@
 import { db } from '@/lib/db'
 import { fail, isNewProduct, ok, orderSizes, orderVariantsBySizeColor, round1 } from '@/lib/api-helpers'
 
+/** Related slot count on the storefront PDP. */
+const MAX_RELATED = 4
+
+type RelatedProduct = {
+  id: string
+  slug: string
+  name: string
+  price: number
+  images: Array<{ url: string }>
+}
+
 /**
  * GET /api/products/[slug] — full product detail.
  * 404 `{ error: 'Product not found' }` when missing or inactive.
@@ -19,23 +30,76 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   })
   if (!product || !product.isActive) return fail(404, 'Product not found')
 
-  // Related: up to 4 active products, same category (fallback: any), newest first.
-  let relatedProducts: Array<{ slug: string; name: string; price: number; images: Array<{ url: string }> }> = []
-  if (product.categoryId) {
-    relatedProducts = await db.product.findMany({
-      where: { isActive: true, id: { not: product.id }, categoryId: product.categoryId },
-      orderBy: { createdAt: 'desc' },
-      take: 4,
-      include: { images: { orderBy: { position: 'asc' }, take: 1 } },
+  // Related: curated "Complete the look" pieces first (admin-managed, ordered),
+  // then same-category fill, then any active pieces — always up to 4 total.
+  const relatedItems: Array<{
+    slug: string
+    name: string
+    price: number
+    primaryImage: string | null
+    secondaryImage: string | null
+  }> = []
+  const includedIds = new Set<string>([product.id])
+  let curatedCount = 0
+  let anyFillCount = 0
+
+  const pushRelated = (p: RelatedProduct) => {
+    if (relatedItems.length >= MAX_RELATED || includedIds.has(p.id)) return false
+    includedIds.add(p.id)
+    relatedItems.push({
+      slug: p.slug,
+      name: p.name,
+      price: p.price,
+      primaryImage: p.images[0]?.url ?? null,
+      secondaryImage: p.images[1]?.url ?? null,
     })
+    return true
   }
-  if (relatedProducts.length === 0) {
-    relatedProducts = await db.product.findMany({
-      where: { isActive: true, id: { not: product.id } },
+
+  // 1. Curated relations (position asc; inactive related pieces are skipped).
+  const curated = await db.productRelation.findMany({
+    where: { productId: product.id, related: { isActive: true } },
+    orderBy: { position: 'asc' },
+    take: MAX_RELATED,
+    include: { related: { include: { images: { orderBy: { position: 'asc' }, take: 2 } } } },
+  })
+  for (const row of curated) {
+    if (pushRelated(row.related)) curatedCount++
+  }
+
+  // 2. Same-category fill (newest first, excluding already-included pieces).
+  if (relatedItems.length < MAX_RELATED && product.categoryId) {
+    const categoryFill: RelatedProduct[] = await db.product.findMany({
+      where: { isActive: true, id: { notIn: [...includedIds] }, categoryId: product.categoryId },
       orderBy: { createdAt: 'desc' },
-      take: 4,
-      include: { images: { orderBy: { position: 'asc' }, take: 1 } },
+      take: MAX_RELATED - relatedItems.length,
+      include: { images: { orderBy: { position: 'asc' }, take: 2 } },
     })
+    for (const p of categoryFill) pushRelated(p)
+  }
+
+  // 3. Any active pieces when still short (newest first).
+  if (relatedItems.length < MAX_RELATED) {
+    const anyFill: RelatedProduct[] = await db.product.findMany({
+      where: { isActive: true, id: { notIn: [...includedIds] } },
+      orderBy: { createdAt: 'desc' },
+      take: MAX_RELATED - relatedItems.length,
+      include: { images: { orderBy: { position: 'asc' }, take: 2 } },
+    })
+    for (const p of anyFill) {
+      if (pushRelated(p)) anyFillCount++
+    }
+  }
+
+  let relatedSource: 'curated' | 'mixed' | 'category' | 'any'
+  if (curatedCount > 0 && curatedCount === relatedItems.length) {
+    relatedSource = 'curated'
+  } else if (curatedCount > 0) {
+    relatedSource = 'mixed'
+  } else if (anyFillCount > 0) {
+    relatedSource = 'any'
+  } else {
+    relatedSource = 'category'
   }
 
   const variants = orderVariantsBySizeColor(product.variants)
@@ -86,13 +150,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         body: r.body,
         createdAt: r.createdAt,
       })),
-      related: relatedProducts.map((p) => ({
-        slug: p.slug,
-        name: p.name,
-        price: p.price,
-        primaryImage: p.images[0]?.url ?? null,
-        secondaryImage: p.images[1]?.url ?? null,
-      })),
+      related: relatedItems,
+      relatedSource,
     },
   })
 }

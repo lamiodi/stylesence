@@ -685,12 +685,16 @@ function ProductInner({ product }: { product: ProductDetail }) {
         </div>
       </section>
 
-      {/* ————— related ————— */}
+      {/* ————— related (curated "Complete the look" when styled by the atelier) ————— */}
       {product.related.length > 0 ? (
         <section className="mt-20 border-t border-line pt-12">
           <div className="flex items-end justify-between">
             <div>
-              <p className="eyebrow">Styled together</p>
+              <p className="eyebrow">
+                {product.relatedSource === 'curated' || product.relatedSource === 'mixed'
+                  ? 'Styled by the atelier'
+                  : 'Styled together'}
+              </p>
               <h2 className="mt-2 font-display text-3xl font-light tracking-tight">Complete the look</h2>
             </div>
             <Link

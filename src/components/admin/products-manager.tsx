@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Package, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Package, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNaira, formatDateShort } from '@/lib/money'
 import { Button } from '@/components/ui/button'
@@ -82,6 +82,8 @@ interface AdminProduct {
   createdAt: string
   stock: number
   reviewCount: number
+  /** Curated "Complete the look" piece slugs, in display order. */
+  curatedRelated: string[]
   images: { url: string; alt: string | null; position: number }[]
   variants: AdminVariant[]
 }
@@ -284,12 +286,166 @@ function VariantEditor({
 }
 
 /* ------------------------------------------------------------------ *
+ * Curated "Complete the look" editor (edit dialog only)
+ * ------------------------------------------------------------------ */
+function RelatedPiecesEditor({
+  relatedSlugs,
+  catalogue,
+  currentSlug,
+  onChange,
+}: {
+  relatedSlugs: string[]
+  catalogue: AdminProduct[]
+  currentSlug: string
+  onChange: (slugs: string[]) => void
+}) {
+  const addRelated = (slug: string) => {
+    if (!relatedSlugs.includes(slug) && relatedSlugs.length < 8) onChange([...relatedSlugs, slug])
+  }
+  // Controlled with "" (Radix: empty value clears the selection → placeholder).
+  const [addValue, setAddValue] = useState('')
+  const handleAdd = (slug: string) => {
+    addRelated(slug)
+    setAddValue('')
+  }
+
+  const moveRelated = (index: number, delta: -1 | 1) => {
+    const target = index + delta
+    if (target < 0 || target >= relatedSlugs.length) return
+    const next = [...relatedSlugs]
+    const [moved] = next.splice(index, 1)
+    next.splice(target, 0, moved)
+    onChange(next)
+  }
+
+  const addable = catalogue.filter(
+    (p) => p.isActive && p.slug !== currentSlug && !relatedSlugs.includes(p.slug),
+  )
+  const atLimit = relatedSlugs.length >= 8
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="eyebrow">Complete the look — curated pieces, in order</p>
+        <p className="mt-1.5 text-[0.62rem] leading-snug text-muted-foreground">
+          Shown as “Complete the look” on the piece’s page, in this order — up to 8. Pieces hidden from the
+          shop are skipped there, and any unfilled slots fall back to the same category.
+        </p>
+      </div>
+
+      {relatedSlugs.length === 0 ? (
+        <p className="border border-dashed border-line-strong px-4 py-5 text-center text-sm italic text-muted-foreground">
+          No curated pieces yet — the product page shows the automatic fallback.
+        </p>
+      ) : (
+        <ul className="max-h-72 divide-y divide-line overflow-y-auto border border-line scroll-elegant">
+          {relatedSlugs.map((slug, i) => {
+            const piece = catalogue.find((p) => p.slug === slug)
+            const label = piece?.name ?? slug
+            return (
+              <li key={slug} className="flex items-center gap-2.5 px-3 py-2 sm:gap-3 sm:px-4">
+                <span
+                  className="w-6 shrink-0 font-mono text-[0.68rem] tabular-nums text-muted-foreground"
+                  aria-hidden
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm leading-snug" title={label}>
+                    {label}
+                    {piece && !piece.isActive ? (
+                      <span className="ml-1.5 align-middle text-[0.58rem] uppercase tracking-[0.14em] text-espresso">
+                        hidden
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="mt-0.5 truncate font-mono text-[0.68rem] tabular-nums text-muted-foreground">
+                    {piece ? `${formatNaira(piece.price)} · ${piece.category?.name ?? 'No category'}` : slug}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 border-line"
+                    disabled={i === 0}
+                    onClick={() => moveRelated(i, -1)}
+                    aria-label={`Move ${label} up in the look`}
+                  >
+                    <ChevronUp className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 border-line"
+                    disabled={i === relatedSlugs.length - 1}
+                    onClick={() => moveRelated(i, 1)}
+                    aria-label={`Move ${label} down in the look`}
+                  >
+                    <ChevronDown className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 border-line hover:border-destructive hover:text-destructive"
+                    onClick={() => onChange(relatedSlugs.filter((s) => s !== slug))}
+                    aria-label={`Remove ${label} from the look`}
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </Button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <Field
+        label="Add piece"
+        htmlFor="pf-related-add"
+        hint={atLimit ? 'Eight pieces is the limit for one look.' : undefined}
+      >
+        <Select value={addValue} onValueChange={handleAdd}>
+          <SelectTrigger
+            id="pf-related-add"
+            className="h-10 w-full border-line-strong"
+            disabled={atLimit || addable.length === 0}
+            aria-label="Add a piece to the look"
+          >
+            <SelectValue
+              placeholder={
+                atLimit
+                  ? 'Look is full — 8 pieces'
+                  : addable.length === 0
+                    ? 'No more active pieces to add'
+                    : 'Choose a piece to add…'
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {addable.map((p) => (
+              <SelectItem key={p.slug} value={p.slug}>
+                {p.name} — {formatNaira(p.price)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
  * Create / edit dialog
  * ------------------------------------------------------------------ */
 function ProductDialog({
   mode,
   product,
   categories,
+  catalogue,
   onOpenChange,
   onSubmit,
   busy,
@@ -297,6 +453,7 @@ function ProductDialog({
   mode: 'create' | 'edit'
   product: AdminProduct | null
   categories: CategoryInfo[]
+  catalogue: AdminProduct[]
   onOpenChange: (open: boolean) => void
   onSubmit: (id: string | null, body: Record<string, unknown>) => void
   busy: boolean
@@ -319,6 +476,7 @@ function ProductDialog({
   const [isActive, setIsActive] = useState(product?.isActive ?? true)
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured ?? false)
   const [images, setImages] = useState('')
+  const [relatedSlugs, setRelatedSlugs] = useState<string[]>(product?.curatedRelated ?? [])
   const [variants, setVariants] = useState<VariantRow[]>(
     mode === 'edit' && product
       ? product.variants.map((v) => ({
@@ -392,6 +550,7 @@ function ProductDialog({
       body.categoryId = categoryId === 'none' ? null : categoryId
       body.isActive = isActive
       body.isFeatured = isFeatured
+      body.relatedSlugs = relatedSlugs
       const stocks = variants
         .filter((v) => v.id)
         .map((v) => ({ id: v.id as string, stock: Math.max(0, Math.round(Number(v.stock) || 0)) }))
@@ -596,6 +755,17 @@ function ProductDialog({
             ) : null}
             <VariantEditor variants={variants} onChange={setVariants} editable={mode === 'create'} />
           </div>
+
+          {mode === 'edit' ? (
+            <div className="border-t border-line pt-4">
+              <RelatedPiecesEditor
+                relatedSlugs={relatedSlugs}
+                catalogue={catalogue}
+                currentSlug={product?.slug ?? ''}
+                onChange={setRelatedSlugs}
+              />
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter className="mt-2 gap-2 border-t border-line pt-4">
@@ -943,6 +1113,7 @@ export function ProductsManager() {
           mode={dialog.mode}
           product={dialog.product}
           categories={categories}
+          catalogue={products}
           onOpenChange={(open) => {
             if (!open) setDialog(null)
           }}

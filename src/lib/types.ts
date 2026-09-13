@@ -70,6 +70,9 @@ export interface RelatedProduct {
   secondaryImage: string | null
 }
 
+/** How the PDP "related" set was assembled. */
+export type RelatedSource = 'curated' | 'mixed' | 'category' | 'any'
+
 export interface ProductDetail {
   id: string
   slug: string
@@ -88,6 +91,7 @@ export interface ProductDetail {
   reviewCount: number
   reviews: ProductReview[]
   related: RelatedProduct[]
+  relatedSource: RelatedSource
 }
 
 export interface CartItem {

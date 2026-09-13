@@ -57,6 +57,18 @@ interface LowStockItem {
   stock: number
 }
 
+interface PromoTopCode {
+  code: string
+  label: string
+  type: 'PERCENT' | 'AMOUNT' | 'SHIPPING'
+  value: number
+  usageCount: number
+  maxUsage: number | null
+  isActive: boolean
+  orderCount: number
+  discountTotal: number
+}
+
 interface AdminStats {
   revenue: { total: number; last30: number }
   orders: {
@@ -69,6 +81,13 @@ interface AdminStats {
   reviews: { pending: number; approved: number; avgRating: number }
   subscribers: number
   customers: number
+  promos: {
+    activeCodes: number
+    totalCodes: number
+    ordersWithPromo: number
+    discountTotal: number
+    top: PromoTopCode[]
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -265,6 +284,107 @@ function RevenueChart({ data }: { data: SeriesPoint[] }) {
         </ComposedChart>
       </ResponsiveContainer>
     </div>
+  )
+}
+
+function promoRewardLabel(type: string, value: number): string {
+  if (type === 'PERCENT') return `${value}% off`
+  if (type === 'AMOUNT') return `${formatNaira(value)} off`
+  return 'Free shipping'
+}
+
+function PromoPerformance({ promos, orderTotal }: { promos: AdminStats['promos']; orderTotal: number }) {
+  const maxUsage = Math.max(...promos.top.map((c) => c.orderCount), 1)
+  const sharePct = orderTotal > 0 ? Math.round((promos.ordersWithPromo / orderTotal) * 100) : 0
+  return (
+    <section className="border border-line bg-card" aria-labelledby="dash-promo-label">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3.5 sm:px-5">
+        <p className="eyebrow" id="dash-promo-label">Promo performance — all time</p>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.hash = '#/admin?tab=promos'
+          }}
+          className="flex items-center gap-1 text-[0.62rem] font-medium uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Manage codes
+          <ArrowRight className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 divide-x divide-line border-b border-line">
+        <div className="px-4 py-4 sm:px-5">
+          <p className="eyebrow !text-[0.55rem]">Orders with a code</p>
+          <p className="mt-2 font-mono text-lg tabular-nums leading-none">
+            {promos.ordersWithPromo}
+            <span className="ml-1.5 text-[0.62rem] text-muted-foreground">{sharePct}% of all</span>
+          </p>
+        </div>
+        <div className="px-4 py-4 sm:px-5">
+          <p className="eyebrow !text-[0.55rem]">Discount given</p>
+          <p className="mt-2 font-mono text-lg tabular-nums leading-none">
+            {formatNaira(promos.discountTotal)}
+          </p>
+        </div>
+        <div className="px-4 py-4 sm:px-5">
+          <p className="eyebrow !text-[0.55rem]">Active codes</p>
+          <p className="mt-2 font-mono text-lg tabular-nums leading-none">
+            {promos.activeCodes}
+            <span className="ml-1.5 text-[0.62rem] text-muted-foreground">of {promos.totalCodes}</span>
+          </p>
+        </div>
+      </div>
+
+      {promos.top.length === 0 ? (
+        <p className="px-4 py-6 font-display text-lg font-light italic text-muted-foreground sm:px-5">
+          No codes in the house yet.
+        </p>
+      ) : (
+        <ul className="max-h-72 overflow-y-auto scroll-elegant">
+          {promos.top.map((c) => (
+            <li
+              key={c.code}
+              className="flex items-center gap-4 border-b border-line px-4 py-3 last:border-b-0 sm:px-5"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="font-mono text-xs font-semibold tracking-wide">{c.code}</span>
+                  <span
+                    className={cn(
+                      'text-[0.56rem] font-medium uppercase tracking-[0.16em]',
+                      c.isActive ? 'text-muted-foreground' : 'text-destructive',
+                    )}
+                  >
+                    {c.isActive ? 'Active' : 'Retired'}
+                  </span>
+                </p>
+                <p className="mt-0.5 truncate text-[0.66rem] text-muted-foreground">
+                  {c.label} · {promoRewardLabel(c.type, c.value)}
+                  {c.maxUsage != null ? ` · cap ${c.maxUsage}` : ''}
+                </p>
+              </div>
+              <div className="hidden w-28 shrink-0 items-center gap-2 sm:flex" aria-hidden>
+                <span className="h-[3px] flex-1 bg-secondary">
+                  <span
+                    className="block h-full bg-espresso"
+                    style={{ width: `${Math.round((c.orderCount / maxUsage) * 100)}%` }}
+                  />
+                </span>
+                <span className="w-4 shrink-0 text-right font-mono text-[0.62rem] tabular-nums text-muted-foreground">
+                  {c.orderCount}
+                </span>
+              </div>
+              <div className="w-24 shrink-0 text-right">
+                <p className="font-mono text-xs tabular-nums">{formatNaira(c.discountTotal)}</p>
+                <p className="text-[0.56rem] uppercase tracking-[0.14em] text-muted-foreground">
+                  given · {c.orderCount} order{c.orderCount === 1 ? '' : 's'}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -560,6 +680,9 @@ export function Dashboard() {
           </button>
         </section>
       </div>
+
+      {/* promo performance */}
+      <PromoPerformance promos={data.promos} orderTotal={data.orders.total} />
     </div>
   )
 }

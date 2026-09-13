@@ -10,12 +10,17 @@ const PRODUCT_INCLUDE = {
   images: { orderBy: { position: 'asc' as const } },
   variants: true,
   reviews: { select: { status: true } },
+  curatedRelations: {
+    orderBy: { position: 'asc' as const },
+    select: { position: true, related: { select: { slug: true } } },
+  },
 } as const
 
 /**
  * PATCH /api/admin/products/[id] — partial update (name, slug, subtitle, price,
  * compareAtPrice (null clears), isActive, isFeatured, categoryId, description,
- * material, care, details, variantStocks). Returns the full updated product.
+ * material, care, details, variantStocks, relatedSlugs (curated "Complete the
+ * look" set — replaced atomically; [] clears). Returns the full updated product.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
@@ -26,7 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!parsed.ok) return parsed.response
   const input = parsed.data
 
-  const existing = await db.product.findUnique({ where: { id }, select: { id: true } })
+  const existing = await db.product.findUnique({ where: { id }, select: { id: true, slug: true } })
   if (!existing) return fail(404, 'Product not found')
 
   if (input.slug !== undefined) {
@@ -36,6 +41,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (input.categoryId) {
     const category = await db.category.findUnique({ where: { id: input.categoryId } })
     if (!category) return fail(400, 'Category not found')
+  }
+
+  // Curated "Complete the look" slugs — shape validation before anything is
+  // written (existence is re-checked below, just before the replacement).
+  if (input.relatedSlugs !== undefined) {
+    const seen = new Set<string>()
+    for (const slug of input.relatedSlugs) {
+      if (seen.has(slug)) return fail(400, `"${slug}" appears more than once in the curated pieces`)
+      seen.add(slug)
+    }
+    if (input.relatedSlugs.includes(existing.slug)) {
+      return fail(400, 'A piece cannot be styled with itself in "Complete the look"')
+    }
   }
 
   const data: Prisma.ProductUncheckedUpdateInput = {}
@@ -61,6 +79,38 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (updated.count === 0) {
         return fail(400, `Variant "${vs.id}" does not belong to this product`)
       }
+    }
+  }
+
+  // Curated "Complete the look" relations — validated above, replaced below
+  // (before the response is serialised) atomically: deleteMany + createMany
+  // in one transaction. An empty array clears the set.
+  if (input.relatedSlugs !== undefined) {
+    const relatedSlugs = input.relatedSlugs
+
+    if (relatedSlugs.length > 0) {
+      const related = await db.product.findMany({
+        where: { slug: { in: relatedSlugs } },
+        select: { id: true, slug: true },
+      })
+      const bySlug = new Map(related.map((r) => [r.slug, r.id]))
+      const missing = relatedSlugs.filter((slug) => !bySlug.has(slug))
+      if (missing.length > 0) {
+        return fail(400, `Unknown product slug${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`)
+      }
+
+      await db.$transaction([
+        db.productRelation.deleteMany({ where: { productId: id } }),
+        db.productRelation.createMany({
+          data: relatedSlugs.map((slug, position) => ({
+            productId: id,
+            relatedId: bySlug.get(slug) as string,
+            position,
+          })),
+        }),
+      ])
+    } else {
+      await db.productRelation.deleteMany({ where: { productId: id } })
     }
   }
 

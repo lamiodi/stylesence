@@ -56,6 +56,20 @@ model Product {
   images         ProductImage[]
   variants       ProductVariant[]
   reviews        Review[]
+  curatedRelations ProductRelation[] @relation("CuratedRelations")
+  curatedRelated   ProductRelation[] @relation("CuratedRelated")
+}
+
+model ProductRelation {
+  id         String  @id @default(cuid())
+  productId  String
+  product    Product @relation("CuratedRelations", fields: [productId], references: [id], onDelete: Cascade)
+  relatedId  String
+  related    Product @relation("CuratedRelated", fields: [relatedId], references: [id], onDelete: Cascade)
+  position   Int     @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([productId, relatedId])
 }
 
 model ProductImage {

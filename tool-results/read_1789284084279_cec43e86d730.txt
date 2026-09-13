@@ -1,0 +1,791 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useMemo, useRef, useState } from 'react'
+     4→import { useQuery } from '@tanstack/react-query'
+     5→import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft } from 'lucide-react'
+     6→import { toast } from 'sonner'
+     7→import { Link, navigate } from '@/lib/router'
+     8→import { cn } from '@/lib/utils'
+     9→import { formatDate, formatNaira } from '@/lib/money'
+    10→import { Button } from '@/components/ui/button'
+    11→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+    12→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
+    13→import { Textarea } from '@/components/ui/textarea'
+    14→import { Input } from '@/components/ui/input'
+    15→import { Label } from '@/components/ui/label'
+    16→import { ProductImage, Price } from '@/components/site/price'
+    17→import { RatingStars } from '@/components/site/rating-stars'
+    18→import { QuantityStepper } from '@/components/site/quantity-stepper'
+    19→import { DevPlaceholder } from '@/components/site/dev-placeholder'
+    20→import { ProductCard } from '@/components/site/product-card'
+    21→import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
+    22→import { Reveal } from '@/components/site/reveal'
+    23→import { useAddToCart } from '@/lib/cart-client'
+    24→import { useWishlist } from '@/lib/store/wishlist'
+    25→import { useRecentlyViewed } from '@/lib/store/recently-viewed'
+    26→import { useMounted } from '@/hooks/use-mounted'
+    27→import type { ProductDetail } from '@/lib/types'
+    28→
+    29→const SIZE_GUIDE = [
+    30→  ['XS', '32–34', '84', '66', '92'],
+    31→  ['S', '35–37', '88', '70', '96'],
+    32→  ['M', '38–40', '94', '76', '102'],
+    33→  ['L', '41–43', '100', '82', '108'],
+    34→  ['XL', '44–46', '106', '88', '114'],
+    35→] as const
+    36→
+    37→function SizeGuideDialog() {
+    38→  return (
+    39→    <Dialog>
+    40→      <DialogTrigger asChild>
+    41→        <button
+    42→          type="button"
+    43→          className="flex items-center gap-1.5 text-[0.68rem] uppercase tracking-[0.16em] text-muted-foreground underline decoration-line-strong underline-offset-4 transition-colors hover:text-foreground"
+    44→        >
+    45→          <Ruler className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+    46→          Size guide
+    47→        </button>
+    48→      </DialogTrigger>
+    49→      <DialogContent className="max-w-md rounded-[--radius] border-line bg-background">
+    50→        <DialogHeader>
+    51→          <DialogTitle className="font-display text-2xl font-light">Size guide</DialogTitle>
+    52→          <DialogDescription className="text-muted-foreground">
+    53→            Measurements in centimetres. Between sizes? Our cuts run generous — size down for
+    54→            tailoring, stay true for knits.
+    55→          </DialogDescription>
+    56→        </DialogHeader>
+    57→        <div className="overflow-x-auto">
+    58→          <table className="w-full text-sm">
+    59→            <thead>
+    60→              <tr className="border-b border-line text-left">
+    61→                <th className="eyebrow py-2 pr-4">Size</th>
+    62→                <th className="eyebrow py-2 pr-4">UK/EU</th>
+    63→                <th className="eyebrow py-2 pr-4">Bust</th>
+    64→                <th className="eyebrow py-2 pr-4">Waist</th>
+    65→                <th className="eyebrow py-2">Hip</th>
+    66→              </tr>
+    67→            </thead>
+    68→            <tbody className="font-mono text-[0.8rem] tabular-nums">
+    69→              {SIZE_GUIDE.map((row) => (
+    70→                <tr key={row[0]} className="border-b border-line last:border-0">
+    71→                  {row.map((cell, i) => (
+    72→                    <td key={i} className={cn('py-2 pr-4', i === 0 && 'font-medium font-sans')}>
+    73→                      {cell}
+    74→                    </td>
+    75→                  ))}
+    76→                </tr>
+    77→              ))}
+    78→            </tbody>
+    79→          </table>
+    80→        </div>
+    81→        <DevPlaceholder compact title="Fit consultations">
+    82→          Video fit consultations are simulated in this preview.
+    83→        </DevPlaceholder>
+    84→      </DialogContent>
+    85→    </Dialog>
+    86→  )
+    87→}
+    88→
+    89→function WriteReviewDialog({ slug, product }: { slug: string; product: string }) {
+    90→  const [rating, setRating] = useState(5)
+    91→  const [author, setAuthor] = useState('')
+    92→  const [email, setEmail] = useState('')
+    93→  const [title, setTitle] = useState('')
+    94→  const [body, setBody] = useState('')
+    95→  const [busy, setBusy] = useState(false)
+    96→  const [open, setOpen] = useState(false)
+    97→
+    98→  const submit = async (e: React.FormEvent) => {
+    99→    e.preventDefault()
+   100→    if (author.trim().length < 2) return toast.error('Please add your name.')
+   101→    if (body.trim().length < 10) return toast.error('Please write at least a sentence or two.')
+   102→    setBusy(true)
+   103→    try {
+   104→      const res = await fetch(`/api/products/${slug}/reviews`, {
+   105→        method: 'POST',
+   106→        headers: { 'Content-Type': 'application/json' },
+   107→        body: JSON.stringify({
+   108→          author: author.trim(),
+   109→          email: email.trim() || undefined,
+   110→          rating,
+   111→          title: title.trim() || undefined,
+   112→          body: body.trim(),
+   113→        }),
+   114→      })
+   115→      const data = await res.json()
+   116→      if (!res.ok) throw new Error(data.error ?? 'Could not submit review')
+   117→      toast.success('Thank you — your review is awaiting moderation.')
+   118→      setOpen(false)
+   119→      setAuthor('')
+   120→      setEmail('')
+   121→      setTitle('')
+   122→      setBody('')
+   123→      setRating(5)
+   124→    } catch (err) {
+   125→      toast.error(err instanceof Error ? err.message : 'Could not submit review')
+   126→    } finally {
+   127→      setBusy(false)
+   128→    }
+   129→  }
+   130→
+   131→  return (
+   132→    <Dialog open={open} onOpenChange={setOpen}>
+   133→      <DialogTrigger asChild>
+   134→        <Button
+   135→          variant="outline"
+   136→          className="h-11 border-line-strong px-6 uppercase tracking-[0.18em] text-[0.62rem] hover:border-foreground"
+   137→        >
+   138→          Write a review
+   139→        </Button>
+   140→      </DialogTrigger>
+   141→      <DialogContent className="max-w-lg rounded-[--radius] border-line bg-background">
+   142→        <DialogHeader>
+   143→          <DialogTitle className="font-display text-2xl font-light">{product}</DialogTitle>
+   144→          <DialogDescription>Your honest impressions — on the record.</DialogDescription>
+   145→        </DialogHeader>
+   146→        <form onSubmit={submit} className="space-y-4">
+   147→          <div>
+   148→            <Label className="eyebrow">Your rating</Label>
+   149→            <div className="mt-2 flex items-center gap-1.5">
+   150→              {[1, 2, 3, 4, 5].map((star) => (
+   151→                <button
+   152→                  key={star}
+   153→                  type="button"
+   154→                  onClick={() => setRating(star)}
+   155→                  aria-label={`${star} star${star > 1 ? 's' : ''}`}
+   156→                  aria-pressed={rating === star}
+   157→                  className={cn(
+   158→                    'flex h-9 w-9 items-center justify-center border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   159→                    rating >= star ? 'border-espresso' : 'border-line-strong',
+   160→                  )}
+   161→                >
+   162→                  <span className={cn('text-sm', rating >= star ? 'text-espresso' : 'text-muted-foreground/50')}>
+   163→                    ★
+   164→                  </span>
+   165→                </button>
+   166→              ))}
+   167→              <span className="ml-2 font-mono text-sm tabular-nums text-muted-foreground">{rating}.0</span>
+   168→            </div>
+   169→          </div>
+   170→          <div className="grid gap-4 sm:grid-cols-2">
+   171→            <div className="space-y-1.5">
+   172→              <Label htmlFor="rv-name" className="eyebrow">Name *</Label>
+   173→              <Input id="rv-name" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Adaeze O." className="h-10 border-line-strong" />
+   174→            </div>
+   175→            <div className="space-y-1.5">
+   176→              <Label htmlFor="rv-email" className="eyebrow">Email (optional)</Label>
+   177→              <Input id="rv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="h-10 border-line-strong" />
+   178→            </div>
+   179→          </div>
+   180→          <div className="space-y-1.5">
+   181→            <Label htmlFor="rv-title" className="eyebrow">Title</Label>
+   182→            <Input id="rv-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="It moves like water" className="h-10 border-line-strong" />
+   183→          </div>
+   184→          <div className="space-y-1.5">
+   185→            <Label htmlFor="rv-body" className="eyebrow">Your review *</Label>
+   186→            <Textarea id="rv-body" value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Fit, feel, fabric — tell it as it is." className="border-line-strong" />
+   187→          </div>
+   188→          <div className="flex justify-end gap-3 pt-1">
+   189→            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="uppercase tracking-[0.16em] text-[0.62rem]">
+   190→              Cancel
+   191→            </Button>
+   192→            <Button type="submit" disabled={busy} className="uppercase tracking-[0.16em] text-[0.62rem]">
+   193→              {busy ? 'Sending…' : 'Submit review'}
+   194→            </Button>
+   195→          </div>
+   196→        </form>
+   197→      </DialogContent>
+   198→    </Dialog>
+   199→  )
+   200→}
+   201→
+   202→export function ProductDetailPage({ slug }: { slug: string }) {
+   203→  const { data, isLoading, isError } = useQuery({
+   204→    queryKey: ['product', slug],
+   205→    queryFn: async () => {
+   206→      const res = await fetch(`/api/products/${slug}`)
+   207→      if (!res.ok) throw new Error('Not found')
+   208→      return (await res.json()) as { product: ProductDetail }
+   209→    },
+   210→    retry: false,
+   211→  })
+   212→
+   213→  const product = data?.product
+   214→
+   215→  useEffect(() => {
+   216→    if (product) document.title = `${product.name} — Style Sence`
+   217→  }, [product])
+   218→
+   219→  if (isLoading) {
+   220→    return (
+   221→      <div className="container-site grid gap-10 py-14 lg:grid-cols-2 lg:gap-16" aria-busy>
+   222→        <div className="animate-pulse">
+   223→          <div className="aspect-[3/4] bg-secondary" />
+   224→          <div className="mt-3 flex gap-3">
+   225→            {[0, 1].map((i) => <div key={i} className="h-20 w-16 bg-secondary" />)}
+   226→          </div>
+   227→        </div>
+   228→        <div className="animate-pulse space-y-4 pt-6">
+   229→          <div className="h-3 w-24 bg-secondary" />
+   230→          <div className="h-9 w-3/4 bg-secondary" />
+   231→          <div className="h-4 w-1/2 bg-secondary" />
+   232→          <div className="h-6 w-32 bg-secondary" />
+   233→          <div className="h-24 w-full bg-secondary" />
+   234→          <div className="h-11 w-full bg-secondary" />
+   235→        </div>
+   236→      </div>
+   237→    )
+   238→  }
+   239→
+   240→  if (isError || !product) {
+   241→    return (
+   242→      <div className="container-site flex flex-col items-center py-32 text-center">
+   243→        <p className="font-display text-4xl font-light italic">This piece has left the rail.</p>
+   244→        <p className="mt-3 text-sm text-muted-foreground">
+   245→          It may have been retired or the link is mistaken.
+   246→        </p>
+   247→        <Button
+   248→          className="mt-8 h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
+   249→          onClick={() => navigate('/shop')}
+   250→        >
+   251→          Back to the collection
+   252→        </Button>
+   253→      </div>
+   254→    )
+   255→  }
+   256→
+   257→  // key resets all selection state when the product changes
+   258→  return <ProductInner key={product.id} product={product} />
+   259→}
+   260→
+   261→function ProductInner({ product }: { product: ProductDetail }) {
+   262→  const [color, setColor] = useState<string | null>(product.variants[0]?.color ?? null)
+   263→  const [size, setSize] = useState<string | null>(
+   264→    product.variants.length === 1 ? product.variants[0]?.size ?? null : null,
+   265→  )
+   266→  const [qty, setQty] = useState(1)
+   267→  const [imgIndex, setImgIndex] = useState(0)
+   268→  const addToCart = useAddToCart()
+   269→  const toggleWish = useWishlist((s) => s.toggle)
+   270→  const hasWish = useWishlist((s) => s.has)
+   271→  const pushRecent = useRecentlyViewed((s) => s.push)
+   272→  const mounted = useMounted()
+   273→
+   274→  // sticky mobile buy bar — appears once the main actions scroll out above
+   275→  const actionsRef = useRef<HTMLDivElement>(null)
+   276→  const [showStickyBar, setShowStickyBar] = useState(false)
+   277→  useEffect(() => {
+   278→    const el = actionsRef.current
+   279→    if (!el || typeof IntersectionObserver === 'undefined') return
+   280→    const io = new IntersectionObserver(
+   281→      ([entry]) => {
+   282→        // only when the actions left the viewport upwards (scrolled past, not approaching)
+   283→        setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0)
+   284→      },
+   285→      { threshold: 0 },
+   286→    )
+   287→    io.observe(el)
+   288→    return () => io.disconnect()
+   289→  }, [])
+   290→
+   291→  // record the visit once per product (external store — safe inside an effect)
+   292→  useEffect(() => {
+   293→    pushRecent({
+   294→      slug: product.slug,
+   295→      name: product.name,
+   296→      price: product.price,
+   297→      primaryImage: product.images[0]?.url ?? null,
+   298→      secondaryImage: product.images[1]?.url ?? null,
+   299→    })
+   300→  }, [product, pushRecent])
+   301→
+   302→  const colors = useMemo(() => {
+   303→    const seen = new Map<string, string>()
+   304→    for (const v of product.variants) if (!seen.has(v.color)) seen.set(v.color, v.colorHex)
+   305→    return [...seen.entries()].map(([name, hex]) => ({ name, hex }))
+   306→  }, [product])
+   307→
+   308→  const sizesForColor = useMemo(
+   309→    () => (color ? product.variants.filter((v) => v.color === color) : []),
+   310→    [product, color],
+   311→  )
+   312→
+   313→  const selectedVariant = useMemo(
+   314→    () => product.variants.find((v) => v.color === color && v.size === size) ?? null,
+   315→    [product, color, size],
+   316→  )
+   317→
+   318→  const wished = mounted && hasWish(product.slug)
+   319→  const oneSize = product.variants.every((v) => v.size === 'One Size')
+   320→  const stockNote =
+   321→    selectedVariant && selectedVariant.stock === 0
+   322→      ? 'Sold out — join the waitlist below'
+   323→      : selectedVariant && selectedVariant.stock <= 3
+   324→        ? `Only ${selectedVariant.stock} left in this colour & size`
+   325→        : null
+   326→
+   327→  const distribution = [5, 4, 3, 2, 1].map((star) => ({
+   328→    star,
+   329→    count: product.reviews.filter((r) => r.rating === star).length,
+   330→  }))
+   331→  const maxCount = Math.max(1, ...distribution.map((d) => d.count))
+   332→
+   333→  return (
+   334→    <div className="container-site py-8 sm:py-12">
+   335→      {/* breadcrumb */}
+   336→      <nav aria-label="Breadcrumb" className="eyebrow !text-[0.58rem]">
+   337→        <Link to="/shop" className="hover:text-foreground">Shop</Link>
+   338→        {product.category ? (
+   339→          <>
+   340→            <ChevronRight className="mx-1.5 inline h-2.5 w-2.5" aria-hidden />
+   341→            <Link to={`/shop?category=${product.category.slug}`} className="hover:text-foreground">
+   342→              {product.category.name}
+   343→            </Link>
+   344→          </>
+   345→        ) : null}
+   346→        <ChevronRight className="mx-1.5 inline h-2.5 w-2.5" aria-hidden />
+   347→        <span className="text-foreground">{product.name}</span>
+   348→      </nav>
+   349→
+   350→      <div className="mt-6 grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
+   351→        {/* ————— gallery ————— */}
+   352→        <div>
+   353→          <div className="relative">
+   354→            <ProductImage
+   355→              key={product.images[imgIndex]?.url ?? 'none'}
+   356→              src={product.images[imgIndex]?.url}
+   357→              alt={product.images[imgIndex]?.alt ?? product.name}
+   358→              label={product.name}
+   359→              ratio="aspect-[3/4]"
+   360→              eager
+   361→              className="w-full"
+   362→            />
+   363→            {product.compareAtPrice && product.compareAtPrice > product.price ? (
+   364→              <span className="eyebrow absolute left-4 top-4 bg-espresso px-2.5 py-1 !text-[0.55rem] text-background">
+   365→                Archive price
+   366→              </span>
+   367→            ) : null}
+   368→          </div>
+   369→          {product.images.length > 1 ? (
+   370→            <div className="mt-3 flex gap-3">
+   371→              {product.images.map((img, i) => (
+   372→                <button
+   373→                  key={img.url}
+   374→                  type="button"
+   375→                  onClick={() => setImgIndex(i)}
+   376→                  aria-label={`View image ${i + 1} of ${product.images.length}`}
+   377→                  aria-pressed={imgIndex === i}
+   378→                  className={cn(
+   379→                    'w-20 border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   380→                    imgIndex === i ? 'border-foreground' : 'border-transparent hover:border-line-strong',
+   381→                  )}
+   382→                >
+   383→                  <ProductImage src={img.url} alt={img.alt ?? product.name} label="" ratio="aspect-[3/4]" />
+   384→                </button>
+   385→              ))}
+   386→            </div>
+   387→          ) : null}
+   388→        </div>
+   389→
+   390→        {/* ————— info ————— */}
+   391→        <div className="lg:pt-2">
+   392→          {product.category ? <p className="eyebrow">{product.category.name}</p> : null}
+   393→          <h1 className="mt-2 font-display text-3xl font-light leading-tight tracking-tight text-balance sm:text-4xl">
+   394→            {product.name}
+   395→          </h1>
+   396→          {product.subtitle ? (
+   397→            <p className="mt-1.5 font-display text-lg italic text-muted-foreground">{product.subtitle}</p>
+   398→          ) : null}
+   399→
+   400→          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+   401→            <Price price={product.price} compareAtPrice={product.compareAtPrice} size="lg" />
+   402→            {product.rating ? (
+   403→              <a
+   404→                href="#reviews"
+   405→                className="flex items-center gap-2 text-[0.72rem] text-muted-foreground transition-colors hover:text-foreground"
+   406→                onClick={(e) => {
+   407→                  e.preventDefault()
+   408→                  document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' })
+   409→                }}
+   410→              >
+   411→                <RatingStars rating={product.rating} />
+   412→                {product.rating.toFixed(1)} · {product.reviewCount} reviews
+   413→              </a>
+   414→            ) : (
+   415→              <span className="text-[0.72rem] text-muted-foreground">No reviews yet — be first</span>
+   416→            )}
+   417→          </div>
+   418→
+   419→          <div className="mt-5 border-t border-line pt-5">
+   420→            {product.description.split('\n\n').map((para, i) => (
+   421→              <p key={i} className="mb-3 text-sm leading-relaxed text-muted-foreground last:mb-0">
+   422→                {para}
+   423→              </p>
+   424→            ))}
+   425→          </div>
+   426→
+   427→          {/* colour */}
+   428→          <div className="mt-6">
+   429→            <p className="eyebrow">
+   430→              Colour — <span className="text-foreground">{color ?? 'Select'}</span>
+   431→            </p>
+   432→            <div className="mt-2.5 flex flex-wrap gap-2.5" role="radiogroup" aria-label="Colour">
+   433→              {colors.map((c) => (
+   434→                <button
+   435→                  key={c.name}
+   436→                  type="button"
+   437→                  role="radio"
+   438→                  aria-checked={color === c.name}
+   439→                  onClick={() => {
+   440→                    setColor(c.name)
+   441→                    if (oneSize) setSize('One Size')
+   442→                  }}
+   443→                  className={cn(
+   444→                    'flex items-center gap-2 border px-3 py-2 text-[0.72rem] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   445→                    color === c.name
+   446→                      ? 'border-foreground text-foreground'
+   447→                      : 'border-line-strong text-muted-foreground hover:border-foreground hover:text-foreground',
+   448→                  )}
+   449→                >
+   450→                  <span
+   451→                    className="h-4 w-4 rounded-full border border-line-strong"
+   452→                    style={{ backgroundColor: c.hex }}
+   453→                    aria-hidden
+   454→                  />
+   455→                  {c.name}
+   456→                </button>
+   457→              ))}
+   458→            </div>
+   459→          </div>
+   460→
+   461→          {/* size */}
+   462→          {!oneSize ? (
+   463→            <div className="mt-6">
+   464→              <div className="flex items-baseline justify-between">
+   465→                <p className="eyebrow">
+   466→                  Size — <span className="text-foreground">{size ?? 'Select'}</span>
+   467→                </p>
+   468→                <SizeGuideDialog />
+   469→              </div>
+   470→              <div className="mt-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label="Size">
+   471→                {sizesForColor.map((v) => {
+   472→                  const soldOut = v.stock === 0
+   473→                  return (
+   474→                    <button
+   475→                      key={v.id}
+   476→                      type="button"
+   477→                      role="radio"
+   478→                      aria-checked={size === v.size}
+   479→                      disabled={soldOut}
+   480→                      onClick={() => setSize(v.size)}
+   481→                      className={cn(
+   482→                        'h-11 min-w-14 border px-4 font-mono text-[0.78rem] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   483→                        size === v.size
+   484→                          ? 'border-foreground bg-foreground text-background'
+   485→                          : soldOut
+   486→                            ? 'cursor-not-allowed border-line text-muted-foreground/40 line-through'
+   487→                            : 'border-line-strong text-muted-foreground hover:border-foreground hover:text-foreground',
+   488→                      )}
+   489→                    >
+   490→                      {v.size}
+   491→                    </button>
+   492→                  )
+   493→                })}
+   494→              </div>
+   495→            </div>
+   496→          ) : null}
+   497→
+   498→          {/* qty + stock */}
+   499→          <div className="mt-6 flex items-center gap-5">
+   500→            <QuantityStepper value={qty} onChange={setQty} min={1} max={Math.min(10, selectedVariant?.stock ?? 10)} />
+   501→            {stockNote ? (
+   502→              <p className={cn('text-[0.72rem] font-medium', selectedVariant?.stock === 0 ? 'text-destructive' : 'text-espresso')}>
+   503→                {stockNote}
+   504→              </p>
+   505→            ) : null}
+   506→          </div>
+   507→
+   508→          {/* actions */}
+   509→          <div ref={actionsRef} className="mt-6 flex gap-3">
+   510→            <Button
+   511→              className="h-12 flex-1 uppercase tracking-[0.2em] text-[0.66rem]"
+   512→              disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
+   513→              onClick={() => {
+   514→                if (!selectedVariant) return toast.error('Please select a size first.')
+   515→                addToCart.mutate({ variantId: selectedVariant.id, qty })
+   516→              }}
+   517→            >
+   518→              {addToCart.isPending
+   519→                ? 'Adding…'
+   520→                : selectedVariant?.stock === 0
+   521→                  ? 'Sold out'
+   522→                  : 'Add to bag'}
+   523→            </Button>
+   524→            <Button
+   525→              variant="outline"
+   526→              aria-pressed={wished}
+   527→              className="h-12 w-12 border-line-strong p-0 hover:border-espresso hover:text-espresso"
+   528→              onClick={() => {
+   529→                const added = toggleWish({
+   530→                  slug: product.slug,
+   531→                  name: product.name,
+   532→                  price: product.price,
+   533→                  primaryImage: product.images[0]?.url ?? null,
+   534→                  addedAt: Date.now(),
+   535→                })
+   536→                toast(added ? 'Saved to wishlist' : 'Removed from wishlist', {
+   537→                  description: product.name,
+   538→                })
+   539→              }}
+   540→              aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
+   541→            >
+   542→              <Heart className={cn('h-[1.1rem] w-[1.1rem]', wished && 'fill-espresso text-espresso')} strokeWidth={1.5} />
+   543→            </Button>
+   544→          </div>
+   545→
+   546→          {/* accordions */}
+   547→          <div className="mt-8 border-t border-line">
+   548→            <Accordion type="single" collapsible className="border-0">
+   549→              {product.details.length > 0 ? (
+   550→                <AccordionItem value="details" className="border-line">
+   551→                  <AccordionTrigger className="py-4 text-[0.7rem] font-medium uppercase tracking-[0.2em] hover:no-underline">
+   552→                    Details
+   553→                  </AccordionTrigger>
+   554→                  <AccordionContent className="pb-5">
+   555→                    <ul className="space-y-2">
+   556→                      {product.details.map((d, i) => (
+   557→                        <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground">
+   558→                          <span className="mt-[0.55rem] h-[3px] w-[3px] shrink-0 rounded-full bg-espresso" aria-hidden />
+   559→                          {d}
+   560→                        </li>
+   561→                      ))}
+   562→                    </ul>
+   563→                  </AccordionContent>
+   564→                </AccordionItem>
+   565→              ) : null}
+   566→              {product.material || product.care ? (
+   567→                <AccordionItem value="material" className="border-line">
+   568→                  <AccordionTrigger className="py-4 text-[0.7rem] font-medium uppercase tracking-[0.2em] hover:no-underline">
+   569→                    Material &amp; care
+   570→                  </AccordionTrigger>
+   571→                  <AccordionContent className="pb-5 text-sm leading-relaxed text-muted-foreground">
+   572→                    {product.material ? (
+   573→                      <p>
+   574→                        <span className="eyebrow mr-2 !text-[0.58rem]">Cloth</span>
+   575→                        {product.material}
+   576→                      </p>
+   577→                    ) : null}
+   578→                    {product.care ? (
+   579→                      <p className="mt-2">
+   580→                        <span className="eyebrow mr-2 !text-[0.58rem]">Care</span>
+   581→                        {product.care}
+   582→                      </p>
+   583→                    ) : null}
+   584→                  </AccordionContent>
+   585→                </AccordionItem>
+   586→              ) : null}
+   587→              <AccordionItem value="shipping" className="border-line">
+   588→                <AccordionTrigger className="py-4 text-[0.7rem] font-medium uppercase tracking-[0.2em] hover:no-underline">
+   589→                  Shipping &amp; returns
+   590→                </AccordionTrigger>
+   591→                <AccordionContent className="pb-5">
+   592→                  <ul className="space-y-2.5 text-sm text-muted-foreground">
+   593→                    <li className="flex gap-2.5">
+   594→                      <Truck className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
+   595→                      Standard ₦3,500 — 3–5 days nationwide · Express ₦7,500 — 1–2 days
+   596→                    </li>
+   597→                    <li className="flex gap-2.5">
+   598→                      <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
+   599→                      Complimentary returns within 14 days, tags attached
+   600→                    </li>
+   601→                  </ul>
+   602→                  <DevPlaceholder compact className="mt-3" title="Courier & returns portal">
+   603→                    Live courier booking and returns portal are simulated in this environment.
+   604→                  </DevPlaceholder>
+   605→                </AccordionContent>
+   606→              </AccordionItem>
+   607→            </Accordion>
+   608→          </div>
+   609→        </div>
+   610→      </div>
+   611→
+   612→      {/* ————— reviews ————— */}
+   613→      <section id="reviews" className="mt-20 scroll-mt-24 border-t border-line pt-12">
+   614→        <div className="grid gap-10 lg:grid-cols-[20rem_1fr] lg:gap-16">
+   615→          <Reveal>
+   616→            <p className="eyebrow">Client notes</p>
+   617→            <h2 className="mt-2 font-display text-3xl font-light tracking-tight">Reviews</h2>
+   618→            {product.rating ? (
+   619→              <>
+   620→                <div className="mt-5 flex items-end gap-3">
+   621→                  <span className="font-display text-6xl font-light leading-none">
+   622→                    {product.rating.toFixed(1)}
+   623→                  </span>
+   624→                  <div className="pb-1.5">
+   625→                    <RatingStars rating={product.rating} size={16} />
+   626→                    <p className="mt-1 text-[0.7rem] text-muted-foreground">
+   627→                      {product.reviewCount} verified reviews
+   628→                    </p>
+   629→                  </div>
+   630→                </div>
+   631→                <div className="mt-6 space-y-1.5">
+   632→                  {distribution.map((d) => (
+   633→                    <div key={d.star} className="flex w-full items-center gap-3" aria-label={`${d.star} star reviews: ${d.count}`}>
+   634→                      <span className="w-6 font-mono text-[0.68rem] text-muted-foreground tabular-nums">{d.star}★</span>
+   635→                      <span className="relative h-1.5 flex-1 overflow-hidden bg-secondary">
+   636→                        <span
+   637→                          className="absolute inset-y-0 left-0 bg-espresso"
+   638→                          style={{ width: `${(d.count / maxCount) * 100}%` }}
+   639→                        />
+   640→                      </span>
+   641→                      <span className="w-6 text-right font-mono text-[0.68rem] text-muted-foreground tabular-nums">{d.count}</span>
+   642→                    </div>
+   643→                  ))}
+   644→                </div>
+   645→              </>
+   646→            ) : (
+   647→              <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+   648→                No reviews yet. Yours would set the tone.
+   649→              </p>
+   650→            )}
+   651→            <div className="mt-7">
+   652→              <WriteReviewDialog slug={product.slug} product={product.name} />
+   653→            </div>
+   654→          </Reveal>
+   655→
+   656→          <Reveal delay={0.1}>
+   657→            {product.reviews.length === 0 ? (
+   658→              <div className="border border-dashed border-line-strong px-8 py-16 text-center">
+   659→                <p className="font-display text-xl italic text-muted-foreground">
+   660→                  The quiet before the first note.
+   661→                </p>
+   662→              </div>
+   663→            ) : (
+   664→              <ul className="divide-y divide-line border-t border-line">
+   665→                {product.reviews.map((r) => (
+   666→                  <li key={r.id} className="py-6">
+   667→                    <div className="flex flex-wrap items-center justify-between gap-2">
+   668→                      <div className="flex items-center gap-3">
+   669→                        <RatingStars rating={r.rating} size={12} />
+   670→                        <span className="text-[0.72rem] font-medium">{r.author}</span>
+   671→                      </div>
+   672→                      <span className="text-[0.66rem] uppercase tracking-[0.14em] text-muted-foreground/70">
+   673→                        {formatDate(r.createdAt)}
+   674→                      </span>
+   675→                    </div>
+   676→                    {r.title ? (
+   677→                      <h3 className="mt-2 font-display text-lg font-light tracking-tight">{r.title}</h3>
+   678→                    ) : null}
+   679→                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{r.body}</p>
+   680→                  </li>
+   681→                ))}
+   682→              </ul>
+   683→            )}
+   684→          </Reveal>
+   685→        </div>
+   686→      </section>
+   687→
+   688→      {/* ————— related ————— */}
+   689→      {product.related.length > 0 ? (
+   690→        <section className="mt-20 border-t border-line pt-12">
+   691→          <div className="flex items-end justify-between">
+   692→            <div>
+   693→              <p className="eyebrow">Styled together</p>
+   694→              <h2 className="mt-2 font-display text-3xl font-light tracking-tight">Complete the look</h2>
+   695→            </div>
+   696→            <Link
+   697→              to="/shop"
+   698→              className="eyebrow-ink hidden items-center gap-1.5 border-b border-foreground pb-1 transition-colors hover:border-espresso hover:text-espresso sm:flex"
+   699→            >
+   700→              <ArrowLeft className="h-3 w-3 rotate-180" strokeWidth={1.5} aria-hidden />
+   701→              All pieces
+   702→            </Link>
+   703→          </div>
+   704→          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 md:gap-x-6">
+   705→            {product.related.map((r) => (
+   706→              <ProductCard
+   707→                key={r.slug}
+   708→                product={{
+   709→                  id: r.slug,
+   710→                  slug: r.slug,
+   711→                  name: r.name,
+   712→                  subtitle: null,
+   713→                  price: r.price,
+   714→                  compareAtPrice: null,
+   715→                  primaryImage: r.primaryImage,
+   716→                  secondaryImage: r.secondaryImage,
+   717→                  colors: [],
+   718→                  sizes: [],
+   719→                  rating: null,
+   720→                  reviewCount: 0,
+   721→                  isNew: false,
+   722→                }}
+   723→                eager
+   724→              />
+   725→            ))}
+   726→          </div>
+   727→          <p className="mt-6 font-mono text-[0.68rem] text-muted-foreground/70">
+   728→            {formatNaira(product.price)} · in {product.category?.name ?? 'the collection'}
+   729→          </p>
+   730→        </section>
+   731→      ) : null}
+   732→
+   733→      {/* ————— recently viewed ————— */}
+   734→      <RecentlyViewedStrip
+   735→        excludeSlug={product.slug}
+   736→        className="mt-20 border-t border-line pt-12"
+   737→      />
+   738→
+   739→      {/* ————— sticky mobile buy bar (appears once the actions scroll away) ————— */}
+   740→      <div
+   741→        inert={!showStickyBar}
+   742→        aria-hidden={!showStickyBar}
+   743→        className={cn(
+   744→          'no-print fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-background/95 backdrop-blur-md',
+   745→          'px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2.5 lg:hidden',
+   746→          'transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+   747→          showStickyBar ? 'translate-y-0' : 'pointer-events-none translate-y-full',
+   748→        )}
+   749→      >
+   750→        <div className="flex items-center gap-3">
+   751→          <div className="min-w-0 flex-1">
+   752→            <p className="truncate font-display text-[0.92rem] leading-tight tracking-tight">
+   753→              {product.name}
+   754→            </p>
+   755→            <p className="mt-0.5 truncate font-mono text-[0.74rem] text-muted-foreground tabular-nums">
+   756→              {formatNaira(product.price)}
+   757→              {selectedVariant ? (
+   758→                <span className="text-foreground">
+   759→                  {' '}
+   760→                  · {selectedVariant.color} · {selectedVariant.size}
+   761→                  {qty > 1 ? ` · ×${qty}` : ''}
+   762→                </span>
+   763→              ) : (
+   764→                <span className="text-espresso"> · select a size</span>
+   765→              )}
+   766→            </p>
+   767→          </div>
+   768→          <Button
+   769→            className="h-11 shrink-0 px-7 uppercase tracking-[0.18em] text-[0.64rem]"
+   770→            disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
+   771→            onClick={() => {
+   772→              if (!selectedVariant) {
+   773→                toast.error('Please select a size first.')
+   774→                actionsRef.current?.scrollIntoView({ block: 'center' })
+   775→                return
+   776→              }
+   777→              addToCart.mutate({ variantId: selectedVariant.id, qty })
+   778→            }}
+   779→          >
+   780→            {addToCart.isPending
+   781→              ? 'Adding…'
+   782→              : selectedVariant?.stock === 0
+   783→                ? 'Sold out'
+   784→                : 'Add to bag'}
+   785→          </Button>
+   786→        </div>
+   787→      </div>
+   788→    </div>
+   789→  )
+   790→}
+   791→

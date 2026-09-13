@@ -106,9 +106,11 @@ export type AdminProductSource = Product & {
   images: ProductImage[]
   variants: ProductVariant[]
   reviews: { status: string }[]
+  /** Outgoing curated "Complete the look" rows — only populated when included by the caller. */
+  curatedRelations?: { position: number; related: { slug: string } }[] | null
 }
 
-/** Admin product shape: full fields + ordered images/variants + summed stock + review count. */
+/** Admin product shape: full fields + ordered images/variants + summed stock + review count + curated slugs. */
 export function toAdminProduct(p: AdminProductSource) {
   return {
     id: p.id,
@@ -137,6 +139,7 @@ export function toAdminProduct(p: AdminProductSource) {
     })),
     stock: p.variants.reduce((sum, v) => sum + v.stock, 0),
     reviewCount: p.reviews.length,
+    curatedRelated: (p.curatedRelations ?? []).map((rel) => rel.related.slug),
   }
 }
 

@@ -254,6 +254,11 @@
   .animate-marquee {
     animation: ss-marquee 36s linear infinite;
   }
+  /* Pause the announcement marquee while the cursor rests on it */
+  .marquee-hover:hover .animate-marquee,
+  .marquee-hover:focus-within .animate-marquee {
+    animation-play-state: paused;
+  }
   /* Hero slow zoom */
   .animate-kenburns {
     animation: ss-kenburns 24s ease-in-out infinite alternate;

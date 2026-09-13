@@ -1,10 +1,11 @@
 'use client'
 
 /**
- * #/track — Order tracking (lookup by order number).
- * Editorial lookup page: hero + mono form, recent-lookup chips (localStorage),
- * status timeline, items, delivery block and totals — visual language shared
- * with the order confirmation page, adapted for a public lookup context.
+ * #/track — Order tracking (lookup by order number, or guest order history by email).
+ * Editorial lookup page: hero + mono form with a segmented mode toggle,
+ * recent-lookup chips (localStorage), status timeline, items, delivery block
+ * and totals — visual language shared with the order confirmation page,
+ * adapted for a public lookup context.
  */
 
 import { useEffect, useState, type FormEvent } from 'react'
@@ -26,6 +27,7 @@ import { SHIPPING_METHODS, type OrderView } from '@/lib/types'
 
 const ORDER_PATTERN = /^SS-\d{4}-\d{4,6}$/
 const ORDER_HINT = 'SS-2026-1234'
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const HISTORY_KEY = 'ss-track-history'
 const HISTORY_MAX = 5
 
@@ -72,30 +74,65 @@ function rememberLookup(orderNumber: string): string[] {
   return next
 }
 
+/* ——— guest order-history summary (GET /api/orders?email=) ——— */
+
+interface EmailOrderSummary {
+  orderNumber: string
+  status: string
+  total: number
+  itemCount: number
+  createdAt: string
+}
+
 export function TrackOrderPage() {
   useEffect(() => {
     document.title = 'Track Order — Style Sence'
   }, [])
 
   const route = useRoute()
-  // The lead remounts this page whenever the `order` query changes, so mount-time
-  // initialisation is safe — no effects needed to sync state to the route.
-  const [input, setInput] = useState(() => route.query.get('order')?.trim().toUpperCase() ?? '')
+  // The lead remounts this page whenever the `mode`/`order`/`email` queries change,
+  // so mount-time initialisation is safe — no effects needed to sync state to the route.
+  const initialOrder = () => route.query.get('order')?.trim().toUpperCase() ?? ''
+  const initialEmail = () => route.query.get('email')?.trim().toLowerCase() ?? ''
+  const [mode, setMode] = useState<'order' | 'email'>(() => {
+    if (route.query.get('mode') === 'email') return 'email'
+    if (route.query.get('mode') === 'order') return 'order'
+    return initialEmail() ? 'email' : 'order'
+  })
+  const [input, setInput] = useState(initialOrder)
   const [lookup, setLookup] = useState<string | null>(() => {
-    const initial = route.query.get('order')?.trim().toUpperCase() ?? ''
+    const initial = initialOrder()
     return initial && ORDER_PATTERN.test(initial) ? initial : null
   })
   const [formError, setFormError] = useState<string | null>(() => {
-    const initial = route.query.get('order')?.trim().toUpperCase() ?? ''
+    const initial = initialOrder()
     return initial && !ORDER_PATTERN.test(initial)
       ? `That doesn’t look like an order number — they look like ${ORDER_HINT}.`
       : null
   })
+  const [emailInput, setEmailInput] = useState(initialEmail)
+  const [emailLookup, setEmailLookup] = useState<string | null>(() => {
+    const initial = initialEmail()
+    return initial && EMAIL_PATTERN.test(initial) ? initial : null
+  })
+  const [emailError, setEmailError] = useState<string | null>(() => {
+    const initial = initialEmail()
+    return initial && !EMAIL_PATTERN.test(initial)
+      ? 'That doesn’t look like an email address — check the spelling and try again.'
+      : null
+  })
   const [history, setHistory] = useState<string[]>(readHistory)
+
+  const switchMode = (next: 'order' | 'email') => {
+    if (next === mode) return
+    setMode(next)
+    // Fresh slate for the other mode — URL drives the remount, state resets cleanly.
+    navigate(`/track?mode=${next}`)
+  }
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['order', lookup],
-    enabled: lookup !== null,
+    enabled: mode === 'order' && lookup !== null,
     retry: false,
     staleTime: 0, // tracking should always re-check on mount
     queryFn: async () => {
@@ -114,6 +151,25 @@ export function TrackOrderPage() {
     },
   })
 
+  const emailQuery = useQuery({
+    queryKey: ['orders-by-email', emailLookup],
+    enabled: mode === 'email' && emailLookup !== null,
+    retry: false,
+    staleTime: 0,
+    queryFn: async () => {
+      if (!emailLookup) throw new Error('No email provided')
+      const res = await fetch(`/api/orders?email=${encodeURIComponent(emailLookup)}`)
+      let body: { orders?: EmailOrderSummary[]; error?: string } | null = null
+      try {
+        body = (await res.json()) as { orders?: EmailOrderSummary[]; error?: string }
+      } catch {
+        body = null
+      }
+      if (!res.ok || !body?.orders) throw new Error(body?.error ?? 'Lookup failed')
+      return { orders: body.orders }
+    },
+  })
+
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const value = input.trim().toUpperCase()
@@ -128,6 +184,19 @@ export function TrackOrderPage() {
     navigate(`/track?order=${encodeURIComponent(value)}`)
   }
 
+  const onEmailSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const value = emailInput.trim().toLowerCase()
+    if (!EMAIL_PATTERN.test(value)) {
+      setEmailError('That doesn’t look like an email address — check the spelling and try again.')
+      return
+    }
+    setEmailError(null)
+    setEmailInput(value)
+    setEmailLookup(value)
+    navigate(`/track?mode=email&email=${encodeURIComponent(value)}`)
+  }
+
   return (
     <div className="container-site py-12 sm:py-16">
       {/* ————— editorial hero + lookup ————— */}
@@ -138,52 +207,126 @@ export function TrackOrderPage() {
             Where is my piece?
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Enter the order number from your confirmation email — we’ll show you exactly
-            where your pieces are.
+            {mode === 'order'
+              ? 'Enter the order number from your confirmation email — we’ll show you exactly where your pieces are.'
+              : 'Enter the email you used at checkout and we’ll gather every order placed with it.'}
           </p>
         </Reveal>
 
         <Reveal delay={0.08} className="mt-8">
-          <form onSubmit={onSubmit} noValidate className="mx-auto max-w-md text-left">
-            <Label htmlFor="track-order-number" className="eyebrow">
-              Order number
-            </Label>
-            <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-              <Input
-                id="track-order-number"
-                name="order-number"
-                type="text"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                enterKeyHint="go"
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value)
-                  if (formError) setFormError(null)
-                }}
-                placeholder="SS-2026-0000"
-                aria-invalid={formError ? true : undefined}
-                aria-describedby={formError ? 'track-order-error' : undefined}
-                className="h-12 border-line-strong bg-background font-mono text-sm uppercase tracking-[0.08em] placeholder:font-normal placeholder:tracking-[0.08em] placeholder:text-muted-foreground/60 focus-visible:ring-0"
-              />
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
+          {/* segmented mode toggle */}
+          <div
+            role="group"
+            aria-label="Lookup method"
+            className="mx-auto flex w-fit items-center border border-line-strong bg-background p-1"
+          >
+            {(
+              [
+                { key: 'order', label: 'By order number' },
+                { key: 'email', label: 'All my orders' },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => switchMode(opt.key)}
+                aria-pressed={mode === opt.key}
+                className={cn(
+                  'min-h-11 px-5 text-[0.62rem] font-medium uppercase tracking-[0.18em] transition-colors',
+                  mode === opt.key
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
               >
-                Track order
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-              </Button>
-            </div>
-            {formError ? (
-              <p id="track-order-error" role="alert" className="mt-2.5 text-xs leading-relaxed text-destructive">
-                {formError}
-              </p>
-            ) : null}
-          </form>
+                {opt.label}
+              </button>
+            ))}
+          </div>
 
-          {history.length > 0 ? (
+          {mode === 'order' ? (
+            <form onSubmit={onSubmit} noValidate className="mx-auto mt-6 max-w-md text-left">
+              <Label htmlFor="track-order-number" className="eyebrow">
+                Order number
+              </Label>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                <Input
+                  id="track-order-number"
+                  name="order-number"
+                  type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="go"
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value)
+                    if (formError) setFormError(null)
+                  }}
+                  placeholder="SS-2026-0000"
+                  aria-invalid={formError ? true : undefined}
+                  aria-describedby={formError ? 'track-order-error' : undefined}
+                  className="h-12 border-line-strong bg-background font-mono text-sm uppercase tracking-[0.08em] placeholder:font-normal placeholder:tracking-[0.08em] placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                />
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
+                >
+                  Track order
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                </Button>
+              </div>
+              {formError ? (
+                <p id="track-order-error" role="alert" className="mt-2.5 text-xs leading-relaxed text-destructive">
+                  {formError}
+                </p>
+              ) : null}
+            </form>
+          ) : (
+            <form onSubmit={onEmailSubmit} noValidate className="mx-auto mt-6 max-w-md text-left">
+              <Label htmlFor="track-email" className="eyebrow">
+                Email address
+              </Label>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                <Input
+                  id="track-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  enterKeyHint="go"
+                  value={emailInput}
+                  onChange={(e) => {
+                    setEmailInput(e.target.value)
+                    if (emailError) setEmailError(null)
+                  }}
+                  placeholder="you@example.com"
+                  aria-invalid={emailError ? true : undefined}
+                  aria-describedby={emailError ? 'track-email-error' : undefined}
+                  className="h-12 border-line-strong bg-background text-sm placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                />
+                <Button
+                  type="submit"
+                  disabled={emailQuery.isLoading}
+                  className="h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
+                >
+                  Find my orders
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                </Button>
+              </div>
+              {emailError ? (
+                <p id="track-email-error" role="alert" className="mt-2.5 text-xs leading-relaxed text-destructive">
+                  {emailError}
+                </p>
+              ) : (
+                <p className="mt-2.5 text-[0.66rem] leading-relaxed text-muted-foreground">
+                  Guest orders placed with this email will be listed — a full account
+                  history arrives with customer accounts.
+                </p>
+              )}
+            </form>
+          )}
+
+          {mode === 'order' && history.length > 0 ? (
             <div className="mt-8">
               <p className="eyebrow">Recent lookups</p>
               <ul className="mt-3 flex flex-wrap justify-center gap-2" aria-label="Recent order lookups">
@@ -212,7 +355,12 @@ export function TrackOrderPage() {
 
       {/* ————— lookup result ————— */}
       <div role="status" aria-live="polite" className="mx-auto mt-14 max-w-3xl sm:mt-16">
-        {lookup === null ? (
+        {mode === 'email' ? (
+          <EmailResult
+            email={emailLookup}
+            query={emailQuery}
+          />
+        ) : lookup === null ? (
           <p className="pt-2 text-center font-display text-lg font-light italic text-muted-foreground/80">
             Your order’s journey will appear here.
           </p>
@@ -254,6 +402,121 @@ export function TrackOrderPage() {
         ) : null}
       </div>
     </div>
+  )
+}
+
+/* ——— email-mode result: guest order history list ——— */
+
+const HISTORY_STATUS_STYLES: Record<string, string> = {
+  DELIVERED: 'border-espresso/50 text-espresso',
+  CANCELLED: 'border-destructive/45 text-destructive',
+}
+
+function EmailResult({
+  email,
+  query,
+}: {
+  email: string | null
+  query: { data?: { orders: EmailOrderSummary[] }; isLoading: boolean; isError: boolean; error?: Error | null }
+}) {
+  if (email === null) {
+    return (
+      <p className="pt-2 text-center font-display text-lg font-light italic text-muted-foreground/80">
+        Your orders will gather here.
+      </p>
+    )
+  }
+  if (query.isLoading) {
+    return (
+      <div className="space-y-3" aria-busy="true">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 w-full bg-secondary" />
+        ))}
+        <p className="sr-only">Gathering orders for {email}…</p>
+      </div>
+    )
+  }
+  if (query.isError) {
+    return (
+      <div className="flex flex-col items-center border border-dashed border-line-strong px-6 py-14 text-center">
+        <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">{email}</p>
+        <p className="mt-3 font-display text-2xl font-light italic text-balance">
+          We couldn’t gather those orders.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          {query.error instanceof Error ? query.error.message : 'Something went wrong.'}{' '}
+          <Link to="/help" className="link-underline font-medium text-foreground">
+            The studio can help
+          </Link>
+          .
+        </p>
+      </div>
+    )
+  }
+  const orders = query.data?.orders ?? []
+  if (orders.length === 0) {
+    return (
+      <div className="flex flex-col items-center border border-dashed border-line-strong px-6 py-14 text-center">
+        <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">{email}</p>
+        <p className="mt-3 font-display text-2xl font-light italic text-balance">
+          No orders with this email yet.
+        </p>
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+          Orders placed as a guest with this address will appear here. Perhaps a new piece
+          is in order —{' '}
+          <Link to="/shop" className="link-underline font-medium text-foreground">
+            the collection awaits
+          </Link>
+          .
+        </p>
+      </div>
+    )
+  }
+  return (
+    <Reveal>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-b border-line pb-4">
+        <p className="font-mono text-sm font-medium tracking-[0.08em]">{email}</p>
+        <p className="text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground">
+          {orders.length} order{orders.length === 1 ? '' : 's'} on file
+        </p>
+      </div>
+      <ul className="mt-2 divide-y divide-line" aria-label="Orders for this email">
+        {orders.map((o) => (
+          <li key={o.orderNumber}>
+            <button
+              type="button"
+              onClick={() => navigate(`/track?order=${encodeURIComponent(o.orderNumber)}`)}
+              aria-label={`Track order ${o.orderNumber}`}
+              className="group grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 px-2 py-5 text-left transition-colors hover:bg-secondary/60 sm:grid-cols-[10rem_1fr_auto_auto] sm:px-4"
+            >
+              <p className="font-mono text-xs font-medium tracking-[0.08em] transition-colors group-hover:text-espresso">
+                {o.orderNumber}
+              </p>
+              <p className="text-[0.66rem] uppercase tracking-[0.14em] text-muted-foreground">
+                Placed {formatDate(o.createdAt)} · {o.itemCount}{' '}
+                {o.itemCount === 1 ? 'piece' : 'pieces'}
+              </p>
+              <span
+                className={cn(
+                  'col-start-3 row-start-1 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.56rem] font-medium uppercase tracking-[0.16em]',
+                  HISTORY_STATUS_STYLES[o.status] ?? 'border-line-strong text-foreground',
+                )}
+              >
+                {STATUS_LABELS[o.status] ?? o.status}
+              </span>
+              <span className="col-start-3 row-start-2 flex items-center justify-end gap-2 font-mono text-sm tabular-nums sm:col-start-4 sm:row-start-1">
+                {formatNaira(o.total)}
+                <ArrowRight
+                  className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-espresso"
+                  strokeWidth={1.5}
+                  aria-hidden
+                />
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Reveal>
   )
 }
 
