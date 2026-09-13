@@ -1,14 +1,103 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Link2, Check } from 'lucide-react'
+import { toast } from 'sonner'
 import { Link, navigate } from '@/lib/router'
 import { formatDate } from '@/lib/money'
 import { Button } from '@/components/ui/button'
 import { ProductImage } from '@/components/site/price'
 import { Reveal } from '@/components/site/reveal'
 import type { JournalPostView } from '@/lib/types'
+
+/**
+ * Hairline reading-progress bar pinned under the sticky header while the
+ * article is on screen. CSS-transitioned width (covered by the global
+ * prefers-reduced-motion override); rAF-throttled scroll listener.
+ */
+function ReadingProgress() {
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const el = document.getElementById('journal-article')
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const total = rect.height - window.innerHeight
+      const read = Math.min(Math.max(-rect.top, 0), Math.max(total, 1))
+      setProgress(total > 0 ? Math.round((read / total) * 100) : 100)
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  return (
+    <div
+      className="no-print fixed left-0 top-16 z-40 h-[2px] w-full bg-transparent sm:top-[4.5rem]" aria-hidden
+    >
+      <div
+        className="h-full bg-espresso transition-[width] duration-150 ease-out motion-reduce:transition-none"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  )
+}
+
+/** Copy the current article URL (hash link) to the clipboard with a toast. */
+function ShareLink() {
+  const [copied, setCopied] = useState(false)
+  const onShare = async () => {
+    const url = window.location.href
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      // Clipboard API unavailable (insecure context / older browser) — select-free fallback.
+      const el = document.createElement('textarea')
+      el.value = url
+      el.setAttribute('readonly', '')
+      el.style.position = 'fixed'
+      el.style.opacity = '0'
+      document.body.appendChild(el)
+      el.select()
+      try {
+        document.execCommand('copy')
+      } catch {
+        /* ignore */
+      }
+      document.body.removeChild(el)
+    }
+    setCopied(true)
+    toast.success('Article link copied to clipboard.')
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void onShare()}
+      className="eyebrow inline-flex min-h-11 items-center gap-1.5 border-b border-transparent pb-1 transition-colors hover:border-foreground hover:text-foreground"
+      aria-label="Copy a link to this article"
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-espresso" strokeWidth={1.5} aria-hidden />
+      ) : (
+        <Link2 className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+      )}
+      {copied ? 'Copied' : 'Share'}
+    </button>
+  )
+}
 
 export function JournalPostPage({ slug }: { slug: string }) {
   const { data, isLoading, isError } = useQuery({
@@ -55,15 +144,19 @@ export function JournalPostPage({ slug }: { slug: string }) {
   const blocks = post.body.split('\n\n')
 
   return (
-    <article className="container-site max-w-3xl py-10 sm:py-14">
+    <article id="journal-article" className="container-site max-w-3xl py-10 sm:py-14">
+      <ReadingProgress />
       <Reveal>
-        <Link
-          to="/journal"
-          className="eyebrow inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-          The Journal
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            to="/journal"
+            className="eyebrow inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+            The Journal
+          </Link>
+          <ShareLink />
+        </div>
         <p className="eyebrow mt-6">
           {post.category} · {post.readTime} min read · {formatDate(post.publishedAt)}
         </p>

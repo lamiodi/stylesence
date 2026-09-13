@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronUp, Package, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Package, Pencil, Plus, Search, Sparkles, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNaira, formatDateShort } from '@/lib/money'
 import { Button } from '@/components/ui/button'
@@ -439,6 +439,118 @@ function RelatedPiecesEditor({
 }
 
 /* ------------------------------------------------------------------ *
+ * Atelier image studio — AI-generated editorial imagery (create dialog)
+ * ------------------------------------------------------------------ */
+const STUDIO_SIZES = [
+  { value: '864x1152', label: 'Portrait 3:4 — cards' },
+  { value: '1024x1024', label: 'Square 1:1' },
+  { value: '1152x864', label: 'Landscape 4:3 — editorial' },
+] as const
+
+function ImageStudio({ onGenerated }: { onGenerated: (url: string) => void }) {
+  const [prompt, setPrompt] = useState('')
+  const [size, setSize] = useState<string>('864x1152')
+  const [lastUrl, setLastUrl] = useState<string | null>(null)
+
+  const generate = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/admin/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim(), size }),
+      })
+      const body = (await res.json()) as { url?: string; error?: string }
+      if (!res.ok || !body.url) throw new Error(body.error ?? 'Image generation failed')
+      return body.url
+    },
+    onSuccess: (url) => {
+      setLastUrl(url)
+      onGenerated(url)
+      toast.success('Image generated and added to the list.')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  const onGenerate = () => {
+    if (prompt.trim().length < 8) {
+      toast.error('Describe the image first — at least a short phrase.')
+      return
+    }
+    generate.mutate()
+  }
+
+  return (
+    <div className="border border-dashed border-line-strong bg-secondary/40 p-3">
+      <p className="eyebrow flex items-center gap-1.5">
+        <Sparkles className="h-3 w-3 text-espresso" strokeWidth={1.5} aria-hidden />
+        Atelier image studio
+      </p>
+      <p className="mt-1 text-[0.62rem] leading-snug text-muted-foreground">
+        Describe the shot — the house style (ivory studio light, muted palette, editorial mood) is
+        applied automatically. Each image takes a few seconds.
+      </p>
+      <Textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="e.g. Full-length photograph of a model wearing a flowing ivory pleated maxi skirt in gentle motion"
+        className="mt-2.5 min-h-16 border-line-strong text-xs"
+        aria-label="Image description for the atelier studio"
+      />
+      <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
+        <Select value={size} onValueChange={setSize}>
+          <SelectTrigger
+            className="h-11 border-line-strong text-xs sm:w-52"
+            aria-label="Image proportions"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STUDIO_SIZES.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          onClick={onGenerate}
+          disabled={generate.isPending}
+          className="h-11 flex-1 text-[0.66rem] uppercase tracking-[0.18em]"
+        >
+          {generate.isPending ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
+              Painting…
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+              Generate image
+            </>
+          )}
+        </Button>
+      </div>
+      {lastUrl ? (
+        <div className="mt-3 flex items-center gap-3 border-t border-line pt-3">
+          <img
+            src={lastUrl}
+            alt="Last generated image"
+            className="h-16 w-12 shrink-0 border border-line object-cover"
+          />
+          <div className="min-w-0">
+            <p className="truncate font-mono text-[0.62rem] text-muted-foreground">{lastUrl}</p>
+            <p className="mt-0.5 text-[0.62rem] text-muted-foreground">
+              Added to the image list above — generate as many as the piece needs.
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
  * Create / edit dialog
  * ------------------------------------------------------------------ */
 function ProductDialog({
@@ -724,6 +836,11 @@ function ProductDialog({
                 onChange={(e) => setImages(e.target.value)}
                 placeholder={'/images/products/your-piece-name.png\n/images/products/your-piece-name-detail.png'}
                 className="min-h-20 border-line-strong font-mono text-xs"
+              />
+              <ImageStudio
+                onGenerated={(url) =>
+                  setImages((prev) => (prev.trim() ? `${prev.trim()}\n${url}` : url))
+                }
               />
             </Field>
           ) : product && product.images.length > 0 ? (

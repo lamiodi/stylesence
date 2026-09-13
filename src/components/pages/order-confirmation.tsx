@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Package, Truck, Home, ArrowRight, Printer } from 'lucide-react'
+import { Check, Package, Truck, Home, ArrowRight, Printer, Copy } from 'lucide-react'
+import { toast } from 'sonner'
 import { navigate, Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatDate, formatNaira } from '@/lib/money'
@@ -18,6 +19,48 @@ const STEPS = [
   { key: 'SHIPPED', label: 'On its way', icon: Truck },
   { key: 'DELIVERED', label: 'Delivered', icon: Home },
 ] as const
+
+/** Copy the order number to the clipboard — for receipts, notes and support threads. */
+function CopyOrderNumber({ orderNumber }: { orderNumber: string }) {
+  const [copied, setCopied] = useState(false)
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(orderNumber)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = orderNumber
+      el.setAttribute('readonly', '')
+      el.style.position = 'fixed'
+      el.style.opacity = '0'
+      document.body.appendChild(el)
+      el.select()
+      try {
+        document.execCommand('copy')
+      } catch {
+        /* ignore */
+      }
+      document.body.removeChild(el)
+    }
+    setCopied(true)
+    toast.success(`${orderNumber} copied — for your records.`)
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void onCopy()}
+      className="flex items-center gap-1.5 border-b border-line-strong pb-1 text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+      aria-label={`Copy order number ${orderNumber} to the clipboard`}
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-espresso" strokeWidth={1.5} aria-hidden />
+      ) : (
+        <Copy className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+      )}
+      {copied ? 'Copied' : 'Copy order number'}
+    </button>
+  )
+}
 
 export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) {
   useEffect(() => {
@@ -78,14 +121,17 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
               ? 'The pieces have been released back to the rail. Nothing was charged — this is a development preview.'
               : 'Your pieces are being prepared. A confirmation email would arrive shortly — dev placeholder.'}
           </p>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="no-print mx-auto mt-6 flex items-center gap-1.5 border-b border-line-strong pb-1 text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
-          >
-            <Printer className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-            Print receipt
-          </button>
+          <div className="no-print mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 border-b border-line-strong pb-1 text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+            >
+              <Printer className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+              Print receipt
+            </button>
+            <CopyOrderNumber orderNumber={order.orderNumber} />
+          </div>
         </Reveal>
 
         {!cancelled ? (

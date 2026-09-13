@@ -13,6 +13,7 @@ import { AnnouncementBar } from '@/components/site/announcement-bar'
 import { Header } from '@/components/site/header'
 import { Footer } from '@/components/site/footer'
 import { CartSheet } from '@/components/site/cart-sheet'
+import { ScrollToTop } from '@/components/site/scroll-to-top'
 import { PageFade } from '@/components/site/reveal'
 import { HomePage } from '@/components/pages/home'
 import { ShopPage } from '@/components/pages/shop'
@@ -128,6 +129,7 @@ export default function Home() {
           <Router />
           <Footer />
           <CartSheet />
+          <ScrollToTop />
         </div>
       </QueryClientProvider>
     </ThemeProvider>

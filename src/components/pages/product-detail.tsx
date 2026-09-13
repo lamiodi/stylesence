@@ -334,6 +334,8 @@ function ProductInner({ product }: { product: ProductDetail }) {
     <div className="container-site py-8 sm:py-12">
       {/* breadcrumb */}
       <nav aria-label="Breadcrumb" className="eyebrow !text-[0.58rem]">
+        <Link to="/" className="hover:text-foreground">Home</Link>
+        <ChevronRight className="mx-1.5 inline h-2.5 w-2.5" aria-hidden />
         <Link to="/shop" className="hover:text-foreground">Shop</Link>
         {product.category ? (
           <>
