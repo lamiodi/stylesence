@@ -68,6 +68,10 @@ export interface RelatedProduct {
   price: number
   primaryImage: string | null
   secondaryImage: string | null
+  /** First in-stock variant (canonical size/colour order) — powers "Add the look to bag". Null when sold out. */
+  defaultVariantId: string | null
+  /** True when at least one variant is in stock. */
+  inStock: boolean
 }
 
 /** How the PDP "related" set was assembled. */

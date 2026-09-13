@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { LogOut, ExternalLink, LayoutDashboard, Package, ClipboardList, Star, Mail, Users, Tag } from 'lucide-react'
+import { LogOut, ExternalLink, LayoutDashboard, Package, ClipboardList, Star, Bell, Mail, Users, Tag } from 'lucide-react'
 import { navigate, useRoute, Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import { Dashboard } from './dashboard'
 import { ProductsManager } from './products-manager'
 import { OrdersManager } from './orders-manager'
 import { ReviewsManager } from './reviews-manager'
+import { WaitlistManager } from './waitlist-manager'
 import { SubscribersManager } from './subscribers-manager'
 import { CustomersManager } from './customers-manager'
 import { PromosManager } from './promos-manager'
@@ -33,6 +34,7 @@ const TABS = [
   { key: 'products', label: 'Products', icon: Package },
   { key: 'orders', label: 'Orders', icon: ClipboardList },
   { key: 'reviews', label: 'Reviews', icon: Star },
+  { key: 'waitlist', label: 'Waitlist', icon: Bell },
   { key: 'promos', label: 'Promos', icon: Tag },
   { key: 'subscribers', label: 'Subscribers', icon: Mail },
   { key: 'customers', label: 'Customers', icon: Users },
@@ -220,6 +222,7 @@ function AdminShell({ admin }: { admin: AdminInfo }) {
           {tab === 'products' ? <ProductsManager /> : null}
           {tab === 'orders' ? <OrdersManager /> : null}
           {tab === 'reviews' ? <ReviewsManager /> : null}
+          {tab === 'waitlist' ? <WaitlistManager /> : null}
           {tab === 'promos' ? <PromosManager /> : null}
           {tab === 'subscribers' ? <SubscribersManager /> : null}
           {tab === 'customers' ? <CustomersManager /> : null}

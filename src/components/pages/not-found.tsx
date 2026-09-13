@@ -37,6 +37,24 @@ export function NotFoundPage() {
             Return home
           </Button>
         </div>
+        <p className="mt-6 text-[0.68rem] uppercase tracking-[0.16em] text-muted-foreground/80">
+          Or linger —{' '}
+          <button
+            type="button"
+            onClick={() => navigate('/journal')}
+            className="underline decoration-line-strong underline-offset-4 transition-colors hover:text-foreground"
+          >
+            the journal
+          </button>
+          <span aria-hidden className="mx-2">·</span>
+          <button
+            type="button"
+            onClick={() => navigate('/help')}
+            className="underline decoration-line-strong underline-offset-4 transition-colors hover:text-foreground"
+          >
+            client care
+          </button>
+        </p>
       </Reveal>
     </div>
   )

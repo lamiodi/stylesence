@@ -10,6 +10,7 @@ type RelatedProduct = {
   name: string
   price: number
   images: Array<{ url: string }>
+  variants: Array<{ id: string; size: string; color: string; stock: number }>
 }
 
 /**
@@ -32,12 +33,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   // Related: curated "Complete the look" pieces first (admin-managed, ordered),
   // then same-category fill, then any active pieces — always up to 4 total.
+  // Each related item carries a defaultVariantId (first in-stock variant in the
+  // canonical size/colour order) so the PDP can offer "Add the look to bag".
   const relatedItems: Array<{
     slug: string
     name: string
     price: number
     primaryImage: string | null
     secondaryImage: string | null
+    defaultVariantId: string | null
+    inStock: boolean
   }> = []
   const includedIds = new Set<string>([product.id])
   let curatedCount = 0
@@ -46,12 +51,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const pushRelated = (p: RelatedProduct) => {
     if (relatedItems.length >= MAX_RELATED || includedIds.has(p.id)) return false
     includedIds.add(p.id)
+    const ordered = orderVariantsBySizeColor(p.variants)
+    const defaultVariant = ordered.find((v) => v.stock > 0) ?? null
     relatedItems.push({
       slug: p.slug,
       name: p.name,
       price: p.price,
       primaryImage: p.images[0]?.url ?? null,
       secondaryImage: p.images[1]?.url ?? null,
+      defaultVariantId: defaultVariant?.id ?? null,
+      inStock: defaultVariant !== null,
     })
     return true
   }
@@ -61,7 +70,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     where: { productId: product.id, related: { isActive: true } },
     orderBy: { position: 'asc' },
     take: MAX_RELATED,
-    include: { related: { include: { images: { orderBy: { position: 'asc' }, take: 2 } } } },
+    include: {
+      related: {
+        include: {
+          images: { orderBy: { position: 'asc' }, take: 2 },
+          variants: { select: { id: true, size: true, color: true, stock: true } },
+        },
+      },
+    },
   })
   for (const row of curated) {
     if (pushRelated(row.related)) curatedCount++
@@ -73,7 +89,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       where: { isActive: true, id: { notIn: [...includedIds] }, categoryId: product.categoryId },
       orderBy: { createdAt: 'desc' },
       take: MAX_RELATED - relatedItems.length,
-      include: { images: { orderBy: { position: 'asc' }, take: 2 } },
+      include: {
+        images: { orderBy: { position: 'asc' }, take: 2 },
+        variants: { select: { id: true, size: true, color: true, stock: true } },
+      },
     })
     for (const p of categoryFill) pushRelated(p)
   }
@@ -84,7 +103,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       where: { isActive: true, id: { notIn: [...includedIds] } },
       orderBy: { createdAt: 'desc' },
       take: MAX_RELATED - relatedItems.length,
-      include: { images: { orderBy: { position: 'asc' }, take: 2 } },
+      include: {
+        images: { orderBy: { position: 'asc' }, take: 2 },
+        variants: { select: { id: true, size: true, color: true, stock: true } },
+      },
     })
     for (const p of anyFill) {
       if (pushRelated(p)) anyFillCount++

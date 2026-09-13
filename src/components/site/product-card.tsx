@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { Heart, ArrowUpRight } from 'lucide-react'
+import { Heart, ArrowUpRight, Star } from 'lucide-react'
 import { Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
@@ -115,6 +115,16 @@ export const ProductCard = memo(function ProductCard({
               </span>
             ) : null}
           </div>
+          {product.rating != null && product.reviewCount > 0 ? (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
+              <Star className="h-3 w-3 fill-espresso text-espresso" strokeWidth={0} aria-hidden />
+              <span className="font-mono tabular-nums text-foreground/80">{product.rating.toFixed(1)}</span>
+              <span aria-hidden className="text-muted-foreground/50">·</span>
+              <span>
+                {product.reviewCount} review{product.reviewCount === 1 ? '' : 's'}
+              </span>
+            </p>
+          ) : null}
         </div>
       </Link>
 

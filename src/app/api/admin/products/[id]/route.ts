@@ -17,6 +17,21 @@ const PRODUCT_INCLUDE = {
 } as const
 
 /**
+ * GET /api/admin/products/[id] — full admin product by id (the edit dialog reads
+ * from the list endpoint, but future features get a canonical single fetch).
+ * 404 `{ error: 'Product not found' }` when missing.
+ */
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await requireAdmin()
+  if (!admin) return fail(401, 'Unauthorized')
+
+  const { id } = await params
+  const product = await db.product.findUnique({ where: { id }, include: PRODUCT_INCLUDE })
+  if (!product) return fail(404, 'Product not found')
+  return ok({ product: toAdminProduct(product) })
+}
+
+/**
  * PATCH /api/admin/products/[id] — partial update (name, slug, subtitle, price,
  * compareAtPrice (null clears), isActive, isFeatured, categoryId, description,
  * material, care, details, variantStocks, relatedSlugs (curated "Complete the

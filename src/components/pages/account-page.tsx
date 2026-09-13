@@ -8,12 +8,16 @@
  * register column). Signed in: the account overview — profile & default
  * shipping details (editable; they prefill checkout), order history in the
  * track-order row language, and a wishlist preview.
+ *
+ * `?mode=forgot` / `?mode=reset&token=…` are the password-reset flow — the
+ * email itself is a clearly-labelled dev placeholder (the API returns a
+ * devResetUrl the storefront shows inside a DevPlaceholder).
  */
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ArrowRight, Heart, Package, Truck } from 'lucide-react'
+import { ArrowRight, Check, Heart, Package, Truck } from 'lucide-react'
 import { Link, navigate, useRoute } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatDate, formatDateShort, formatNaira } from '@/lib/money'
@@ -21,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { ProductImage } from '@/components/site/price'
 import { Reveal } from '@/components/site/reveal'
 import { useWishlist } from '@/lib/store/wishlist'
@@ -59,17 +64,67 @@ const STATUS_STYLES: Record<string, string> = {
 const fieldCls =
   'h-12 border-line-strong bg-background text-sm placeholder:text-muted-foreground/60 focus-visible:ring-0'
 
+/* ——— password reset — API fetchers (email is dev-simulated) ——— */
+
+async function requestResetLink(input: { email: string }): Promise<{ devResetUrl: string | null }> {
+  const res = await fetch('/api/customer/password-reset/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; devResetUrl?: string; error?: string }
+  if (!res.ok) throw new Error(body.error ?? 'Something went wrong')
+  return { devResetUrl: body.devResetUrl ?? null }
+}
+
+async function confirmPasswordReset(input: { token: string; password: string }): Promise<void> {
+  const res = await fetch('/api/customer/password-reset/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!res.ok) throw new Error(body.error ?? 'Something went wrong')
+}
+
 /* ——— page ——— */
 
 export function AccountPage() {
+  const route = useRoute()
+  const mode = route.query.get('mode') ?? ''
+
   useEffect(() => {
-    document.title = 'Your account — Style Sence'
-  }, [])
+    document.title =
+      mode === 'forgot'
+        ? 'Reset password — Style Sence'
+        : mode === 'reset'
+          ? 'Choose a new password — Style Sence'
+          : 'Your account — Style Sence'
+  }, [mode])
 
   const { data: customer, isPending, isFetching } = useCustomer()
   // During a post-login refetch the cached profile is still null — hold the
   // skeleton so the sign-in form never flashes between states.
   const resolving = isPending || (customer === null && isFetching)
+
+  // The password-reset modes render for everyone, signed-in included — a
+  // reset link must work wherever it is opened (and completing one signs out
+  // every device anyway). They don't depend on the profile query, so there is
+  // no skeleton gate: the form is usable the moment the page mounts.
+  if (mode === 'forgot') {
+    return (
+      <div className="container-site py-12 sm:py-16">
+        <ResetRequestView />
+      </div>
+    )
+  }
+  if (mode === 'reset') {
+    return (
+      <div className="container-site py-12 sm:py-16">
+        <ResetConfirmView token={route.query.get('token') ?? ''} />
+      </div>
+    )
+  }
 
   return (
     <div className="container-site py-12 sm:py-16">
@@ -195,6 +250,14 @@ function SignInForm() {
             aria-describedby={error ? 'si-error' : undefined}
             className={fieldCls}
           />
+          <div className="flex justify-end">
+            <Link
+              to="/account?mode=forgot"
+              className="link-underline inline-flex min-h-11 items-center text-[0.68rem] uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Forgot your password?
+            </Link>
+          </div>
         </div>
 
         {error ? (
@@ -383,6 +446,288 @@ function RegisterForm() {
         </Link>
       </p>
     </section>
+  )
+}
+
+/* ——— password reset: request a link (?mode=forgot) ——— */
+
+function ResetRequestView() {
+  const [email, setEmail] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [sent, setSent] = useState<{ email: string; devResetUrl: string | null } | null>(null)
+  const request = useMutation({ mutationFn: requestResetLink })
+  const serverError = request.isError && request.error instanceof Error ? request.error.message : null
+  const error = formError ?? serverError
+  const busy = request.isPending
+
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const nextEmail = email.trim().toLowerCase()
+    if (!EMAIL_PATTERN.test(nextEmail)) {
+      setFormError('Enter the email address on your account.')
+      return
+    }
+    setFormError(null)
+    request.mutate(
+      { email: nextEmail },
+      { onSuccess: (res) => setSent({ email: nextEmail, devResetUrl: res.devResetUrl }) },
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-xl">
+      <Reveal>
+        <p className="eyebrow">Your account</p>
+        <h1 className="mt-3 font-display text-4xl font-light tracking-tight text-balance sm:text-5xl">
+          Reset your password
+        </h1>
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          Enter the email address on your account — we&apos;ll send a single-use
+          link to choose a new password. It expires within the hour.
+        </p>
+      </Reveal>
+
+      <Reveal delay={0.05}>
+        {sent ? (
+          <section aria-label="Reset link sent" className="mt-10 border border-line bg-card p-6 sm:p-8">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-espresso/40 text-espresso">
+              <Check className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+            </span>
+            <h2 className="mt-4 font-display text-2xl font-light tracking-tight">Check your inbox</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              If an account exists for{' '}
+              <span className="font-medium text-foreground">{sent.email}</span>, a reset link is on its way.
+            </p>
+            <p className="mt-2 text-[0.8rem] leading-relaxed text-muted-foreground">
+              The link expires in 1 hour and can be used once.
+            </p>
+
+            {sent.devResetUrl ? (
+              <DevPlaceholder title="email is simulated (development preview)" className="mt-6">
+                <p className="mb-3">
+                  No real email was sent — reset emails are simulated in this preview.
+                  Open the simulated message below to continue.
+                </p>
+                <Link
+                  to={sent.devResetUrl.replace(/^\/#/, '')}
+                  className="link-underline inline-flex min-h-11 items-center font-medium text-foreground"
+                >
+                  Open the simulated reset email
+                  <ArrowRight className="ml-2 h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                </Link>
+              </DevPlaceholder>
+            ) : null}
+
+            <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
+              <Link to="/account" className="link-underline font-medium text-foreground">
+                Back to sign in
+              </Link>
+            </p>
+          </section>
+        ) : (
+          <section aria-label="Request a password reset" className="mt-10 border border-line bg-card p-6 sm:p-8">
+            <p className="eyebrow">Password reset</p>
+            <h2 className="mt-2 font-display text-2xl font-light tracking-tight">Send a reset link</h2>
+
+            <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="fr-email" className="eyebrow">Email</Label>
+                <Input
+                  id="fr-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    request.reset()
+                  }}
+                  placeholder="you@example.com"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'fr-error' : undefined}
+                  className={fieldCls}
+                />
+              </div>
+
+              {error ? (
+                <p
+                  id="fr-error"
+                  role="alert"
+                  className="border border-destructive/40 bg-[color-mix(in_oklch,var(--destructive)_7%,transparent)] px-4 py-3 text-xs leading-relaxed text-destructive"
+                >
+                  {error}
+                </p>
+              ) : null}
+
+              <Button type="submit" disabled={busy} className="h-12 w-full uppercase tracking-[0.2em] text-[0.66rem]">
+                {busy ? 'Sending…' : 'Send reset link'}
+              </Button>
+            </form>
+
+            <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
+              Remembered it after all?{' '}
+              <Link to="/account" className="link-underline font-medium text-foreground">
+                Back to sign in
+              </Link>
+            </p>
+          </section>
+        )}
+      </Reveal>
+    </div>
+  )
+}
+
+/* ——— password reset: choose a new password (?mode=reset&token=…) ——— */
+
+function ResetConfirmView({ token }: { token: string }) {
+  const qc = useQueryClient()
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+  const confirm = useMutation({
+    mutationFn: confirmPasswordReset,
+    onSuccess: () => {
+      // A completed reset deletes every session — refetch so the header and
+      // this page reflect the signed-out state if this browser was signed in.
+      qc.invalidateQueries({ queryKey: ['customer-me'] })
+      setDone(true)
+    },
+  })
+  const serverError = confirm.isError && confirm.error instanceof Error ? confirm.error.message : null
+  const error = formError ?? serverError
+  const busy = confirm.isPending
+
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (password.length < 8) {
+      setFormError('Your new password needs at least 8 characters.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setFormError('Both password fields must match.')
+      return
+    }
+    setFormError(null)
+    confirm.mutate({ token, password })
+  }
+
+  return (
+    <div className="mx-auto max-w-xl">
+      <Reveal>
+        <p className="eyebrow">Your account</p>
+        <h1 className="mt-3 font-display text-4xl font-light tracking-tight text-balance sm:text-5xl">
+          Choose a new password
+        </h1>
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          Set the new password below. Using the link signs out every device on
+          the account — yours included.
+        </p>
+      </Reveal>
+
+      <Reveal delay={0.05}>
+        {!token ? (
+          <section
+            aria-label="Reset link required"
+            className="mt-10 flex flex-col items-center border border-dashed border-line-strong bg-card px-6 py-14 text-center sm:px-8"
+          >
+            <p className="font-display text-2xl font-light italic text-balance">This link is incomplete.</p>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+              The reset link is missing its token — request a fresh one and it
+              will arrive within the hour.
+            </p>
+            <Link
+              to="/account?mode=forgot"
+              className="link-underline mt-7 inline-flex min-h-11 items-center text-sm font-medium"
+            >
+              Request a new link
+              <ArrowRight className="ml-2 h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+            </Link>
+          </section>
+        ) : done ? (
+          <section aria-label="Password updated" className="mt-10 border border-line bg-card p-6 sm:p-8">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-espresso/40 text-espresso">
+              <Check className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+            </span>
+            <h2 className="mt-4 font-display text-2xl font-light tracking-tight">Your password has been updated</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              All devices were signed out for your security — sign in with your
+              new password to continue.
+            </p>
+            <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
+              <Link to="/account" className="link-underline font-medium text-foreground">
+                Continue to sign in
+              </Link>
+            </p>
+          </section>
+        ) : (
+          <section aria-label="Choose a new password" className="mt-10 border border-line bg-card p-6 sm:p-8">
+            <p className="eyebrow">Password reset</p>
+            <h2 className="mt-2 font-display text-2xl font-light tracking-tight">Your new password</h2>
+
+            <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="np-password" className="eyebrow">New password</Label>
+                <Input
+                  id="np-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    confirm.reset()
+                  }}
+                  placeholder="At least 8 characters"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'np-error' : 'np-password-hint'}
+                  className={fieldCls}
+                />
+                <p id="np-password-hint" className="text-[0.66rem] text-muted-foreground">
+                  At least 8 characters.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="np-confirm" className="eyebrow">Confirm password</Label>
+                <Input
+                  id="np-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value)
+                    confirm.reset()
+                  }}
+                  placeholder="Once more"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'np-error' : undefined}
+                  className={fieldCls}
+                />
+              </div>
+
+              {error ? (
+                <p
+                  id="np-error"
+                  role="alert"
+                  className="border border-destructive/40 bg-[color-mix(in_oklch,var(--destructive)_7%,transparent)] px-4 py-3 text-xs leading-relaxed text-destructive"
+                >
+                  {error}
+                </p>
+              ) : null}
+              {serverError ? (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  <Link to="/account?mode=forgot" className="link-underline font-medium text-foreground">
+                    Request a new link
+                  </Link>
+                </p>
+              ) : null}
+
+              <Button type="submit" disabled={busy} className="h-12 w-full uppercase tracking-[0.2em] text-[0.66rem]">
+                {busy ? 'Updating…' : 'Update password'}
+              </Button>
+            </form>
+          </section>
+        )}
+      </Reveal>
+    </div>
   )
 }
 

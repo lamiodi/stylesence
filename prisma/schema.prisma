@@ -196,6 +196,9 @@ model Customer {
   defaultAddress String?
   defaultCity    String?
   defaultState   String?
+  /** Single-use password-reset token (hashed) — set by the reset request flow. */
+  resetTokenHash String?
+  resetTokenAt   DateTime?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   sessions       CustomerSession[]

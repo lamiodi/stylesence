@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail } from 'lucide-react'
+import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail, ShoppingBag } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
@@ -20,7 +20,7 @@ import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { ProductCard } from '@/components/site/product-card'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import { Reveal } from '@/components/site/reveal'
-import { useAddToCart } from '@/lib/cart-client'
+import { useAddToCart, useAddLookToCart } from '@/lib/cart-client'
 import { useWishlist } from '@/lib/store/wishlist'
 import { useRecentlyViewed } from '@/lib/store/recently-viewed'
 import { useMounted } from '@/hooks/use-mounted'
@@ -382,6 +382,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
   const [qty, setQty] = useState(1)
   const [imgIndex, setImgIndex] = useState(0)
   const addToCart = useAddToCart()
+  const addLook = useAddLookToCart()
   const toggleWish = useWishlist((s) => s.toggle)
   const hasWish = useWishlist((s) => s.has)
   const pushRecent = useRecentlyViewed((s) => s.push)
@@ -445,6 +446,11 @@ function ProductInner({ product }: { product: ProductDetail }) {
     count: product.reviews.filter((r) => r.rating === star).length,
   }))
   const maxCount = Math.max(1, ...distribution.map((d) => d.count))
+
+  // "Add the look" — the in-stock related pieces, ready for one-click bagging.
+  const lookPieces = product.related.filter((r) => r.defaultVariantId)
+  const lookTotal = lookPieces.reduce((sum, r) => sum + r.price, 0)
+  const soldOutLookPieces = product.related.length - lookPieces.length
 
   return (
     <div className="container-site py-8 sm:py-12">
@@ -890,6 +896,42 @@ function ProductInner({ product }: { product: ProductDetail }) {
               />
             ))}
           </div>
+
+          {/* one-click bundle — only when at least two related pieces are in stock */}
+          {lookPieces.length >= 2 ? (
+            <Reveal className="mt-8">
+              <div className="flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+                    The look — {lookPieces.length} pieces · {formatNaira(lookTotal)}
+                  </p>
+                  {soldOutLookPieces > 0 ? (
+                    <p className="mt-1 text-[0.72rem] leading-relaxed text-muted-foreground">
+                      {soldOutLookPieces} sold-out piece{soldOutLookPieces === 1 ? '' : 's'} skipped — join the waitlist on its page.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[0.72rem] leading-relaxed text-muted-foreground">
+                      Each piece is added in its first available size — adjust sizes in the bag.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={addLook.isPending}
+                  onClick={() =>
+                    addLook.mutate(
+                      lookPieces.map((r) => ({ variantId: r.defaultVariantId as string, name: r.name })),
+                    )
+                  }
+                  className="flex h-12 shrink-0 items-center justify-center gap-2 border border-foreground px-7 text-[0.68rem] font-medium uppercase tracking-[0.18em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
+                >
+                  <ShoppingBag className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                  {addLook.isPending ? 'Adding the look…' : 'Add the look to bag'}
+                </button>
+              </div>
+            </Reveal>
+          ) : null}
+
           <p className="mt-6 font-mono text-[0.68rem] text-muted-foreground/70">
             {formatNaira(product.price)} · in {product.category?.name ?? 'the collection'}
           </p>

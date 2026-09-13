@@ -192,3 +192,36 @@ export function recordCustomerLoginFailure(email: string): void {
 export function clearCustomerLoginFailures(email: string): void {
   customerLoginFailures.delete(email)
 }
+
+/*
+ * NOTE (password-reset rate limiting): reset requests reuse the SAME map and
+ * helpers above — reset requests and login failures share one 5-per-5-min
+ * budget per email. This is deliberate anti-enumeration behaviour (lead's
+ * decision): unknown emails burn the budget on BOTH paths, so an attacker
+ * cannot probe for accounts via reset requests any faster than via logins,
+ * and no second map is needed.
+ */
+
+/* ------------------------------------------------------------------ *
+ * Password reset tokens — 192-bit random, stored HASHED (sha256).
+ *
+ * Unlike passwords (slow scrypt above), the reset token is itself a
+ * fresh 192-bit random value, so a single fast hash is sufficient:
+ * brute-forcing the hash means guessing the 48-hex-char token, not
+ * a human password. Hashing at rest means a DB leak cannot be
+ * replayed as live reset links. The plain token only ever travels
+ * in the (dev-simulated) email link; the DB keeps only the hash.
+ * ------------------------------------------------------------------ */
+
+export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+/** sha256 hex of a reset token — see the section note for why not scrypt. */
+export function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
+
+/** Generate a single-use reset token: `plain` goes in the link, `hash` is stored. */
+export function generateResetToken(): { plain: string; hash: string } {
+  const plain = crypto.randomBytes(24).toString('hex') // 48 hex chars — passes the 20–200 validator
+  return { plain, hash: hashResetToken(plain) }
+}

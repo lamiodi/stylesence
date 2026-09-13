@@ -172,6 +172,20 @@ export const customerLoginInput = z.object({
   password: z.string().min(1, 'Password is required').max(72, 'Password must be at most 72 characters'),
 })
 
+/** Password-reset request — email only (response never reveals whether it exists). */
+export const passwordResetRequestInput = z.object({
+  email: emailInput,
+})
+
+/** Password-reset confirm — the single-use token from the (simulated) email + the new password. */
+export const passwordResetConfirmInput = z.object({
+  token: z.string().trim().min(20, 'Reset token is invalid').max(200, 'Reset token is invalid'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(72, 'Password must be at most 72 characters'),
+})
+
 /** Optional-or-clearable profile text — empty string/null clears; absent key = not patched. */
 const clearableText = (min: number, max: number, label: string) =>
   z.preprocess(
@@ -366,5 +380,7 @@ export type PromoInput = z.infer<typeof promoInput>
 export type PromoPatchInput = z.infer<typeof promoPatchInput>
 export type CustomerRegisterInput = z.infer<typeof customerRegisterInput>
 export type CustomerLoginInput = z.infer<typeof customerLoginInput>
+export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestInput>
+export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmInput>
 export type CustomerPatchInput = z.infer<typeof customerPatchInput>
 export type WishlistSlugsInput = z.infer<typeof wishlistSlugsInput>

@@ -166,6 +166,19 @@ export function JournalPostPage({ slug }: { slug: string }) {
         <p className="mt-5 border-l-2 border-espresso pl-5 font-display text-lg italic leading-relaxed text-muted-foreground">
           {post.excerpt}
         </p>
+        <div className="mt-7 flex items-center gap-3 border-y border-line py-3">
+          <span
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-line-strong font-display text-[0.7rem] italic"
+            aria-hidden
+          >
+            SKR
+          </span>
+          <div className="text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground">
+            <span className="text-foreground">Written by the atelier</span>
+            <span className="mx-2 text-muted-foreground/50" aria-hidden>·</span>
+            The Style Sence studio, Lagos
+          </div>
+        </div>
       </Reveal>
 
       <Reveal delay={0.1} className="mt-10">

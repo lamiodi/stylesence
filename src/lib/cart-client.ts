@@ -41,6 +41,48 @@ export function useAddToCart() {
   })
 }
 
+/**
+ * "Add the look to bag" — adds several pieces (qty 1 each) sequentially so the
+ * server-side cart merge can't race itself. Pieces carry their names so a
+ * mid-flow failure (e.g. a size just sold out) can be reported per piece;
+ * failures never abort the rest of the look.
+ */
+export function useAddLookToCart() {
+  const qc = useQueryClient()
+  const setCartOpen = useUi((s) => s.setCartOpen)
+  return useMutation({
+    mutationFn: async (pieces: Array<{ variantId: string; name: string }>) => {
+      let cart: CartState | null = null
+      const failed: string[] = []
+      for (const piece of pieces) {
+        try {
+          const res = await jsonFetch<{ cart: CartState }>('/api/cart', {
+            method: 'POST',
+            body: JSON.stringify({ variantId: piece.variantId, qty: 1 }),
+          })
+          cart = res.cart
+        } catch {
+          failed.push(piece.name)
+        }
+      }
+      if (!cart) throw new Error('None of the look\u2019s pieces could be added \u2014 they may have just sold out.')
+      return { cart, failed }
+    },
+    onSuccess: ({ cart, failed }, pieces) => {
+      qc.setQueryData(['cart'], cart)
+      setCartOpen(true)
+      if (failed.length === 0) {
+        toast.success(`The look is in your bag \u2014 ${pieces.length} piece${pieces.length === 1 ? '' : 's'}.`)
+      } else {
+        toast(
+          `Added ${pieces.length - failed.length} of ${pieces.length} pieces \u2014 ${failed.join(', ')} ${failed.length === 1 ? 'was' : 'were'} unavailable.`,
+        )
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useUpdateCartItem() {
   const qc = useQueryClient()
   return useMutation({

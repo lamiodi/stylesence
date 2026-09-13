@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Search, Heart, ShoppingBag, Menu, X, Sun, Moon, User } from 'lucide-react'
+import { Search, Heart, ShoppingBag, Menu, X, Sun, Moon, User, Clock3 } from 'lucide-react'
 import { Link, navigate, useRoute } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/lib/cart-client'
 import { useWishlist, useUi } from '@/lib/store/wishlist'
+import { useRecentSearches } from '@/lib/store/recent-searches'
 import { useCustomer } from '@/hooks/use-customer'
 import { useMounted } from '@/hooks/use-mounted'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -59,6 +60,9 @@ export function Header() {
   const { data: customer } = useCustomer()
   const wishCount = useWishlist((s) => s.items.length)
   const setCartOpen = useUi((s) => s.setCartOpen)
+  const recentTerms = useRecentSearches((s) => s.terms)
+  const recordSearch = useRecentSearches((s) => s.record)
+  const clearSearches = useRecentSearches((s) => s.clear)
   const { theme, setTheme } = useTheme()
   const mounted = useMounted()
 
@@ -86,7 +90,13 @@ export function Header() {
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault()
     const term = q.trim()
+    if (term) recordSearch(term)
     navigate(`/shop${term ? `?q=${encodeURIComponent(term)}` : ''}`)
+  }
+
+  const runSearch = (term: string) => {
+    recordSearch(term)
+    navigate(`/shop?q=${encodeURIComponent(term)}`)
   }
 
   // Active-nav highlighting only after mount: the hash is unreadable during SSR,
@@ -317,13 +327,37 @@ export function Header() {
                 <button
                   key={t}
                   type="button"
-                  onClick={() => navigate(`/shop?q=${t}`)}
+                  onClick={() => runSearch(t)}
                   className="border border-line px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-espresso hover:text-espresso"
                 >
                   {t}
                 </button>
               ))}
             </div>
+            {mounted && recentTerms.length > 0 ? (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                <span className="eyebrow !text-[0.55rem]">Recent</span>
+                {recentTerms.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => runSearch(t)}
+                    className="flex items-center gap-1.5 border border-line-strong px-2.5 py-1 font-mono text-xs text-foreground/80 transition-colors hover:border-espresso hover:text-espresso"
+                  >
+                    <Clock3 className="h-3 w-3 text-muted-foreground/70" strokeWidth={1.5} aria-hidden />
+                    {t}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearSearches}
+                  className="ml-1 text-[0.66rem] uppercase tracking-[0.14em] text-muted-foreground/70 underline decoration-line-strong underline-offset-4 transition-colors hover:text-destructive"
+                  aria-label="Clear recent searches"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

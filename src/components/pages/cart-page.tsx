@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X, ArrowRight } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { formatNaira } from '@/lib/money'
@@ -8,10 +9,18 @@ import { Button } from '@/components/ui/button'
 import { ProductImage } from '@/components/site/price'
 import { QuantityStepper } from '@/components/site/quantity-stepper'
 import { Reveal } from '@/components/site/reveal'
+import { ProductCard } from '@/components/site/product-card'
 import { useCart, useUpdateCartItem, useRemoveCartItem, useClearCart } from '@/lib/cart-client'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 import { FreeShippingMeter } from '@/components/site/shipping-meter'
+import type { ProductsResponse } from '@/lib/types'
+
+async function fetchBestsellers(): Promise<ProductsResponse> {
+  const res = await fetch('/api/products?sort=rating&perPage=4')
+  if (!res.ok) throw new Error('Failed')
+  return (await res.json()) as ProductsResponse
+}
 
 export function CartPage() {
   useEffect(() => {
@@ -51,20 +60,23 @@ export function CartPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <Reveal className="mt-10">
-          <div className="flex flex-col items-center border border-dashed border-line-strong px-6 py-24 text-center">
-            <p className="font-display text-3xl font-light italic">The bag is empty — for now.</p>
-            <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              The collection is quiet, considered, and waiting to be considered by you.
-            </p>
-            <Button
-              className="mt-8 h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
-              onClick={() => navigate('/shop')}
-            >
-              Shop the collection
-            </Button>
-          </div>
-        </Reveal>
+        <>
+          <Reveal className="mt-10">
+            <div className="flex flex-col items-center border border-dashed border-line-strong px-6 py-16 text-center sm:py-20">
+              <p className="font-display text-3xl font-light italic">The bag is empty — for now.</p>
+              <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                The collection is quiet, considered, and waiting to be considered by you.
+              </p>
+              <Button
+                className="mt-8 h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
+                onClick={() => navigate('/shop')}
+              >
+                Shop the collection
+              </Button>
+            </div>
+          </Reveal>
+          <BestsellerSuggestions />
+        </>
       ) : (
         <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
           {/* items */}
@@ -201,5 +213,50 @@ export function CartPage() {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Editorial rescue strip on the empty bag — the four most-considered pieces
+ * (same query the home bestsellers row uses). Silent on error: an empty bag
+ * should never fail loudly because a suggestion fetch stumbled.
+ */
+function BestsellerSuggestions() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['home', 'bestsellers'],
+    queryFn: fetchBestsellers,
+    staleTime: 5 * 60_000,
+  })
+
+  const products = data?.products ?? []
+  if (isLoading || products.length === 0) return null
+
+  return (
+    <section className="mt-16 border-t border-line pt-10" aria-label="Most considered pieces">
+      <Reveal>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Most considered</p>
+            <h2 className="mt-2 font-display text-2xl font-light tracking-tight sm:text-3xl">
+              Pieces the house would reach for
+            </h2>
+          </div>
+          <Link
+            to="/shop"
+            className="eyebrow-ink hidden shrink-0 items-center gap-1.5 border-b border-foreground pb-1 transition-colors hover:border-espresso hover:text-espresso sm:flex"
+          >
+            All pieces
+            <ArrowRight className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+          </Link>
+        </div>
+      </Reveal>
+      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 md:gap-x-6">
+        {products.map((p, i) => (
+          <Reveal key={p.slug} delay={i * 0.06}>
+            <ProductCard product={p} />
+          </Reveal>
+        ))}
+      </div>
+    </section>
   )
 }
