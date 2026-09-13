@@ -2,12 +2,14 @@ import { db } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { getCartFromCookie } from '@/lib/cart'
 import { checkoutInput } from '@/lib/validators'
+import { evaluatePromo } from '@/lib/promo'
 
 /**
  * POST /api/checkout
  * Re-checks stock, atomically decrements it, snapshots order items,
- * creates a PAID order (dev placeholder payment), clears the cart
- * → 201 `{ order: { orderNumber, total } }`.
+ * creates a PAID order (dev placeholder payment), clears the cart.
+ * Optional `promoCode` is validated, applied and usage-incremented.
+ * → 201 `{ order: { orderNumber, total, discount } }`.
  */
 
 const SHIPPING_RATES: Record<'standard' | 'express', number> = {
@@ -49,8 +51,24 @@ export async function POST(req: Request) {
   }
 
   const subtotal = items.reduce((sum, i) => sum + i.variant.product.price * i.qty, 0)
-  const shipping = SHIPPING_RATES[input.shippingMethod]
-  const total = subtotal + shipping
+
+  // Validate the promo against this cart before the transaction (server is authoritative).
+  let discount = 0
+  let promoCode: string | null = null
+  let promoId: string | null = null
+  let freeShipping = false
+  if (input.promoCode) {
+    const promoEval = await evaluatePromo(input.promoCode, subtotal)
+    if (!promoEval.ok) return fail(promoEval.status, promoEval.error)
+    discount = promoEval.promo.discount
+    freeShipping = promoEval.promo.freeShipping
+    promoCode = promoEval.promo.code
+    const row = await db.promoCode.findUnique({ where: { code: promoCode }, select: { id: true } })
+    promoId = row?.id ?? null
+  }
+
+  const shipping = freeShipping ? 0 : SHIPPING_RATES[input.shippingMethod]
+  const total = subtotal - discount + shipping
 
   let orderNumber: string
   try {
@@ -88,11 +106,19 @@ export async function POST(req: Request) {
             shippingMethod: input.shippingMethod,
             shipping,
             subtotal,
+            discount,
+            promoCode,
             total,
             status: 'PAID',
           },
           select: { orderNumber: true, id: true },
         })
+        if (promoId) {
+          await tx.promoCode.update({
+            where: { id: promoId },
+            data: { usageCount: { increment: 1 } },
+          })
+        }
         await tx.orderItem.createMany({
           data: items.map((item) => ({
             orderId: order.id,
@@ -119,5 +145,5 @@ export async function POST(req: Request) {
     return fail(500, 'Checkout failed. Please try again.')
   }
 
-  return ok({ order: { orderNumber, total } }, { status: 201 })
+  return ok({ order: { orderNumber, total, discount } }, { status: 201 })
 }

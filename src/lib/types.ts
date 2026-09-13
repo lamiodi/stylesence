@@ -22,6 +22,7 @@ export interface ProductCard {
   price: number
   compareAtPrice: number | null
   primaryImage: string | null
+  secondaryImage: string | null
   colors: ColorRef[]
   sizes: string[]
   rating: number | null
@@ -66,6 +67,7 @@ export interface RelatedProduct {
   name: string
   price: number
   primaryImage: string | null
+  secondaryImage: string | null
 }
 
 export interface ProductDetail {
@@ -124,6 +126,8 @@ export interface OrderView {
   shippingMethod: string
   shipping: number
   subtotal: number
+  discount: number
+  promoCode: string | null
   total: number
   createdAt: string
   items: OrderItemView[]
@@ -144,6 +148,16 @@ export interface JournalPostView extends JournalCard {
 }
 
 export type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'rating'
+
+export interface PromoInfo {
+  code: string
+  label: string | null
+  type: string
+  value: number
+  minSubtotal: number
+  discount: number
+  freeShipping: boolean
+}
 
 export const ORDER_STATUSES = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]

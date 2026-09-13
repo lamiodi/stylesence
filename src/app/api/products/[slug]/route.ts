@@ -91,6 +91,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         name: p.name,
         price: p.price,
         primaryImage: p.images[0]?.url ?? null,
+        secondaryImage: p.images[1]?.url ?? null,
       })),
     },
   })

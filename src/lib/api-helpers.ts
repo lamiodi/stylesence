@@ -156,6 +156,8 @@ export function toAdminOrder(o: Order & { items: OrderItem[] }) {
     shippingMethod: o.shippingMethod,
     shipping: o.shipping,
     subtotal: o.subtotal,
+    discount: o.discount,
+    promoCode: o.promoCode,
     total: o.total,
     status: o.status,
     createdAt: o.createdAt,

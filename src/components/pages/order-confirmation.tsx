@@ -174,9 +174,19 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
                 <dt className="text-muted-foreground">Subtotal</dt>
                 <dd className="font-mono tabular-nums">{formatNaira(order.subtotal)}</dd>
               </div>
+              {order.discount > 0 ? (
+                <div className="flex justify-between text-espresso">
+                  <dt className="flex items-center gap-1.5">
+                    <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                    {order.promoCode ?? 'Promo'}
+                  </dt>
+                  <dd className="font-mono tabular-nums">−{formatNaira(order.discount)}</dd>
+                </div>
+              ) : null}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">
                   {order.shippingMethod === 'express' ? 'Express delivery' : 'Standard delivery'}
+                  {order.shipping === 0 ? ' — complimentary' : ''}
                 </dt>
                 <dd className="font-mono tabular-nums">{formatNaira(order.shipping)}</dd>
               </div>

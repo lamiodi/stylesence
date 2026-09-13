@@ -25,6 +25,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orderNu
       shippingMethod: order.shippingMethod,
       shipping: order.shipping,
       subtotal: order.subtotal,
+      discount: order.discount,
+      promoCode: order.promoCode,
       total: order.total,
       createdAt: order.createdAt,
       items: order.items.map((i) => ({

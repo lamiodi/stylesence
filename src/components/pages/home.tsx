@@ -7,7 +7,7 @@ import { Link, navigate } from '@/lib/router'
 import { Reveal } from '@/components/site/reveal'
 import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card'
 import { ProductImage } from '@/components/site/price'
-import { formatDate } from '@/lib/money'
+import { formatDate, formatNaira } from '@/lib/money'
 import type { ProductsResponse, Category, JournalCard } from '@/lib/types'
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -15,6 +15,34 @@ async function fetchJson<T>(url: string): Promise<T> {
   if (!res.ok) throw new Error('Request failed')
   return res.json()
 }
+
+/** Curated editorial looks — the house styling, shoppable. */
+const LOOKS: { image: string; title: string; pieces: { slug: string; name: string; price: number }[] }[] = [
+  {
+    image: '/images/editorial/look-1.png',
+    title: 'The Quiet Uniform',
+    pieces: [
+      { slug: 'cashmere-crewneck', name: 'Relaxed Cashmere Crewneck', price: 96000 },
+      { slug: 'wide-leg-trouser', name: 'Wide-Leg Trouser', price: 89000 },
+    ],
+  },
+  {
+    image: '/images/editorial/look-2.png',
+    title: 'Evening, Considered',
+    pieces: [
+      { slug: 'atelier-blazer', name: 'The Atelier Blazer', price: 165000 },
+      { slug: 'silk-slip-dress', name: 'The Ivory Silk Slip Dress', price: 148000 },
+    ],
+  },
+  {
+    image: '/images/editorial/look-3.png',
+    title: 'The Long Line',
+    pieces: [
+      { slug: 'longline-wool-coat', name: 'Longline Wool Coat', price: 245000 },
+      { slug: 'merino-turtleneck', name: 'Sculpted Merino Turtleneck', price: 68000 },
+    ],
+  },
+]
 
 function SectionHead({
   eyebrow,
@@ -254,6 +282,60 @@ export function HomePage() {
               : (bestsellers?.products ?? []).map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
           </div>
         </Reveal>
+      </section>
+
+      {/* ————— SHOP THE LOOK ————— */}
+      <section className="container-site py-16 sm:py-20" aria-label="Shop the look">
+        <Reveal>
+          <SectionHead eyebrow="Styled by the house" title="Shop the look" />
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            Three looks from the Autumn editorial — hover a piece to see it, tap to make it yours.
+          </p>
+        </Reveal>
+        <div className="mt-10 grid gap-10 md:grid-cols-3 lg:gap-12">
+          {LOOKS.map((look, i) => (
+            <Reveal key={look.image} delay={i * 0.08}>
+              <figure className="group/look">
+                <div className="relative overflow-hidden">
+                  <ProductImage
+                    src={look.image}
+                    alt={look.title}
+                    label={look.title}
+                    ratio="aspect-[4/5]"
+                    className="transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/look:scale-[1.03]"
+                  />
+                  <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary/80 via-primary/30 to-transparent p-4 pt-12">
+                    <p className="eyebrow !text-primary-foreground/80">Look {String(i + 1).padStart(2, '0')}</p>
+                    <p className="mt-1 font-display text-xl font-light text-primary-foreground">{look.title}</p>
+                  </figcaption>
+                </div>
+                <ul className="mt-4 space-y-2.5">
+                  {look.pieces.map((piece) => (
+                    <li key={piece.slug}>
+                      <Link
+                        to={`/product/${piece.slug}`}
+                        className="group/row flex items-center gap-3 border border-line bg-card px-3 py-2.5 transition-colors hover:border-foreground"
+                      >
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-espresso" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate font-display text-[0.92rem] tracking-tight group-hover/row:text-espresso">
+                          {piece.name}
+                        </span>
+                        <span className="shrink-0 font-mono text-[0.72rem] text-muted-foreground tabular-nums">
+                          {formatNaira(piece.price)}
+                        </span>
+                        <ArrowUpRight
+                          className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-colors group-hover/row:text-espresso"
+                          strokeWidth={1.5}
+                          aria-hidden
+                        />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </figure>
+            </Reveal>
+          ))}
+        </div>
       </section>
 
       {/* ————— ATELIER BAND (inverted) ————— */}

@@ -177,3 +177,33 @@ Stage Summary:
 8. **Related products** — currently same-category fallback; could add curated "Complete the look" relations in admin.
 9. **Performance** — product images un-optimized <img> (no next/image due to hash SPA + static files); fine at current catalog size, consider sharp pipeline later.
 10. **Testing** — no automated tests (per instructions); QA is agent-browser driven and should be repeated after major changes.
+
+---
+Task ID: 6
+Agent: lead (Z.ai Code) — scheduled review round (cron webDevReview)
+Task: Health QA + promo engine + shop-the-look + card image-swap polish
+
+Work Log:
+- Health check: server 200, all APIs 200, home renders 12 cards, admin login intact, zero console errors → phase stable → proceeded with new features per priorities list.
+- PRISMA: added PromoCode model (code/label/type PERCENT|AMOUNT|SHIPPING/value/minSubtotal/maxUsage/usageCount/isActive/expiresAt) + Order.discount + Order.promoCode; additive `db:push` (no data loss). NOTE: dev server required restart to load the regenerated Prisma client (killed stale process, relaunched `bun run dev` in background — supervisor does not auto-restart it).
+- Seeded 5 codes via scripts/seed-promos.ts: SS-FRIEND (10%), HARMATTAN-20 (20% over ₦200k, max 100), ARCHIVE-15K (₦15k over ₦150k), SENCE-SHIP (free shipping over ₦100k), SAMPLE-EXPIRED (inactive).
+- BACKEND: src/lib/promo.ts (evaluatePromo — active/expiry/usage/min-subtotal rules, computeDiscount); POST /api/promo/validate; checkout accepts promoCode (server-authoritative re-validation, free-shipping zeroes the fee, discount + promoCode stored on order, usageCount incremented inside the transaction, returns {orderNumber,total,discount}); orders/[orderNumber] + admin order mapper expose discount/promoCode; GET/POST /api/admin/promos + PATCH/DELETE /api/admin/promos/[id]; products list + detail-related now include `secondaryImage`.
+- FRONTEND: PromoInput + usePromoValidation (site/promo-box.tsx); persisted zustand promo store (localStorage `ss-promo`); cart page promo UI replaces the old dev placeholder (applied chip, discount/total preview, invalid-state notice); checkout summary shows discount + complimentary shipping, sends promoCode, clears store on success; order confirmation shows promo line; footer newsletter copy now points to the real SS-FRIEND code.
+- ADMIN: new "Promos" tab (admin-app.tsx) + promos-manager.tsx — table (code+label, reward, min basket, usage bar, expiry, Active switch w/ optimistic toggle, delete AlertDialog), New-code dialog (type/value/min/max/expiry), query key ['admin','promos'].
+- STYLING: home "Shop the look" editorial section (3 curated looks w/ shoppable product rows — Quiet Uniform / Evening, Considered / The Long Line); product cards crossfade to the detail image on hover for products with 2 images (zoom-only otherwise); related/wishlist cards updated for the new required secondaryImage field.
+- QA (agent-browser + VLM): promo golden path end-to-end — add to bag ₦62,000 → apply SS-FRIEND on cart (chip + −₦6,200 + ₦55,800 preview) → checkout carries discount → order SS-2026-3375 placed w/ promo line, −₦6,200, total ₦59,300 → store cleared, badge 0; admin promos tab renders 5 codes, SS-FRIEND usage 0→1 (increment verified), created QA-TEST-15 → validated live (₦15,000 on ₦100,000) → toggled off (validate now errors) → deleted (back to 5 rows); looks section VLM "highly polished" on desktop + mobile 390px single column, no overflow; secondary image present in card DOM (2 imgs, detail alt); lint fully clean; dev.log stale hot-reload errors only (formatNaira mid-edit), current state 200s across the board.
+
+Stage Summary:
+- Promo/coupon engine live end-to-end (top next-phase priority #3 from previous round): storefront apply/validate, server-authoritative checkout integration, usage tracking, admin management. Home gained an editorial shoppable looks section + card hover image-swap. All verified. DB now has 3 test orders from QA (SS-2026-4939, SS-2026-7966 from round 1; SS-2026-3375 w/ promo) + SS-FRIEND usage 1 — realistic dev data.
+
+## Current status / next-phase priorities (updated)
+
+1. **Customer accounts** (NextAuth) — guest checkout only; wishlist is localStorage. Would unlock order history per email.
+2. **Real payment integration** — Paystack/Flutterwave (dev placeholder by design).
+3. **Email sending** — newsletter + order confirmations simulated (dev placeholder).
+4. **Curated "Complete the look" relations in admin** — PDP related is same-category fallback; home looks are static curated data (could move into DB + admin editing).
+5. **Product image upload in admin** — URL-only today; file-upload or z-ai generation pipeline would complete the loop.
+6. **Promo enhancements** — per-customer single-use codes, stacked rules, usage reporting in stats; currently simple single-code model.
+7. **Inventory reservations** — stock decrements at checkout only; no reservation TTL for concurrent buyers.
+8. **SEO/meta per route** — one client-updated <title>; meta description static (acceptable for hash SPA).
+9. Dev server supervision: if the dev server is ever down, relaunch with `cd /home/z/my-project && (setsid nohup bun run dev > /dev/null 2>&1 &)` — the auto-supervisor does not restart it after manual kills; Prisma schema changes require this restart.

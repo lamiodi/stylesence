@@ -36,7 +36,7 @@ export function NewsletterForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Subscription failed')
       toast.success('Welcome to The Sence Letter.', {
-        description: '10% off your first order — coded SS-FRIEND (dev placeholder).',
+        description: '10% off your first order — code SS-FRIEND at the bag.',
       })
       setEmail('')
     } catch (err) {

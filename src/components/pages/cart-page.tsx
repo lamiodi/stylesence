@@ -9,7 +9,8 @@ import { ProductImage } from '@/components/site/price'
 import { QuantityStepper } from '@/components/site/quantity-stepper'
 import { Reveal } from '@/components/site/reveal'
 import { useCart, useUpdateCartItem, useRemoveCartItem, useClearCart } from '@/lib/cart-client'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
+import { usePromoStore } from '@/lib/store/promo'
+import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 
 export function CartPage() {
   useEffect(() => {
@@ -20,10 +21,15 @@ export function CartPage() {
   const update = useUpdateCartItem()
   const remove = useRemoveCartItem()
   const clear = useClearCart()
+  const promoCode = usePromoStore((s) => s.code)
+  const { data: promoData } = usePromoValidation(promoCode, cart?.subtotal ?? 0)
+  const promo = promoData?.promo
 
   const items = cart?.items ?? []
   const FREE_SHIPPING_THRESHOLD = 150000
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - (cart?.subtotal ?? 0))
+  const subtotal = cart?.subtotal ?? 0
+  const discount = promo?.discount ?? 0
 
   return (
     <div className="container-site py-10 sm:py-14">
@@ -164,18 +170,38 @@ export function CartPage() {
               <dl className="mt-4 space-y-2.5 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Subtotal ({cart?.itemCount ?? 0} items)</dt>
-                  <dd className="font-mono tabular-nums">{formatNaira(cart?.subtotal ?? 0)}</dd>
+                  <dd className="font-mono tabular-nums">{formatNaira(subtotal)}</dd>
                 </div>
+                {promo && discount > 0 ? (
+                  <div className="flex justify-between text-espresso">
+                    <dt className="flex items-center gap-1.5">
+                      <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                      {promo.code}
+                    </dt>
+                    <dd className="font-mono tabular-nums">−{formatNaira(discount)}</dd>
+                  </div>
+                ) : null}
+                {promo?.freeShipping ? (
+                  <div className="flex justify-between text-espresso">
+                    <dt className="flex items-center gap-1.5">
+                      <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                      {promo.code}
+                    </dt>
+                    <dd>Complimentary shipping</dd>
+                  </div>
+                ) : null}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Shipping</dt>
-                  <dd className="text-[0.78rem] text-muted-foreground">Calculated at checkout</dd>
+                  <dd className="text-[0.78rem] text-muted-foreground">
+                    {promo?.freeShipping ? 'Complimentary' : 'Calculated at checkout'}
+                  </dd>
                 </div>
               </dl>
               <div className="mt-4 border-t border-line pt-4">
                 <div className="flex items-baseline justify-between">
                   <span className="font-display text-lg">Total</span>
                   <span className="font-mono text-xl font-medium tabular-nums">
-                    {formatNaira(cart?.subtotal ?? 0)}
+                    {formatNaira(Math.max(0, subtotal - discount))}
                   </span>
                 </div>
                 <p className="mt-1 text-right text-[0.66rem] text-muted-foreground/70">excl. shipping</p>
@@ -187,9 +213,9 @@ export function CartPage() {
                 Proceed to checkout
                 <ArrowRight className="ml-2 h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
               </Button>
-              <DevPlaceholder compact className="mt-4" title="Promo codes">
-                Promo engine not live — codes honoured manually in dev.
-              </DevPlaceholder>
+              <div className="mt-4">
+                <PromoInput subtotal={subtotal} />
+              </div>
             </div>
           </aside>
         </div>

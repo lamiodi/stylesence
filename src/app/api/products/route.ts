@@ -51,6 +51,7 @@ function toCard(product: CardSource) {
     price: product.price,
     compareAtPrice: product.compareAtPrice,
     primaryImage: product.images[0]?.url ?? null,
+    secondaryImage: product.images[1]?.url ?? null,
     colors: [...colorMap.entries()].map(([name, hex]) => ({ name, hex })),
     sizes,
     rating,

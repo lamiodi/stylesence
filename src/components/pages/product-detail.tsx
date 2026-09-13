@@ -682,6 +682,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                   price: r.price,
                   compareAtPrice: null,
                   primaryImage: r.primaryImage,
+                  secondaryImage: r.secondaryImage,
                   colors: [],
                   sizes: [],
                   rating: null,

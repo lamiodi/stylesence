@@ -125,6 +125,8 @@ model Order {
   shippingMethod String     @default("standard")
   shipping      Int         @default(0)
   subtotal      Int
+  discount      Int         @default(0)
+  promoCode     String?
   total         Int
   status        String      @default("PAID")
   items         OrderItem[]
@@ -151,6 +153,21 @@ model NewsletterSubscriber {
   email     String   @unique
   source    String   @default("footer")
   createdAt DateTime @default(now())
+}
+
+model PromoCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  label       String?
+  type        String    @default("PERCENT") // PERCENT | AMOUNT | SHIPPING
+  value       Int       @default(0) // percent points (PERCENT) or Naira (AMOUNT); ignored for SHIPPING
+  minSubtotal Int       @default(0)
+  maxUsage    Int? // null = unlimited
+  usageCount  Int       @default(0)
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model JournalPost {

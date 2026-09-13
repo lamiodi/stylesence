@@ -34,14 +34,31 @@ export const ProductCard = memo(function ProductCard({
         ariaLabel={`View ${product.name}`}
       >
         <div className="relative overflow-hidden">
+          {/* primary image — zooms on hover; secondary crossfades in when present */}
           <ProductImage
             src={product.primaryImage}
             alt={product.name}
             label={product.name}
             eager={eager && index < 4}
             ratio="aspect-[3/4]"
-            className="transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.035]"
+            className={cn(
+              'transition-[transform,opacity] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+              product.secondaryImage
+                ? 'group-hover:scale-[1.02] group-hover:opacity-0'
+                : 'group-hover:scale-[1.035]',
+            )}
           />
+          {product.secondaryImage ? (
+            <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100">
+              <ProductImage
+                src={product.secondaryImage}
+                alt={`${product.name} — detail`}
+                label={product.name}
+                ratio="aspect-[3/4]"
+                className="h-full"
+              />
+            </div>
+          ) : null}
 
           {/* editorial tags */}
           <div className="pointer-events-none absolute left-3 top-3 flex flex-col gap-1.5">

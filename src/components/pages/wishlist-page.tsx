@@ -79,6 +79,7 @@ export function WishlistPage() {
                   price: item.price,
                   compareAtPrice: null,
                   primaryImage: item.primaryImage,
+                  secondaryImage: null,
                   colors: [],
                   sizes: [],
                   rating: null,

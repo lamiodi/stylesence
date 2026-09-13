@@ -77,6 +77,68 @@ export const checkoutInput = z.object({
   state: requiredText(2, 80, 'State'),
   notes: optionalText(500, 'Notes'),
   shippingMethod: z.enum(['standard', 'express']),
+  promoCode: z
+    .string()
+    .trim()
+    .max(40, 'Promo code is too long')
+    .optional()
+    .transform((v) => (v === '' ? undefined : v)),
+})
+
+export const promoValidateInput = z.object({
+  code: z.string().trim().min(1, 'Promo code is required').max(40, 'Promo code is too long'),
+  subtotal: z.number().int('Subtotal must be a whole number').min(0).max(100_000_000),
+})
+
+export const promoInput = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(2, 'Code needs at least 2 characters')
+    .max(40, 'Code is too long')
+    .transform((v) => v.toUpperCase().replace(/\s+/g, '-')),
+  label: optionalText(200, 'Label'),
+  type: z.enum(['PERCENT', 'AMOUNT', 'SHIPPING']),
+  value: z
+    .number()
+    .int('Value must be a whole number')
+    .min(0, 'Value cannot be negative')
+    .max(10_000_000, 'Value is too large'),
+  minSubtotal: z.number().int('Minimum subtotal must be a whole number').min(0).max(100_000_000),
+  maxUsage: z
+    .number()
+    .int('Max usage must be a whole number')
+    .min(1, 'Max usage must be at least 1')
+    .nullable()
+    .optional()
+    .transform((v) => (v === undefined ? null : v)),
+  isActive: z.boolean().optional(),
+  expiresAt: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v && v !== '' ? new Date(v) : null))
+    .refine((v) => v === null || !Number.isNaN(v.getTime()), { message: 'Invalid expiry date' }),
+})
+
+export const promoPatchInput = z.object({
+  label: nullableText(200, 'Label'),
+  type: z.enum(['PERCENT', 'AMOUNT', 'SHIPPING']).optional(),
+  value: z.number().int('Value must be a whole number').min(0).max(10_000_000).optional(),
+  minSubtotal: z.number().int('Minimum subtotal must be a whole number').min(0).max(100_000_000).optional(),
+  maxUsage: z
+    .number()
+    .int('Max usage must be a whole number')
+    .min(1, 'Max usage must be at least 1')
+    .nullable()
+    .optional(),
+  isActive: z.boolean().optional(),
+  expiresAt: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((v) => (v && v !== '' ? new Date(v) : v === '' ? null : v)),
 })
 
 export const newsletterInput = z.object({
@@ -217,3 +279,6 @@ export type OrderPatchInput = z.infer<typeof orderPatchInput>
 export type ReviewPatchInput = z.infer<typeof reviewPatchInput>
 export type CartAddInput = z.infer<typeof cartAddInput>
 export type CartPatchInput = z.infer<typeof cartPatchInput>
+export type PromoValidateInput = z.infer<typeof promoValidateInput>
+export type PromoInput = z.infer<typeof promoInput>
+export type PromoPatchInput = z.infer<typeof promoPatchInput>

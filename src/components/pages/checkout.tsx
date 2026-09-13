@@ -16,6 +16,8 @@ import { ProductImage } from '@/components/site/price'
 import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
 import { useCart } from '@/lib/cart-client'
+import { usePromoStore } from '@/lib/store/promo'
+import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 import { SHIPPING_METHODS, type ShippingMethod } from '@/lib/types'
 
 const NG_STATES = [
@@ -32,6 +34,11 @@ export function CheckoutPage() {
   const { data: cart, isLoading } = useCart()
   const items = cart?.items ?? []
 
+  const promoCode = usePromoStore((s) => s.code)
+  const clearPromo = usePromoStore((s) => s.clear)
+  const { data: promoData } = usePromoValidation(promoCode, cart?.subtotal ?? 0)
+  const promo = promoData?.promo
+
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -43,9 +50,10 @@ export function CheckoutPage() {
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const shippingPrice = SHIPPING_METHODS[shipping].price
+  const shippingPrice = promo?.freeShipping ? 0 : SHIPPING_METHODS[shipping].price
   const subtotal = cart?.subtotal ?? 0
-  const total = subtotal === 0 ? 0 : subtotal + shippingPrice
+  const discount = promo?.discount ?? 0
+  const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice
 
   const validate = (): boolean => {
     const e: Record<string, string> = {}
@@ -82,12 +90,14 @@ export function CheckoutPage() {
           state,
           notes: notes.trim() || undefined,
           shippingMethod: shipping,
+          promoCode: promoCode ?? undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Checkout failed')
       toast.success(`Order ${data.order.orderNumber} placed.`)
       qc.invalidateQueries({ queryKey: ['cart'] })
+      clearPromo()
       navigate(`/order/${data.order.orderNumber}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed')
@@ -326,8 +336,20 @@ export function CheckoutPage() {
                     <dt className="text-muted-foreground">Subtotal</dt>
                     <dd className="font-mono tabular-nums">{formatNaira(subtotal)}</dd>
                   </div>
+                  {promo && discount > 0 ? (
+                    <div className="flex justify-between text-espresso">
+                      <dt className="flex items-center gap-1.5">
+                        <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
+                        {promo.code}
+                      </dt>
+                      <dd className="font-mono tabular-nums">−{formatNaira(discount)}</dd>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">{SHIPPING_METHODS[shipping].label}</dt>
+                    <dt className="text-muted-foreground">
+                      {SHIPPING_METHODS[shipping].label}
+                      {promo?.freeShipping ? ' — complimentary' : ''}
+                    </dt>
                     <dd className="font-mono tabular-nums">{formatNaira(shippingPrice)}</dd>
                   </div>
                 </dl>
@@ -347,6 +369,9 @@ export function CheckoutPage() {
                   By placing this order you agree to the terms — a dev placeholder, like
                   everything commercial here.
                 </p>
+              </div>
+              <div className="px-6 pb-6">
+                <PromoInput subtotal={subtotal} />
               </div>
             </div>
           </aside>
