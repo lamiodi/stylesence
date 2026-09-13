@@ -104,7 +104,8 @@ export function isNewProduct(createdAt: Date): boolean {
 export type AdminProductSource = Product & {
   category: { slug: string; name: string } | null
   images: ProductImage[]
-  variants: ProductVariant[]
+  /** Variants may carry a filtered `_count.stockAlerts` (un-notified waitlist entries) when the caller includes it — only the admin list does. */
+  variants: (ProductVariant & { _count?: { stockAlerts: number } })[]
   reviews: { status: string }[]
   /** Outgoing curated "Complete the look" rows — only populated when included by the caller. */
   curatedRelations?: { position: number; related: { slug: string } }[] | null
@@ -136,6 +137,7 @@ export function toAdminProduct(p: AdminProductSource) {
       colorHex: v.colorHex,
       stock: v.stock,
       sku: v.sku,
+      waitingCount: v._count?.stockAlerts ?? 0,
     })),
     stock: p.variants.reduce((sum, v) => sum + v.stock, 0),
     reviewCount: p.reviews.length,

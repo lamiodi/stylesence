@@ -30,7 +30,7 @@ export function computeDiscount(type: string, value: number, subtotal: number): 
   return 0 // SHIPPING → discount applies to the shipping fee, not the subtotal
 }
 
-export async function evaluatePromo(rawCode: string, subtotal: number): Promise<PromoEval> {
+export async function evaluatePromo(rawCode: string, subtotal: number, email?: string): Promise<PromoEval> {
   const code = rawCode.trim().toUpperCase()
   if (!code) return { ok: false, status: 400, error: 'Enter a promo code.' }
 
@@ -48,6 +48,20 @@ export async function evaluatePromo(rawCode: string, subtotal: number): Promise<
       ok: false,
       status: 400,
       error: `This code applies from ₦${promo.minSubtotal.toLocaleString('en-NG')} — add ₦${(promo.minSubtotal - subtotal).toLocaleString('en-NG')} more.`,
+    }
+  }
+  // Single-use per customer: one redemption per email across past, non-cancelled orders.
+  if (promo.singleUsePerCustomer && email) {
+    const redeemed = await db.order.findFirst({
+      where: { promoCode: code, email, status: { not: 'CANCELLED' } },
+      select: { orderNumber: true },
+    })
+    if (redeemed) {
+      return {
+        ok: false,
+        status: 400,
+        error: `${code} is one per customer — it was already used on order ${redeemed.orderNumber}.`,
+      }
     }
   }
 

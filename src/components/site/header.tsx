@@ -89,9 +89,11 @@ export function Header() {
     navigate(`/shop${term ? `?q=${encodeURIComponent(term)}` : ''}`)
   }
 
-  const isShop = route.path.startsWith('/shop') || route.path.startsWith('/product')
-  const isJournal = route.path.startsWith('/journal')
-  const isAbout = route.path.startsWith('/about')
+  // Active-nav highlighting only after mount: the hash is unreadable during SSR,
+  // so gating avoids a hydration mismatch when #/shop (etc.) is hard-loaded.
+  const isShop = mounted && (route.path.startsWith('/shop') || route.path.startsWith('/product'))
+  const isJournal = mounted && route.path.startsWith('/journal')
+  const isAbout = mounted && route.path.startsWith('/about')
 
   const iconBtn = cn(
     'relative flex h-10 w-10 items-center justify-center text-foreground/85 transition-colors',

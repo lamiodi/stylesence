@@ -56,12 +56,13 @@ export async function POST(req: Request) {
   const subtotal = items.reduce((sum, i) => sum + i.variant.product.price * i.qty, 0)
 
   // Validate the promo against this cart before the transaction (server is authoritative).
+  // The order email participates — single-use-per-customer codes reject repeat redeemers.
   let discount = 0
   let promoCode: string | null = null
   let promoId: string | null = null
   let freeShipping = false
   if (input.promoCode) {
-    const promoEval = await evaluatePromo(input.promoCode, subtotal)
+    const promoEval = await evaluatePromo(input.promoCode, subtotal, input.email)
     if (!promoEval.ok) return fail(promoEval.status, promoEval.error)
     discount = promoEval.promo.discount
     freeShipping = promoEval.promo.freeShipping

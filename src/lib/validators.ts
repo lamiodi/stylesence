@@ -88,6 +88,8 @@ export const checkoutInput = z.object({
 export const promoValidateInput = z.object({
   code: z.string().trim().min(1, 'Promo code is required').max(40, 'Promo code is too long'),
   subtotal: z.number().int('Subtotal must be a whole number').min(0).max(100_000_000),
+  /** Optional — enables the single-use-per-customer check for signed-in / typed emails. */
+  email: optionalEmailInput,
 })
 
 /** GET /api/orders?email= — public guest order-history lookup. */
@@ -117,6 +119,7 @@ export const promoInput = z.object({
     .nullable()
     .optional()
     .transform((v) => (v === undefined ? null : v)),
+  singleUsePerCustomer: z.boolean().optional(),
   isActive: z.boolean().optional(),
   expiresAt: z
     .string()
@@ -137,6 +140,7 @@ export const promoPatchInput = z.object({
     .min(1, 'Max usage must be at least 1')
     .nullable()
     .optional(),
+  singleUsePerCustomer: z.boolean().optional(),
   isActive: z.boolean().optional(),
   expiresAt: z
     .string()
@@ -207,6 +211,12 @@ export const cartAddInput = z.object({
     .int('Quantity must be a whole number')
     .min(1, 'Quantity must be between 1 and 10')
     .max(10, 'Quantity must be between 1 and 10'),
+})
+
+/** POST /api/products/[slug]/stock-alerts — back-in-stock waitlist signup. */
+export const stockAlertInput = z.object({
+  variantId: z.string().min(1, 'variantId is required'),
+  email: emailInput,
 })
 
 export const cartPatchInput = z.object({
@@ -350,6 +360,7 @@ export type OrderPatchInput = z.infer<typeof orderPatchInput>
 export type ReviewPatchInput = z.infer<typeof reviewPatchInput>
 export type CartAddInput = z.infer<typeof cartAddInput>
 export type CartPatchInput = z.infer<typeof cartPatchInput>
+export type StockAlertInput = z.infer<typeof stockAlertInput>
 export type PromoValidateInput = z.infer<typeof promoValidateInput>
 export type PromoInput = z.infer<typeof promoInput>
 export type PromoPatchInput = z.infer<typeof promoPatchInput>

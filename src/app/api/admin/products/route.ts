@@ -15,6 +15,16 @@ const PRODUCT_INCLUDE = {
   },
 } as const
 
+/** List include — additionally counts un-notified back-in-stock waitlist entries per variant. */
+const PRODUCT_LIST_INCLUDE = {
+  ...PRODUCT_INCLUDE,
+  variants: {
+    include: {
+      _count: { select: { stockAlerts: { where: { notifiedAt: null } } } },
+    },
+  },
+} as const
+
 /** GET /api/admin/products — ALL products (incl. inactive), newest first. */
 export async function GET() {
   const admin = await requireAdmin()
@@ -22,7 +32,7 @@ export async function GET() {
 
   const products = await db.product.findMany({
     orderBy: { createdAt: 'desc' },
-    include: PRODUCT_INCLUDE,
+    include: PRODUCT_LIST_INCLUDE,
   })
   return ok({ products: products.map(toAdminProduct) })
 }

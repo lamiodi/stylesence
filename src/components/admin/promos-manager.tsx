@@ -46,6 +46,7 @@ interface AdminPromo {
   minSubtotal: number
   maxUsage: number | null
   usageCount: number
+  singleUsePerCustomer: boolean
   isActive: boolean
   expiresAt: string | null
   createdAt: string
@@ -65,6 +66,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
   const [value, setValue] = useState('10')
   const [minSubtotal, setMinSubtotal] = useState('0')
   const [maxUsage, setMaxUsage] = useState('')
+  const [singleUse, setSingleUse] = useState(false)
   const [expiresAt, setExpiresAt] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -80,6 +82,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
           value: type === 'SHIPPING' ? 0 : Math.max(0, Number(value) || 0),
           minSubtotal: Math.max(0, Number(minSubtotal) || 0),
           maxUsage: maxUsage.trim() ? Math.max(1, Number(maxUsage)) : null,
+          singleUsePerCustomer: singleUse,
           expiresAt: expiresAt || undefined,
         }),
       })
@@ -97,6 +100,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
       setValue('10')
       setMinSubtotal('0')
       setMaxUsage('')
+      setSingleUse(false)
       setExpiresAt('')
       onCreated()
     },
@@ -201,6 +205,20 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
               className={cn(field, 'font-mono')}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4 border border-line bg-secondary/40 px-4 py-3.5">
+            <div className="min-w-0">
+              <Label htmlFor="np-single" className="eyebrow">One per customer</Label>
+              <p className="mt-1 text-[0.7rem] leading-relaxed text-muted-foreground">
+                The same email can redeem this code once — checked against past orders at checkout.
+              </p>
+            </div>
+            <Switch
+              id="np-single"
+              checked={singleUse}
+              onCheckedChange={setSingleUse}
+              aria-label="Restrict this code to one use per customer email"
             />
           </div>
           <DialogFooter className="pt-2">
@@ -327,11 +345,21 @@ export function PromosManager() {
                           <Tag className="h-3.5 w-3.5 text-espresso" strokeWidth={1.5} aria-hidden />
                           {p.code}
                         </span>
-                        {p.label ? (
-                          <span className="mt-0.5 block max-w-[16rem] truncate text-[0.68rem] text-muted-foreground">
-                            {p.label}
-                          </span>
-                        ) : null}
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          {p.label ? (
+                            <span className="max-w-[16rem] truncate text-[0.68rem] text-muted-foreground">
+                              {p.label}
+                            </span>
+                          ) : null}
+                          {p.singleUsePerCustomer ? (
+                            <span
+                              className="border border-line-strong px-1.5 py-0.5 text-[0.56rem] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+                              title="One redemption per customer email"
+                            >
+                              1×/customer
+                            </span>
+                          ) : null}
+                        </span>
                       </td>
                       <td className="px-4 py-3.5 text-[0.82rem]">{valueLabel(p)}</td>
                       <td className="px-4 py-3.5 font-mono text-[0.78rem] tabular-nums text-muted-foreground">

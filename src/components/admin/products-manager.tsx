@@ -63,6 +63,8 @@ interface AdminVariant {
   colorHex: string | null
   sku: string
   stock: number
+  /** Un-notified back-in-stock waitlist signups for this variant (list endpoint). */
+  waitingCount?: number
 }
 
 interface AdminProduct {
@@ -161,6 +163,8 @@ interface VariantRow {
   color: string
   colorHex: string
   stock: string
+  /** Un-notified waitlist count (edit mode only — informational). */
+  waitingCount?: number
 }
 
 const DEFAULT_VARIANT_ROWS: VariantRow[] = ['XS', 'S', 'M', 'L', 'XL'].map((size) => ({
@@ -229,6 +233,15 @@ function VariantEditor({
             <p className="flex items-center gap-2 truncate text-sm">
               <HexSwatch hex={v.colorHex} />
               {v.color}
+              {(v.waitingCount ?? 0) > 0 ? (
+                <span
+                  className="shrink-0 border border-line px-1.5 py-0.5 font-mono text-[0.58rem] tracking-[0.08em] text-muted-foreground"
+                  aria-label={`${v.waitingCount} waitlist customer${v.waitingCount === 1 ? '' : 's'} waiting for ${v.color} ${v.size} to return`}
+                  title={`${v.waitingCount} waitlist signup${v.waitingCount === 1 ? '' : 's'} — notified when this size is restocked`}
+                >
+                  {v.waitingCount} waiting
+                </span>
+              ) : null}
             </p>
           )}
           {editable ? (
@@ -774,6 +787,7 @@ function ProductDialog({
           color: v.color,
           colorHex: v.colorHex ?? '',
           stock: String(v.stock),
+          waitingCount: v.waitingCount ?? 0,
         }))
       : DEFAULT_VARIANT_ROWS,
   )
@@ -1036,7 +1050,9 @@ function ProductDialog({
             <p className="eyebrow">Variants {mode === 'edit' ? '— stock' : ''}</p>
             {mode === 'edit' ? (
               <p className="text-[0.62rem] text-muted-foreground">
-                Sizes and colours are fixed after creation; adjust per-variant stock here.
+                Sizes and colours are fixed after creation; adjust per-variant stock here. A “waiting”
+                tag marks sizes with customers on the back-in-stock list — they’re notified when
+                stock returns.
               </p>
             ) : null}
             <VariantEditor variants={variants} onChange={setVariants} editable={mode === 'create'} />
@@ -1114,12 +1130,17 @@ export function ProductsManager() {
 
   const saveMutation = useMutation({
     mutationFn: ({ id, body }: { id: string | null; body: Record<string, unknown> }) =>
-      jsonFetch<{ product: AdminProduct }>(
+      jsonFetch<{ product: AdminProduct; notifiedStockAlerts?: number }>(
         id ? `/api/admin/products/${id}` : '/api/admin/products',
         { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) },
       ),
-    onSuccess: ({ product }, vars) => {
+    onSuccess: ({ product, notifiedStockAlerts }, vars) => {
       toast.success(vars.id ? `“${product.name}” updated.` : `“${product.name}” added to the catalogue.`)
+      if (vars.id && (notifiedStockAlerts ?? 0) > 0) {
+        toast.success(
+          `Restocked — ${notifiedStockAlerts} waitlist customer${notifiedStockAlerts === 1 ? '' : 's'} would be notified (email simulated).`,
+        )
+      }
       setDialog(null)
       invalidateCatalogue()
     },

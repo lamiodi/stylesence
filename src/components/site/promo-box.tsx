@@ -10,17 +10,20 @@ import { usePromoStore } from '@/lib/store/promo'
 import type { PromoInfo } from '@/lib/types'
 
 /**
- * Validates the persisted promo code against a subtotal.
+ * Validates the persisted promo code against a subtotal (and, when provided,
+ * the customer email — enables the single-use-per-customer check early).
  * Returns `{ data: { promo } }` when valid; `isError` when not.
  */
-export function usePromoValidation(code: string | null, subtotal: number) {
+export function usePromoValidation(code: string | null, subtotal: number, email?: string) {
+  // Only include plausible emails (typed '@') so keystroke edits don't spam refetches.
+  const emailForCheck = email && email.includes('@') ? email.trim().toLowerCase() : undefined
   return useQuery<{ promo: PromoInfo }>({
-    queryKey: ['promo', code, subtotal],
+    queryKey: ['promo', code, subtotal, emailForCheck ?? null],
     queryFn: async () => {
       const res = await fetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, subtotal }),
+        body: JSON.stringify({ code, subtotal, email: emailForCheck }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'This code is not on the books.')
@@ -34,21 +37,24 @@ export function usePromoValidation(code: string | null, subtotal: number) {
 
 /**
  * Promo code input + applied chip. State lives in the persisted promo store;
- * the server re-validates at checkout (authoritative).
+ * the server re-validates at checkout (authoritative). The optional email
+ * participates in validation so single-use-per-customer codes fail loudly here
+ * rather than at checkout.
  */
-export function PromoInput({ subtotal }: { subtotal: number }) {
+export function PromoInput({ subtotal, email }: { subtotal: number; email?: string }) {
   const code = usePromoStore((s) => s.code)
   const setCode = usePromoStore((s) => s.setCode)
   const [input, setInput] = useState('')
 
-  const { isError } = usePromoValidation(code, subtotal)
+  const emailForCheck = email && email.includes('@') ? email.trim().toLowerCase() : undefined
+  const { isError } = usePromoValidation(code, subtotal, email)
 
   const apply = useMutation({
     mutationFn: async (raw: string) => {
       const res = await fetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: raw.trim(), subtotal }),
+        body: JSON.stringify({ code: raw.trim(), subtotal, email: emailForCheck }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'This code is not on the books.')

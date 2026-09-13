@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft } from 'lucide-react'
+import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,7 @@ import { useAddToCart } from '@/lib/cart-client'
 import { useWishlist } from '@/lib/store/wishlist'
 import { useRecentlyViewed } from '@/lib/store/recently-viewed'
 import { useMounted } from '@/hooks/use-mounted'
+import { useCustomer } from '@/hooks/use-customer'
 import type { ProductDetail } from '@/lib/types'
 
 const SIZE_GUIDE = [
@@ -199,6 +200,117 @@ function WriteReviewDialog({ slug, product }: { slug: string; product: string })
   )
 }
 
+/* ------------------------------------------------------------------ *
+ * Back-in-stock waitlist — shown when the selected variant is sold out.
+ * Remounts via `key={variant.id}` so switching variants resets the form
+ * (the email prefill survives — it re-derives from the customer query).
+ * ------------------------------------------------------------------ */
+function StockWaitlistForm({
+  slug,
+  variantId,
+  color,
+  size,
+}: {
+  slug: string
+  variantId: string
+  color: string
+  size: string
+}) {
+  const { data: customer } = useCustomer()
+  const [email, setEmail] = useState('')
+  const [touched, setTouched] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState<{ email: string; already: boolean } | null>(null)
+
+  // Signed-in customers get their email prefilled — but only while the field
+  // is empty/untouched; anything typed always wins (checkout's prefill pattern).
+  const displayed = touched || email !== '' ? email : (customer?.email ?? '')
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const value = displayed.trim()
+    if (!value) {
+      setError('Please enter your email address.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${slug}/stock-alerts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId, email: value }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; alreadyWaiting?: boolean; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Could not join the waitlist')
+      setDone({ email: value, already: data.alreadyWaiting === true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not join the waitlist')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="border border-line bg-secondary/50 p-4" role="status">
+        <div className="flex items-start gap-3">
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
+          <div className="min-w-0">
+            <p className="eyebrow">On the list</p>
+            <p className="mt-1.5 text-sm leading-relaxed">
+              {done.already
+                ? `You’re already on the list — we’ll write when ${color} · ${size} returns.`
+                : `You’re on the list — we’ll write when ${color} · ${size} returns.`}
+            </p>
+            <p className="mt-1 truncate font-mono text-[0.68rem] text-muted-foreground">{done.email}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={submit} noValidate className="border border-line bg-secondary/50 p-4">
+      <p className="eyebrow">Back in stock</p>
+      <p className="mt-1.5 text-[0.72rem] leading-relaxed text-muted-foreground">
+        We’ll write the moment {color} · {size} returns.
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <div className="flex h-11 min-w-0 flex-1 items-center gap-2 border border-line-strong px-3 transition-colors focus-within:border-foreground">
+          <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />
+          <input
+            type="email"
+            autoComplete="email"
+            value={displayed}
+            onChange={(e) => {
+              setTouched(true)
+              setEmail(e.target.value)
+            }}
+            disabled={busy}
+            aria-label="Email for back-in-stock notification"
+            placeholder="you@example.com"
+            className="w-full bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="h-11 shrink-0 border border-line-strong px-4 text-[0.62rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
+        >
+          {busy ? '…' : 'Notify me'}
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" className="mt-2 text-[0.72rem] font-medium text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </form>
+  )
+}
+
 export function ProductDetailPage({ slug }: { slug: string }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['product', slug],
@@ -260,8 +372,12 @@ export function ProductDetailPage({ slug }: { slug: string }) {
 
 function ProductInner({ product }: { product: ProductDetail }) {
   const [color, setColor] = useState<string | null>(product.variants[0]?.color ?? null)
-  const [size, setSize] = useState<string | null>(
-    product.variants.length === 1 ? product.variants[0]?.size ?? null : null,
+  // One-size products (single OR multi-colour) start with the size pre-selected —
+  // the size rail is hidden for them, so the default colour must land on a variant.
+  const [size, setSize] = useState<string | null>(() =>
+    product.variants.length === 1 || product.variants.every((v) => v.size === 'One Size')
+      ? product.variants[0]?.size ?? null
+      : null,
   )
   const [qty, setQty] = useState(1)
   const [imgIndex, setImgIndex] = useState(0)
@@ -564,6 +680,29 @@ function ProductInner({ product }: { product: ProductDetail }) {
             >
               <Heart className={cn('h-[1.1rem] w-[1.1rem]', wished && 'fill-espresso text-espresso')} strokeWidth={1.5} />
             </Button>
+          </div>
+
+          {/* ————— back-in-stock waitlist (sold-out variant selected) ————— */}
+          {selectedVariant && selectedVariant.stock === 0 ? (
+            <div className="mt-5" aria-live="polite">
+              <StockWaitlistForm
+                key={selectedVariant.id}
+                slug={product.slug}
+                variantId={selectedVariant.id}
+                color={selectedVariant.color}
+                size={selectedVariant.size}
+              />
+            </div>
+          ) : null}
+
+          {/* delivery promise — mirrors checkout's canonical SHIPPING_METHODS copy */}
+          <div className="mt-5 flex items-start gap-2.5 border border-line bg-secondary/50 px-3.5 py-3">
+            <Truck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />
+            <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
+              Standard <span className="font-mono tabular-nums">₦3,500</span> · 3–5 business days, nationwide courier ·
+              Express <span className="font-mono tabular-nums">₦7,500</span> · 1–2 business days, Lagos dispatch ·{' '}
+              <span className="text-espresso">complimentary standard over ₦150,000</span>
+            </p>
           </div>
 
           {/* accordions */}

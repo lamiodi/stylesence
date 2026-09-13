@@ -1,11 +1,15 @@
 'use client'
 
+import { useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { navigate } from '@/lib/router'
 import { Button } from '@/components/ui/button'
 import { Reveal } from '@/components/site/reveal'
 
 export function NotFoundPage() {
+  useEffect(() => {
+    document.title = 'Not found — Style Sence'
+  }, [])
   return (
     <div className="container-site flex flex-col items-center py-28 text-center sm:py-36">
       <Reveal>

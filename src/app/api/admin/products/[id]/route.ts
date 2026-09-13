@@ -21,7 +21,9 @@ const PRODUCT_INCLUDE = {
  * compareAtPrice (null clears), isActive, isFeatured, categoryId, description,
  * material, care, details, variantStocks, relatedSlugs (curated "Complete the
  * look" set — replaced atomically; [] clears), images (media pipeline — full
- * replace, ≥1 required, position = order). Returns the full updated product.
+ * replace, ≥1 required, position = order). Returns the full updated product
+ * plus `notifiedStockAlerts` — waitlist entries marked notified by this PATCH
+ * (variants whose stock went 0 → >0; the emails themselves are a dev placeholder).
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
@@ -80,7 +82,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (input.isActive !== undefined) data.isActive = input.isActive
   if (input.isFeatured !== undefined) data.isFeatured = input.isFeatured
 
+  let notifiedStockAlerts = 0
   if (input.variantStocks !== undefined) {
+    // Read the current stocks first so 0 → >0 restock transitions can be
+    // detected after the (ownership-guarded) updates land.
+    const before = await db.productVariant.findMany({
+      where: { productId: id },
+      select: { id: true, stock: true },
+    })
+    const beforeById = new Map(before.map((v) => [v.id, v.stock]))
+
     for (const vs of input.variantStocks) {
       const updated = await db.productVariant.updateMany({
         where: { id: vs.id, productId: id },
@@ -89,6 +100,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (updated.count === 0) {
         return fail(400, `Variant "${vs.id}" does not belong to this product`)
       }
+    }
+
+    // All updates succeeded — mark every un-notified waitlist entry on variants
+    // that just came back into stock (the email itself is a dev placeholder).
+    const restocked = input.variantStocks.filter(
+      (vs) => beforeById.get(vs.id) === 0 && vs.stock > 0,
+    )
+    for (const vs of restocked) {
+      const marked = await db.stockAlert.updateMany({
+        where: { variantId: vs.id, notifiedAt: null },
+        data: { notifiedAt: new Date() },
+      })
+      notifiedStockAlerts += marked.count
+    }
+    if (notifiedStockAlerts > 0) {
+      console.log(`[api/admin/products] simulated back-in-stock email(s): ${notifiedStockAlerts}`)
     }
   }
 
@@ -142,7 +169,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const product = await db.product.update({ where: { id }, data, include: PRODUCT_INCLUDE })
-  return ok({ product: toAdminProduct(product) })
+  return ok({ product: toAdminProduct(product), notifiedStockAlerts })
 }
 
 /** DELETE /api/admin/products/[id] — cascades images/variants/reviews/cart items. */

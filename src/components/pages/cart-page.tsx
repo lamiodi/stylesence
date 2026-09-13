@@ -11,6 +11,7 @@ import { Reveal } from '@/components/site/reveal'
 import { useCart, useUpdateCartItem, useRemoveCartItem, useClearCart } from '@/lib/cart-client'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
+import { FreeShippingMeter } from '@/components/site/shipping-meter'
 
 export function CartPage() {
   useEffect(() => {
@@ -26,8 +27,6 @@ export function CartPage() {
   const promo = promoData?.promo
 
   const items = cart?.items ?? []
-  const FREE_SHIPPING_THRESHOLD = 150000
-  const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - (cart?.subtotal ?? 0))
   const subtotal = cart?.subtotal ?? 0
   const discount = promo?.discount ?? 0
 
@@ -70,26 +69,7 @@ export function CartPage() {
         <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
           {/* items */}
           <div>
-            {remaining > 0 ? (
-              <div className="mb-6 border border-line bg-secondary/60 px-4 py-3">
-                <p className="text-[0.78rem] text-muted-foreground">
-                  You are <span className="font-mono font-medium text-foreground tabular-nums">{formatNaira(remaining)}</span> away from
-                  complimentary shipping.
-                </p>
-                <div className="mt-2 h-1 overflow-hidden bg-secondary">
-                  <div
-                    className="h-full bg-espresso transition-all duration-700"
-                    style={{ width: `${Math.min(100, ((cart?.subtotal ?? 0) / FREE_SHIPPING_THRESHOLD) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="mb-6 border border-line bg-secondary/60 px-4 py-3">
-                <p className="text-[0.78rem] text-espresso">
-                  Complimentary standard shipping unlocked — our thanks.
-                </p>
-              </div>
-            )}
+            <FreeShippingMeter subtotal={subtotal} />
 
             <ul className="divide-y divide-line border-t border-line">
               {items.map((item) => (

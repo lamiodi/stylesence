@@ -19,6 +19,7 @@ import { useCart } from '@/lib/cart-client'
 import { useCustomer } from '@/hooks/use-customer'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
+import { FREE_SHIPPING_THRESHOLD } from '@/components/site/shipping-meter'
 import { SHIPPING_METHODS, type ShippingMethod } from '@/lib/types'
 
 const NG_STATES = [
@@ -51,8 +52,6 @@ export function CheckoutPage() {
 
   const promoCode = usePromoStore((s) => s.code)
   const clearPromo = usePromoStore((s) => s.clear)
-  const { data: promoData } = usePromoValidation(promoCode, cart?.subtotal ?? 0)
-  const promo = promoData?.promo
 
   // Signed-in customers get their saved details prefilled — but only into
   // fields that are still empty/untouched; guest checkout is untouched.
@@ -69,12 +68,17 @@ export function CheckoutPage() {
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // The checkout email participates in promo validation so single-use-per-customer
+  // codes fail visibly here (the server re-checks authoritatively with this email).
+  const { data: promoData } = usePromoValidation(promoCode, cart?.subtotal ?? 0, email)
+  const promo = promoData?.promo
+
   const subtotal = cart?.subtotal ?? 0
   const discount = promo?.discount ?? 0
 
   /** Complimentary standard shipping over ₦150,000 (merchandise subtotal, pre-discount)
    *  — mirrors the server-side rule in /api/checkout and the cart-page promise. */
-  const thresholdFree = subtotal >= 150_000 && shipping === 'standard'
+  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && shipping === 'standard'
   const shippingPrice = promo?.freeShipping || thresholdFree ? 0 : SHIPPING_METHODS[shipping].price
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice
 
@@ -411,7 +415,7 @@ export function CheckoutPage() {
                 </p>
               </div>
               <div className="px-6 pb-6">
-                <PromoInput subtotal={subtotal} />
+                <PromoInput subtotal={subtotal} email={email} />
               </div>
             </div>
           </aside>

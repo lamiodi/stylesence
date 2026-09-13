@@ -91,6 +91,7 @@ model ProductVariant {
   sku        String      @unique
   stock      Int         @default(0)
   cartItems  CartItem[]
+  stockAlerts StockAlert[]
 }
 
 model Review {
@@ -178,6 +179,8 @@ model PromoCode {
   minSubtotal Int       @default(0)
   maxUsage    Int? // null = unlimited
   usageCount  Int       @default(0)
+  /** One redemption per customer email (checked against past orders at checkout). */
+  singleUsePerCustomer Boolean @default(false)
   isActive    Boolean   @default(true)
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
@@ -230,4 +233,17 @@ model JournalPost {
   readTime    Int      @default(4)
   isPublished Boolean  @default(true)
   publishedAt DateTime @default(now())
+}
+
+/** Back-in-stock waitlist entry — one per (variant, email). Simulated notify on restock. */
+model StockAlert {
+  id         String    @id @default(cuid())
+  email      String
+  variantId  String
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  /** Set when an admin restock (0 → >0) triggers the (simulated) notification email. */
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([variantId, email])
 }

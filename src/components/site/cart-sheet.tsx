@@ -9,6 +9,7 @@ import { useCart, useUpdateCartItem, useRemoveCartItem } from '@/lib/cart-client
 import { useUi } from '@/lib/store/wishlist'
 import { ProductImage } from './price'
 import { QuantityStepper } from './quantity-stepper'
+import { FreeShippingMeter } from './shipping-meter'
 
 export function CartSheet() {
   const open = useUi((s) => s.cartOpen)
@@ -139,7 +140,8 @@ export function CartSheet() {
 
         {items.length > 0 ? (
           <div className="border-t border-line px-6 py-5">
-            <div className="flex items-baseline justify-between">
+            <FreeShippingMeter compact subtotal={cart?.subtotal ?? 0} />
+            <div className="mt-4 flex items-baseline justify-between">
               <span className="eyebrow">Subtotal</span>
               <span className="font-mono text-base font-medium tabular-nums">
                 {formatNaira(cart?.subtotal ?? 0)}

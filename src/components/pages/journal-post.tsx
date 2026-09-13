@@ -189,6 +189,17 @@ export function JournalPostPage({ slug }: { slug: string }) {
                 </h2>
               )
             }
+            // Editorial pull-quote — lines opening with "> " render between
+            // hairline rules in oversized display italic.
+            if (block.startsWith('> ')) {
+              return (
+                <blockquote key={i} className="my-12 border-y border-line py-8 text-center">
+                  <p className="mx-auto max-w-xl font-display text-[1.45rem] font-light italic leading-snug text-balance text-foreground sm:text-[1.7rem]">
+                    {block.replace(/^>\s+/, '')}
+                  </p>
+                </blockquote>
+              )
+            }
             return (
               <p key={i} className="mt-6 text-[1.02rem] leading-[1.85] text-foreground/90 first:mt-0">
                 {block}

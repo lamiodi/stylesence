@@ -488,3 +488,111 @@ Stage Summary:
 6. **`GET /api/admin/products/[id]` does not exist (405)** — admin edits read from the list endpoint; add a single-product GET if a future feature needs it.
 7. **Header wishlist & theme buttons are hidden below sm** — account+search+bag remain; acceptable density, revisit if more actions land.
 8. Real payments (Paystack/Flutterwave) — dev placeholder by design.
+
+---
+Task ID: 10-c
+Agent: full-stack-developer (back-in-stock waitlist)
+Task: Back-in-stock waitlist end-to-end — fixes the PDP's dangling "join the waitlist below" promise
+
+Work Log:
+- Read the full worklog + every target file (reviews route pattern, api-helpers, validators' stockAlertInput, product-detail.tsx, admin products list/[id] routes, products-manager.tsx, promo-box PromoInput pattern, use-customer hook, checkout usePrefillField reference). Confirmed dev server up (root 200) and the lead's StockAlert groundwork in place (schema pushed, 0 rows).
+- NEW ROUTE `src/app/api/products/[slug]/stock-alerts/route.ts` (POST, no auth): readValidated(stockAlertInput) → product-by-slug must exist AND be active (404 "This piece has been retired.") → variant must exist AND belong to that product (404 "This size is not available on this piece.") → variant stock must be 0 (400 "This size is back in stock — add it to your bag.") → create; P2002 unique violation → 200 {ok:true, alreadyWaiting:true}; fresh signup → 200 {ok:true, alreadyWaiting:false}.
+- PDP (`src/components/pages/product-detail.tsx`): new StockWaitlistForm rendered immediately BELOW the ADD TO BAG actions block, gated on `selectedVariant && selectedVariant.stock === 0`, wrapped in an aria-live="polite" region. Eyebrow "Back in stock" + `We'll write the moment <color> · <size> returns.` copy; Mail-icon input in the PromoInput border-line-strong / focus-within:border-foreground wrapper (type=email, autoComplete=email, h-11 = 44px, aria-label "Email for back-in-stock notification") + "Notify me" bordered button (h-11, PromoInput button style, busy → '…'). Success replaces the form with a Check-icon "On the list" block (`You're on the list — we'll write when {color} · {size} returns.` + mono line with the submitted email — customer-facing copy stays clean, no dev note). Duplicate responses get the "You're already on the list — …" variant. Server errors inline via role="alert" text-destructive; empty submit caught client-side. Email prefill for signed-in customers via useCustomer + checkout's touched-flag pattern (fallback fills only while untouched/empty — no setState-in-effect). Variant-change reset via `key={selectedVariant.id}` remount (prefill re-derives from the shared customer query; error/success cleared).
+- ADMIN PATCH (`src/app/api/admin/products/[id]/route.ts`): variantStocks block now reads current stocks FIRST (`findMany productId` → Map), keeps the ownership-guarded updateMany loop, then AFTER all updates succeed marks `stockAlert.updateMany({variantId, notifiedAt: null} → notifiedAt: now})` for every 0 → >0 transition and counts them; response gains `notifiedStockAlerts` (always present, 0 default); console trace `[api/admin/products] simulated back-in-stock email(s): N` when > 0.
+- ADMIN LIST (`src/app/api/admin/products/route.ts` GET): new PRODUCT_LIST_INCLUDE with Prisma filtered relation count `_count: { select: { stockAlerts: { where: { notifiedAt: null } } } }` on variants; api-helpers toAdminProduct maps it to per-variant `waitingCount` (AdminProductSource widened with optional `_count`; POST/PATCH responses carry 0 — the UI reads it only from the list query).
+- ADMIN UI (`src/components/admin/products-manager.tsx`): AdminVariant/VariantRow gain waitingCount; edit-dialog variant rows show a compact mono `N waiting` badge (border border-line px-1.5 text-muted-foreground, singular/plural aria-label + title tooltip) next to the colour when > 0; variants hint copy explains the tag; saveMutation onSuccess toasts `Restocked — N waitlist customer(s) would be notified (email simulated).` after the usual "updated." toast when notifiedStockAlerts > 0.
+- CURL QA (all pass): sold-out variant (leather-mini-tote Charcoal One Size — the seed's only native 0-stock variant) → 200 ok; duplicate with case-different email → 200 alreadyWaiting (emailInput lowercases); silk-slip-dress variant on tote slug → 404 foreign-variant; tote Espresso (stock 5) → 400 back-in-stock; invalid email → 400; unknown slug → 404; missing variantId → 400. Restock flow: alert signed up → PATCH stock 0→5 → notifiedStockAlerts: 1 + notifiedAt set in DB (bun -e verified) + list waitingCount 1→0; PATCH 5→0 → notifiedStockAlerts: 0 (no false notify); PATCH without variantStocks → 0.
+- BROWSER E2E (agent-browser, fresh sessions): tote PDP → click Charcoal → form renders (stockNote "Sold out — join the waitlist below" now truthful); submit → success block; resubmit → "already on the list"; invalid email → inline role=alert server message; empty submit → client error; registered QA customer → returned to PDP → email prefilled → one-click submit; variant switch Espresso (in stock) → form hidden / back to Charcoal → fresh form (empty input, success cleared — key reset verified); ADD TO BAG correctly "SOLD OUT" disabled while form shows. Admin: login → Products tab zero page errors; edit dialog shows "2 waiting" badge on Charcoal row → stock 0→3 + Save → BOTH toasts fire ("Leather Mini Tote" updated. + "Restocked — 2 waitlist customers would be notified (email simulated).") → notifiedAt set for both alerts → badge gone after catalogue refetch; "1 waiting" singular aria-label verified on a later check.
+- CLEANUP: all 4 QA StockAlert rows deleted (curl/browser/qa.customer/final.check), QA customer deleted (cascades session+wishlist), tote Charcoal stock restored to seed 0, isFeatured restored to seed true (my non-variant PATCH test had flipped it), admin cookie session invalidated via /api/admin/logout. Final state: 0 StockAlert rows, 0 customers, seed stock/flags intact.
+- One dev-server restart performed per §9 documented procedure (pkill + setsid nohup, root 200 verified after). Reason: after a git-stash A/B test the client bundle was suspected stale; the actual cause turned out to be my own restock test leaving stock at 3 (form correctly hidden) — the restart was precautionary and harmless. Server healthy since.
+- PRE-EXISTING DEFECT FOUND + ISOLATED (NOT from 10-c, verified by git-stashing my 5 files and reproducing without them): hard-loading (full page load, not SPA nav) any `#/shop` or `#/product/*` URL logs one React hydration mismatch — the header MenubarTrigger className differs because header.tsx's `isShop = route.path.startsWith('/shop') || route.path.startsWith('/product')` is true on the client (hash read at hydration) but false in SSR (useRoute's `typeof window` branch renders '/'). page.tsx's pages are mount-gated but the header is not. Hard-loads of /, #/help, #/admin are clean; SPA navigation is clean. Fix belongs to the lead's header.tsx (e.g. gate isShop behind useMounted). Zero page errors (agent-browser errors) everywhere — this is a console warning-level mismatch only.
+- `bun run lint` → zero findings project-wide; `bunx tsc --noEmit` → zero errors in src/ (only the pre-existing examples//scripts//skills ones owned by others); dev.log clean (200s only, no Error/⨯/Failed lines in the recent window).
+
+Stage Summary:
+- The waitlist promise is now real end-to-end: sold-out PDP variants get an inline email signup (guest-friendly, prefilled for signed-in customers) → StockAlert row → admin restock (0 → >0) marks entries notified + counts them in the PATCH response → the admin edit dialog surfaces per-variant waitlists ("N waiting" badge) and the save flow toasts how many customers would be notified (email itself remains a clearly-dev-simulated placeholder, traced in dev.log).
+- Decisions: (1) `import { Prisma }` VALUE import (not `import type`) for the P2002 instanceof check — the task note said "import type" but type-only imports can't appear in instanceof; followed the proven customer/register pattern. (2) 200 (not 201) on fresh signup per brief. (3) waitingCount lives in the shared toAdminProduct mapper so every admin product response carries it (0 where the filtered count isn't included). (4) The success block shows the submitted email as a mono confirmation line — customer-facing copy kept clean otherwise. (5) Duplicate signups get distinct "already on the list" copy. (6) Two stacked toasts on a restocking save (updated + restocked) rather than one merged toast.
+- Risks/notes: restock marking is not inside a transaction with the stock updates (matches the route's existing per-row updateMany semantics — a failure mid-loop leaves earlier rows updated, as before); notifiedAt is write-once per alert (a second sold-out→restock cycle will not re-notify the same email — correct per "mark notified" semantics; a NEW signup after re-sold-out does get notified again); no rate limiting (unique constraint dedupes, per brief); PATCH of a variant that stays at 0 or goes 0→0 correctly notifies nobody.
+- Flag for lead: the pre-existing hard-load hydration mismatch on #/shop + #/product/* (header Menubar isShop vs SSR route, see Work Log) — one-line fix in header.tsx if desired; zero page errors today, console-level only.
+
+---
+Task ID: 10-a
+Agent: lead (Z.ai Code)
+Task: Round 10 opening QA sweep + hotfixes
+
+Work Log:
+- Read the full worklog (end of Round 9: 14 routes, 7 admin tabs, accounts/looks/media-polish all verified). Dev server UP on arrival (root 200), dev.log clean.
+- agent-browser fresh-session sweep: 14 storefront routes + admin login + all 7 tabs → zero page errors, zero console errors, per-tab titles correct. Interactions spot-checked: shop sort dropdown → URL sync (#/shop?sort=newest), size-guide dialog, PDP add-to-bag → cart sheet. Mobile 390px: 0px overflow on 7 key routes. Dark mode: body lab(96.34…) ✔.
+- DEFECT 1 found: `#/nonexistent-route` never set document.title (stale title from the previous route persisted). FIXED: NotFoundPage now runs a title effect → "Not found — Style Sence" (verified).
+- DEFECT 2 (from the 10-c subagent, verified via git-stash A/B): hard-loading `#/shop` / `#/product/*` logged a hydration mismatch — header MenubarTrigger `isShop` was true on the client (hash) but false in SSR. FIXED: isShop/isJournal/isAbout now gated behind `mounted` in header.tsx (verified: hard-load #/shop + #/product/silk-slip-dress → console clean).
+- DEFECT 3 found while E2E-ing the waitlist: one-size MULTI-COLOUR products (leather-mini-tote: Charcoal + Espresso, both "One Size") never initialised the hidden size state → selectedVariant stayed null → ADD TO BAG permanently disabled. FIXED: size initialiser now covers `every(v => v.size === 'One Size')` (verified: tote PDP auto-selects Charcoal/One Size, shows Sold out + waitlist form).
+
+Stage Summary:
+- Project judged STABLE at round open → feature round. Round 10 focus: 10-b per-customer single-use promo codes (worklog priority #4), 10-c back-in-stock waitlist (delegated to a full-stack-developer subagent — fixes the PDP's dangling "join the waitlist below" promise), 10-d mandatory styling polish, 10-f regression + handover. Schema groundwork done centrally before the split (PromoCode.singleUsePerCustomer + StockAlert model + back-relation pushed in ONE db:push + one dev-server restart; stockAlertInput/promo validator changes pre-added so the subagent never touched shared files).
+
+---
+Task ID: 10-b
+Agent: lead (Z.ai Code)
+Task: Per-customer single-use promo codes — schema field, evaluation, checkout enforcement, admin UI, checkout early validation
+
+Work Log:
+- Schema: `PromoCode.singleUsePerCustomer Boolean @default(false)` (pushed with the 10-c groundwork, one db:push).
+- `src/lib/promo.ts`: `evaluatePromo(rawCode, subtotal, email?)` — after the existing checks, single-use codes look up a prior non-CANCELLED order with the same promoCode + email → 400 `${code} is one per customer — it was already used on order ${orderNumber}.`
+- `/api/promo/validate`: promoValidateInput gained optional `email` (optionalEmailInput); passes it through.
+- `/api/checkout`: the authoritative re-validation now receives `input.email` — repeat redeemers are blocked before the transaction.
+- Admin: POST /api/admin/promos + GET list expose `singleUsePerCustomer` (PATCH flows it through automatically via the existing pass-through update); promos-manager create dialog gained a "One per customer" Switch block (border-line panel + explanation), the table code cell gained a mono `1×/CUSTOMER` badge.
+- Client: `usePromoValidation(code, subtotal, email?)` + `PromoInput({subtotal, email})` include the email in the request AND query key (only when it contains '@' — avoids keystroke refetch spam); checkout.tsx reordered so the prefill `email` state feeds the validation hook, and the PromoInput receives it. Cart page unchanged (no email context there; checkout stays authoritative).
+- QA (curl, all green): created SS-ONEUSE single-use → validate without email 200 · new email 200 → checkout with qa.oneuse@test.dev 201 (order SS-2026-3618, discount ₦14,800) → SAME email re-validate 400 naming the order → 2nd checkout same email 400 (server-authoritative) → DIFFERENT email 200 → UPPERCASE email 400 (case-insensitive, both sides lowercase) → admin PATCH toggle off → same email validates 200 → toggle back on. Browser: create-dialog Switch + 1×/CUSTOMER badge verified via a UI-created QA-UI-TEST code (deleted after, DB confirmed empty).
+- CLEANUP: QA order SS-2026-3618 deleted with stock restored, SS-ONEUSE + QA-UI-TEST promos deleted, QA carts removed (scripts/qa-cleanup-temp.ts, removed after run).
+
+Stage Summary:
+- Single-use-per-customer promo codes are live end-to-end: admin creates/toggles them, checkout validates them authoritatively against past orders by email, and the storefront promo box fails loudly at apply-time for signed-in/typed emails. Case-insensitive; CANCELLED orders don't count as redemptions. Worklog priority #4 (single-use) is closed; promo stacking remains open by choice.
+
+---
+Task ID: 10-d
+Agent: lead (Z.ai Code)
+Task: Mandatory styling polish round — shipping meter, pull-quotes, delivery promise, shared constants
+
+Work Log:
+- NEW shared `src/components/site/shipping-meter.tsx`: `FREE_SHIPPING_THRESHOLD = 150_000` export + `FreeShippingMeter` (role=status; remaining copy "You are ₦X away from complimentary shipping." with h-1 espresso progress bar as a real role=progressbar with aria-valuemin/max/now; unlocked state = Check icon + "Complimentary standard shipping unlocked — our thanks." in espresso; `compact` prop tightens padding for the drawer).
+- Cart sheet: compact meter inserted above the Subtotal row (was absent — the drawer is where most shoppers see their total). Verified both states live: ₦2,000 away at subtotal 148,000 → unlocked at 296,000 after qty increase.
+- Cart page: inline meter block replaced by the shared component (single source for the threshold + markup).
+- Checkout: threshold logic now imports FREE_SHIPPING_THRESHOLD (literal removed).
+- Journal posts: `> ` blocks now render as editorial pull-quotes — border-y hairline rules, centred font-display italic 1.45/1.7rem, text-balance (journal-post.tsx block parser). Seeded one into 'the-ivory-edit' ("Ivory is not the absence of colour — it is the discipline of it.") via a temp script — verified rendering as blockquote.
+- PDP: delivery-promise block under the add-to-bag/waitlist area — Truck icon + canonical SHIPPING_METHODS copy (Standard ₦3,500 · 3–5 business days nationwide · Express ₦7,500 · 1–2 business days Lagos · complimentary standard over ₦150,000 in espresso). Verified on silk-slip-dress + leather-mini-tote.
+
+Stage Summary:
+- Five polish items shipped (shared shipping meter + cart-sheet meter, journal pull-quote typography, PDP delivery promise, threshold constant unification) on top of the three 10-a hotfixes. All verified in-browser, zero errors, reduced-motion unaffected (the meter's width transition is the only movement — CSS transition, consistent with the previous cart-page meter).
+
+---
+Task ID: 10-f
+Agent: lead (Z.ai Code)
+Task: Round 10 final regression + handover
+
+Work Log:
+- agent-browser fresh-session sweep: 16 routes (14 storefront incl. both PDPs + #/nonexistent-route with its new title, hard-loaded #/shop + #/product for the hydration fix) → ZERO page errors, console clean (only Fast Refresh logs from in-session edits).
+- Admin login + all 7 tabs → titles correct, zero errors.
+- Waitlist E2E re-verified post one-size fix: leather-mini-tote → Charcoal auto-selected → form → submit qa.waitlist@test.dev → "You're on the list — we'll write when Charcoal · One Size returns." → alert row deleted (0 remain).
+- Mobile 390px: 0px horizontal overflow on home/shop/both PDPs/checkout/journal-post/cart. Dark mode: bg lab(96.34…), waitlist form visible. Reduced-motion media pass: no errors.
+- `bun run lint` → zero findings. `bunx tsc --noEmit` → zero errors in project src/ (only pre-existing skills/examples/scripts ones). dev.log tail → healthy 200s (the line-2 EADDRINUSE is a stale entry from an old incident; server confirmed up, root 200).
+
+Stage Summary:
+- Round 10 delivered: 2 features (single-use-per-customer promos 10-b, back-in-stock waitlist 10-c via subagent), 5 styling details (10-d), and 3 hotfixes (10-a: 404 title, header hydration, one-size multi-colour selection). All verified.
+
+## Current project status (assessment — end of Round 10)
+
+- The storefront runs 14 routes, the admin console 7 tabs, and the commerce loop is complete and hardened: browse → account/wishlist (synced) → cart (with a live free-shipping meter in the drawer) → promo (single-use-per-customer enforced) → checkout (prefilled, authoritative re-validation) → order + tracking.
+- The PDP now handles every stock state: in-stock buy, low-stock note, sold-out waitlist with signed-in email prefill — and the admin restock loop marks waitlist entries notified (simulated email) with visible waiting counts per variant.
+- Content loops unchanged and healthy: curated relations → PDP + home looks; admin media pipeline (create + edit); journal gained pull-quote typography.
+- Code hygiene: lint 0, tsc 0 (src), React Compiler discipline maintained (the one-size fix is a pure state-initialiser change), prefers-reduced-motion honoured.
+
+## Unresolved issues / risks & next-phase priorities
+
+1. **Password reset / email verification** — accounts still have no reset flow; transactional email (order confirmations, waitlist notifications, newsletter) remains simulated dev placeholders.
+2. **Wishlist mirror is fire-and-forget** — a failed PUT diverges silently until the next change or sign-in merge.
+3. **Promo stacking** — multiple codes per order remains unsupported (single-use-per-customer from this round is enforced; stacking was deliberately deferred).
+4. **Inventory reservations** — decrement-at-checkout only; no reservation TTL for concurrent buyers.
+5. **`GET /api/admin/products/[id]` still 405** — admin edits read from the list endpoint; add a single-product GET if a future feature needs it.
+6. **Header wishlist & theme buttons hidden below sm** — account+search+bag remain; acceptable density, revisit if more actions land.
+7. **StockAlert growth** — waitlist rows accumulate per (variant, email) with no admin bulk-management/cleanup view; notifiedAt marks are informational only. Consider an admin list/export when volume matters.
+8. Ops (unchanged): Turbopack can serve stale route handlers after edits — restart the dev server when a new field seems ignored; the EADDRINUSE at dev.log line 2 is stale history (server healthy).
+9. Real payments (Paystack/Flutterwave) — dev placeholder by design.

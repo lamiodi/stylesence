@@ -4,7 +4,8 @@ import { requireAdmin } from '@/lib/auth'
 import { promoPatchInput } from '@/lib/validators'
 
 /**
- * PATCH  /api/admin/promos/[id] — partial update (label, type, value, minSubtotal, maxUsage, isActive, expiresAt).
+ * PATCH  /api/admin/promos/[id] — partial update (label, type, value, minSubtotal,
+ * maxUsage, singleUsePerCustomer, isActive, expiresAt).
  * DELETE /api/admin/promos/[id] — remove the code.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
