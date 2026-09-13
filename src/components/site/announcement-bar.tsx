@@ -22,7 +22,7 @@ export function AnnouncementBar() {
   )
 
   return (
-    <div className="overflow-hidden border-b border-primary-foreground/10 bg-primary py-2">
+    <div className="no-print overflow-hidden border-b border-primary-foreground/10 bg-primary py-2">
       <div className="flex w-max animate-marquee motion-reduce:animate-none">
         {strip('a', false)}
         {strip('b', true)}

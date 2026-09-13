@@ -1,0 +1,666 @@
+     1→'use client'
+     2→
+     3→/**
+     4→ * #/help — Client Care (shipping, returns, sizing, care, contact, FAQ).
+     5→ *
+     6→ * Sections deep-link via ?topic=shipping|returns|sizing|care|contact|faq.
+     7→ * The SPA shell remounts this page whenever the topic query changes (key
+     8→ * `help:${topic}`), so the topic is stable for the lifetime of one mount:
+     9→ * it is read once, the target section is scrolled to on mount, and the
+    10→ * highlight is a one-shot CSS exit animation — no state, no effects races.
+    11→ */
+    12→
+    13→import { useEffect, type ReactNode } from 'react'
+    14→import { ArrowRight } from 'lucide-react'
+    15→import { Link, navigate, useRoute } from '@/lib/router'
+    16→import { cn } from '@/lib/utils'
+    17→import { formatNaira } from '@/lib/money'
+    18→import { Reveal } from '@/components/site/reveal'
+    19→import { DevPlaceholder } from '@/components/site/dev-placeholder'
+    20→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+    21→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+    22→
+    23→/* ————————————————— topic model ————————————————— */
+    24→
+    25→const TOPICS = [
+    26→  { id: 'shipping', label: 'Shipping' },
+    27→  { id: 'returns', label: 'Returns' },
+    28→  { id: 'sizing', label: 'Sizing' },
+    29→  { id: 'care', label: 'Care' },
+    30→  { id: 'contact', label: 'Contact' },
+    31→  { id: 'faq', label: 'FAQ' },
+    32→] as const
+    33→
+    34→type Topic = (typeof TOPICS)[number]['id']
+    35→
+    36→const TOPIC_IDS: ReadonlySet<string> = new Set(TOPICS.map((t) => t.id))
+    37→
+    38→function asTopic(value: string | null): Topic | null {
+    39→  return value && TOPIC_IDS.has(value) ? (value as Topic) : null
+    40→}
+    41→
+    42→/* ————————————————— content ————————————————— */
+    43→
+    44→const SHIPPING_ROWS = [
+    45→  {
+    46→    method: 'Standard Delivery',
+    47→    fee: 3_500,
+    48→    eta: '3–5 business days',
+    49→    note: 'Nationwide courier with tracking.',
+    50→  },
+    51→  {
+    52→    method: 'Express Delivery',
+    53→    fee: 7_500,
+    54→    eta: '1–2 business days',
+    55→    note: 'Lagos same-day dispatch before 11am.',
+    56→  },
+    57→] as const
+    58→
+    59→const SHIPPING_FACTS: { label: string; body: ReactNode }[] = [
+    60→  {
+    61→    label: 'Complimentary shipping',
+    62→    body: (
+    63→      <>
+    64→        Standard delivery is on us on orders over {formatNaira(150_000)} — applied
+    65→        automatically at the bag.
+    66→      </>
+    67→    ),
+    68→  },
+    69→  { label: 'Dispatch days', body: 'Tuesday – Saturday, from the Ikoyi atelier.' },
+    70→  { label: 'Same-day Lagos', body: 'Express orders placed before 11am leave the atelier the same day.' },
+    71→]
+    72→
+    73→const RETURN_TERMS = [
+    74→  { term: 'The window', detail: 'Fourteen days from delivery to begin a return or an exchange.' },
+    75→  { term: 'The condition', detail: 'Unworn and unwashed, with tags still attached, in the state it reached you.' },
+    76→  { term: 'The refund', detail: 'Issued to your original payment method, five to seven business days after inspection.' },
+    77→  { term: 'Size exchanges', detail: 'Subject to stock — batches are small, so we confirm availability before anything travels.' },
+    78→  { term: 'Archive pieces', detail: 'Archive-priced pieces are final sale; the cloth is ended and cannot be replaced.' },
+    79→] as const
+    80→
+    81→const MEASUREMENTS = [
+    82→  { size: 'XS', bust: 82, waist: 64, hips: 90 },
+    83→  { size: 'S', bust: 87, waist: 69, hips: 95 },
+    84→  { size: 'M', bust: 92, waist: 74, hips: 100 },
+    85→  { size: 'L', bust: 97, waist: 79, hips: 105 },
+    86→  { size: 'XL', bust: 102, waist: 84, hips: 110 },
+    87→] as const
+    88→
+    89→const MEASURE_STEPS = [
+    90→  { part: 'Bust', how: 'Around the fullest part, tape level under the arms.' },
+    91→  { part: 'Waist', how: 'At the natural crease that appears when you lean sideways.' },
+    92→  { part: 'Hips', how: 'Around the widest part, feet together.' },
+    93→] as const
+    94→
+    95→const CARE_GUIDES = [
+    96→  {
+    97→    n: '01',
+    98→    title: 'Cashmere',
+    99→    body: 'Hand wash cool with a drop of gentle soap — never wrung. Dry flat in the shade, and when pills rise, as they will, comb them off with a cashmere comb rather than picking. The knit repays the patience by softening.',
+   100→  },
+   101→  {
+   102→    n: '02',
+   103→    title: 'Wool tailoring',
+   104→    body: 'Steam; do not press. Brush downward after wear and hang on a broad wooden hanger overnight so the cloth recovers its line. Dry clean sparingly — twice a season is plenty. Wool remembers everything, including heat.',
+   105→  },
+   106→  {
+   107→    n: '03',
+   108→    title: 'Silk',
+   109→    body: 'Steam from a hand’s distance and let the iron stay in its drawer. Store on a padded hanger away from direct sun; creases fall out overnight on their own. Sandwashed silk prefers to be left alone.',
+   110→  },
+   111→  {
+   112→    n: '04',
+   113→    title: 'Cotton poplin',
+   114→    body: 'Machine wash at 30° with like colours, line dry with a good shake, then iron warm while the cloth is still faintly damp. Poplin takes crisply to pressing and holds it through the day.',
+   115→  },
+   116→] as const
+   117→
+   118→const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
+   119→  {
+   120→    q: 'Which size should I order?',
+   121→    a: (
+   122→      <>
+   123→        <p>
+   124→          Match your measurements to the{' '}
+   125→          <Link to="/help?topic=sizing" className="link-underline text-foreground">
+   126→            sizing chart
+   127→          </Link>{' '}
+   128→          — between sizes, stay true in knitwear, which is cut relaxed, and size down in
+   129→          tailoring, which runs true to the chart.
+   130→        </p>
+   131→        <p className="mt-3">
+   132→          Still unsure? Send your bust, waist and hip measurements to{' '}
+   133→          <a href="mailto:hello@stylesence.example" className="link-underline text-foreground">
+   134→            hello@stylesence.example
+   135→          </a>{' '}
+   136→          and we will advise honestly rather than upsell.
+   137→        </p>
+   138→      </>
+   139→    ),
+   140→  },
+   141→  {
+   142→    q: 'Will you restock a sold-out piece?',
+   143→    a: (
+   144→      <p>
+   145→        Rarely. Pieces are cut in small batches — never more than the atelier can finish
+   146→        well in a week — and when a cloth is genuinely ended, the colour is retired rather
+   147→        than compromised. Join The Sence Letter for first word of new cloth; subscribers
+   148→        hear before the shop does.
+   149→      </p>
+   150→    ),
+   151→  },
+   152→  {
+   153→    q: 'Do you offer promo codes?',
+   154→    a: (
+   155→      <p>
+   156→        Yes. <span className="font-mono text-espresso">SS-FRIEND</span> takes ten per cent
+   157→        off your first order and is live now — enter it at the bag before checkout. Further
+   158→        codes travel with The Sence Letter, never anywhere louder.
+   159→      </p>
+   160→    ),
+   161→  },
+   162→  {
+   163→    q: 'How do I track my order?',
+   164→    a: (
+   165→      <p>
+   166→        Your confirmation carries an order number in the SS-2026 series — keep it. Dispatch
+   167→        and delivery status live on the tracking page:{' '}
+   168→        <Link to="/track" className="link-underline text-foreground">
+   169→          track your order
+   170→        </Link>
+   171→        .
+   172→      </p>
+   173→    ),
+   174→  },
+   175→  {
+   176→    q: 'Can I include a gift note?',
+   177→    a: (
+   178→      <p>
+   179→        Yes. Write your message in the order notes at checkout and we will copy it out by
+   180→        hand on a house card before the parcel is sealed.
+   181→      </p>
+   182→    ),
+   183→  },
+   184→  {
+   185→    q: 'What payment methods do you accept?',
+   186→    a: (
+   187→      <div className="space-y-3">
+   188→        <p>In this development preview, checkout places a dev order directly — nothing is charged.</p>
+   189→        <DevPlaceholder compact title="Live payments">
+   190→          Paystack card payments and bank transfer are pending integration; the payment
+   191→          step is a placeholder in dev.
+   192→        </DevPlaceholder>
+   193→      </div>
+   194→    ),
+   195→  },
+   196→  {
+   197→    q: 'Do you ship internationally?',
+   198→    a: (
+   199→      <div className="space-y-3">
+   200→        <p>Today we ship nationwide within Nigeria only — Standard and Express, as above.</p>
+   201→        <DevPlaceholder compact title="International shipping">
+   202→          Cross-border rates, duties and timelines are being worked out; international
+   203→          checkout arrives with them.
+   204→        </DevPlaceholder>
+   205→      </div>
+   206→    ),
+   207→  },
+   208→]
+   209→
+   210→/* ————————————————— pieces ————————————————— */
+   211→
+   212→/**
+   213→ * One-shot highlight for a deep-linked section: a faint espresso wash plus a
+   214→ * hairline espresso bar that fade away (tw-animate-css exit animation, held at
+   215→ * the end state). The global prefers-reduced-motion override collapses the
+   216→ * animation to its end state instantly, so nothing flashes there.
+   217→ */
+   218→function Flash() {
+   219→  return (
+   220→    <>
+   221→      <span
+   222→        aria-hidden
+   223→        className="pointer-events-none absolute inset-0 bg-espresso/5 animate-out fade-out fill-mode-forwards duration-[2000ms] ease-in"
+   224→      />
+   225→      <span
+   226→        aria-hidden
+   227→        className="pointer-events-none absolute inset-y-0 left-0 w-[2px] bg-espresso animate-out fade-out fill-mode-forwards duration-[2000ms] ease-in"
+   228→      />
+   229→    </>
+   230→  )
+   231→}
+   232→
+   233→function Section({
+   234→  id,
+   235→  label,
+   236→  eyebrow,
+   237→  title,
+   238→  lede,
+   239→  banded = false,
+   240→  flash = false,
+   241→  children,
+   242→}: {
+   243→  id: Topic
+   244→  label: string
+   245→  eyebrow: string
+   246→  title: string
+   247→  lede?: ReactNode
+   248→  banded?: boolean
+   249→  flash?: boolean
+   250→  children: ReactNode
+   251→}) {
+   252→  return (
+   253→    <section
+   254→      id={`help-${id}`}
+   255→      aria-label={label}
+   256→      className={cn('relative scroll-mt-32', banded && 'border-y border-line bg-secondary/50')}
+   257→    >
+   258→      {flash ? <Flash /> : null}
+   259→      <div className="relative container-site py-14 sm:py-20">
+   260→        <Reveal>
+   261→          <p className="eyebrow">{eyebrow}</p>
+   262→          <h2 className="mt-2 font-display text-3xl font-light tracking-tight text-balance sm:text-4xl">
+   263→            {title}
+   264→          </h2>
+   265→          {lede ? (
+   266→            <p className="mt-4 max-w-2xl text-[0.98rem] leading-relaxed text-muted-foreground">{lede}</p>
+   267→          ) : null}
+   268→        </Reveal>
+   269→        {children}
+   270→      </div>
+   271→    </section>
+   272→  )
+   273→}
+   274→
+   275→/* ————————————————— page ————————————————— */
+   276→
+   277→export function HelpPage() {
+   278→  const route = useRoute()
+   279→  const topic = asTopic(route.query.get('topic'))
+   280→
+   281→  useEffect(() => {
+   282→    document.title = 'Client Care — Style Sence'
+   283→    if (!topic) return
+   284→    // Sections carry scroll-mt so the sticky header + topic nav clear them.
+   285→    // One rAF keeps this scroll past the shell's scroll-to-top on path change;
+   286→    // scrollIntoView() defers to the CSS scroll-behavior (smooth, auto under
+   287→    // the global reduced-motion override).
+   288→    const raf = requestAnimationFrame(() => {
+   289→      document.getElementById(`help-${topic}`)?.scrollIntoView()
+   290→    })
+   291→    return () => cancelAnimationFrame(raf)
+   292→  }, [topic])
+   293→
+   294→  return (
+   295→    <div>
+   296→      {/* ————— hero ————— */}
+   297→      <section aria-label="Client care" className="container-site pb-12 pt-14 sm:pb-16 sm:pt-20">
+   298→        <Reveal>
+   299→          <p className="eyebrow">Client care</p>
+   300→          <h1 className="mt-3 max-w-3xl font-display text-4xl font-light leading-[1.06] tracking-tight text-balance sm:text-5xl lg:text-[3.4rem]">
+   301→            How can we help?
+   302→          </h1>
+   303→          <p className="mt-6 max-w-2xl text-[0.98rem] leading-relaxed text-muted-foreground">
+   304→            Shipping, returns, measurements and the keeping of good cloth — set down
+   305→            plainly, the way we would say it across the atelier table. For anything not
+   306→            covered here, one email reaches the same small team that cuts, packs and posts
+   307→            every parcel.
+   308→          </p>
+   309→        </Reveal>
+   310→      </section>
+   311→
+   312→      {/* ————— topic nav (sticky in-page index) ————— */}
+   313→      <nav
+   314→        aria-label="Client care topics"
+   315→        className="sticky top-16 z-40 border-y border-line bg-background/95 backdrop-blur-md sm:top-18"
+   316→      >
+   317→        <div className="container-site">
+   318→          <ul className="flex overflow-x-auto no-scrollbar">
+   319→            {TOPICS.map((t) => {
+   320→              const active = topic === t.id
+   321→              return (
+   322→                <li key={t.id} className="shrink-0">
+   323→                  <Link
+   324→                    to={`/help?topic=${t.id}`}
+   325→                    className={cn(
+   326→                      'flex min-h-[44px] items-center whitespace-nowrap border-b-2 px-4 text-[0.66rem] font-medium uppercase tracking-[0.2em] transition-colors sm:px-5',
+   327→                      active
+   328→                        ? 'border-espresso text-foreground'
+   329→                        : 'border-transparent text-muted-foreground hover:text-foreground',
+   330→                    )}
+   331→                  >
+   332→                    {t.label}
+   333→                  </Link>
+   334→                </li>
+   335→              )
+   336→            })}
+   337→          </ul>
+   338→        </div>
+   339→      </nav>
+   340→
+   341→      {/* ————— shipping ————— */}
+   342→      <Section
+   343→        id="shipping"
+   344→        label="Shipping and delivery"
+   345→        eyebrow="Shipping"
+   346→        title="Dispatch & delivery"
+   347→        lede="Every parcel leaves the Ikoyi atelier tracked, and travels to your door anywhere in Nigeria."
+   348→        flash={topic === 'shipping'}
+   349→      >
+   350→        <Reveal delay={0.08} className="mt-10">
+   351→          <div className="border border-line">
+   352→            <Table className="w-full min-w-[600px]">
+   353→              <TableHeader>
+   354→                <TableRow className="border-line hover:bg-transparent">
+   355→                  <TableHead scope="col" className="eyebrow h-auto px-5 py-4">
+   356→                    Method
+   357→                  </TableHead>
+   358→                  <TableHead scope="col" className="eyebrow h-auto px-5 py-4">
+   359→                    Fee
+   360→                  </TableHead>
+   361→                  <TableHead scope="col" className="eyebrow h-auto px-5 py-4">
+   362→                    Arrives
+   363→                  </TableHead>
+   364→                  <TableHead scope="col" className="eyebrow h-auto px-5 py-4">
+   365→                    Notes
+   366→                  </TableHead>
+   367→                </TableRow>
+   368→              </TableHeader>
+   369→              <TableBody>
+   370→                {SHIPPING_ROWS.map((r) => (
+   371→                  <TableRow key={r.method} className="border-line hover:bg-transparent">
+   372→                    <TableCell className="px-5 py-4 font-medium">{r.method}</TableCell>
+   373→                    <TableCell className="px-5 py-4 font-mono text-[0.85rem] tabular-nums text-espresso">
+   374→                      {formatNaira(r.fee)}
+   375→                    </TableCell>
+   376→                    <TableCell className="px-5 py-4">{r.eta}</TableCell>
+   377→                    <TableCell className="px-5 py-4 text-muted-foreground">{r.note}</TableCell>
+   378→                  </TableRow>
+   379→                ))}
+   380→              </TableBody>
+   381→            </Table>
+   382→          </div>
+   383→
+   384→          <div className="mt-6 grid gap-px overflow-hidden border border-line bg-line sm:grid-cols-3">
+   385→            {SHIPPING_FACTS.map((f) => (
+   386→              <div key={f.label} className="bg-background p-5">
+   387→                <p className="eyebrow">{f.label}</p>
+   388→                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
+   389→              </div>
+   390→            ))}
+   391→          </div>
+   392→
+   393→          <div className="mt-6">
+   394→            <DevPlaceholder title="Courier partner">
+   395→              Our nationwide courier partner is unnamed in this development preview —
+   396→              branded tracking pages and named delivery windows arrive with the commercial
+   397→              launch.
+   398→            </DevPlaceholder>
+   399→          </div>
+   400→        </Reveal>
+   401→      </Section>
+   402→
+   403→      {/* ————— returns ————— */}
+   404→      <Section
+   405→        id="returns"
+   406→        label="Returns and exchanges"
+   407→        eyebrow="Returns"
+   408→        title="Returns & exchanges"
+   409→        lede="If a piece is not right, it can come home — quietly and without ceremony, within fourteen days."
+   410→        banded
+   411→        flash={topic === 'returns'}
+   412→      >
+   413→        <Reveal delay={0.08} className="mt-10">
+   414→          <dl className="divide-y divide-line border-y border-line">
+   415→            {RETURN_TERMS.map((t) => (
+   416→              <div key={t.term} className="grid gap-2 py-5 sm:grid-cols-[200px_1fr] sm:gap-6">
+   417→                <dt className="eyebrow pt-1">{t.term}</dt>
+   418→                <dd className="text-sm leading-relaxed text-muted-foreground">{t.detail}</dd>
+   419→              </div>
+   420→            ))}
+   421→          </dl>
+   422→          <div className="mt-6">
+   423→            <DevPlaceholder title="Reverse-logistics partner">
+   424→              Doorstep pickup for returns is pending a logistics partner — until then,
+   425→              begin any return by writing to hello@stylesence.example and we will arrange
+   426→              collection manually.
+   427→            </DevPlaceholder>
+   428→          </div>
+   429→        </Reveal>
+   430→      </Section>
+   431→
+   432→      {/* ————— sizing ————— */}
+   433→      <Section
+   434→        id="sizing"
+   435→        label="Sizing and measurements"
+   436→        eyebrow="Sizing"
+   437→        title="Measurements"
+   438→        lede="Our patterns are drafted on real bodies and graded XS through XL. Measure yourself calmly, in underwear, with the tape level — then match the chart."
+   439→        flash={topic === 'sizing'}
+   440→      >
+   441→        <div className="mt-10 grid gap-10 lg:grid-cols-12">
+   442→          <Reveal className="lg:col-span-7">
+   443→            <div className="border border-line">
+   444→              <Table className="w-full">
+   445→                <TableHeader>
+   446→                  <TableRow className="border-line hover:bg-transparent">
+   447→                    <TableHead scope="col" className="eyebrow h-auto px-4 py-3.5">
+   448→                      Size
+   449→                    </TableHead>
+   450→                    <TableHead scope="col" className="eyebrow h-auto px-4 py-3.5">
+   451→                      Bust
+   452→                    </TableHead>
+   453→                    <TableHead scope="col" className="eyebrow h-auto px-4 py-3.5">
+   454→                      Waist
+   455→                    </TableHead>
+   456→                    <TableHead scope="col" className="eyebrow h-auto px-4 py-3.5">
+   457→                      Hips
+   458→                    </TableHead>
+   459→                  </TableRow>
+   460→                </TableHeader>
+   461→                <TableBody>
+   462→                  {MEASUREMENTS.map((m) => (
+   463→                    <TableRow key={m.size} className="border-line hover:bg-transparent">
+   464→                      <TableCell className="px-4 py-3.5 font-medium">{m.size}</TableCell>
+   465→                      <TableCell className="px-4 py-3.5 font-mono text-[0.85rem] tabular-nums">
+   466→                        {m.bust}
+   467→                      </TableCell>
+   468→                      <TableCell className="px-4 py-3.5 font-mono text-[0.85rem] tabular-nums">
+   469→                        {m.waist}
+   470→                      </TableCell>
+   471→                      <TableCell className="px-4 py-3.5 font-mono text-[0.85rem] tabular-nums">
+   472→                        {m.hips}
+   473→                      </TableCell>
+   474→                    </TableRow>
+   475→                  ))}
+   476→                </TableBody>
+   477→              </Table>
+   478→            </div>
+   479→            <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground/80">
+   480→              Body measurements in centimetres — the tape skims, it never squeezes.
+   481→            </p>
+   482→          </Reveal>
+   483→
+   484→          <Reveal delay={0.1} className="lg:col-span-5">
+   485→            <div className="space-y-8">
+   486→              <div>
+   487→                <p className="eyebrow">How to measure</p>
+   488→                <ul className="mt-3 space-y-2.5">
+   489→                  {MEASURE_STEPS.map((s) => (
+   490→                    <li key={s.part} className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground">
+   491→                      <span className="mt-[0.55rem] h-[3px] w-[3px] shrink-0 rounded-full bg-espresso" aria-hidden />
+   492→                      <span>
+   493→                        <span className="text-foreground">{s.part}</span> — {s.how}
+   494→                      </span>
+   495→                    </li>
+   496→                  ))}
+   497→                </ul>
+   498→              </div>
+   499→              <div className="border-t border-line pt-6">
+   500→                <p className="eyebrow">Fit notes</p>
+   501→                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+   502→                  Knitwear is cut relaxed — between sizes, stay true or take the smaller.
+   503→                  Tailoring runs true to the chart; size down only if you like a close line.
+   504→                </p>
+   505→              </div>
+   506→            </div>
+   507→          </Reveal>
+   508→        </div>
+   509→      </Section>
+   510→
+   511→      {/* ————— care ————— */}
+   512→      <Section
+   513→        id="care"
+   514→        label="Care instructions"
+   515→        eyebrow="Care"
+   516→        title="Care of the cloth"
+   517→        lede="Kept well, these pieces are meant to outlast the season they arrived in — each cloth asks for slightly different patience."
+   518→        banded
+   519→        flash={topic === 'care'}
+   520→      >
+   521→        <div className="mt-10 grid gap-px overflow-hidden border border-line bg-line md:grid-cols-2">
+   522→          {CARE_GUIDES.map((g, i) => (
+   523→            <Reveal key={g.n} delay={i * 0.08} className="bg-background">
+   524→              <div className="h-full p-7 sm:p-9">
+   525→                <p className="font-mono text-[0.72rem] text-espresso">{g.n}</p>
+   526→                <h3 className="mt-3 font-display text-xl font-light tracking-tight">{g.title}</h3>
+   527→                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{g.body}</p>
+   528→              </div>
+   529→            </Reveal>
+   530→          ))}
+   531→        </div>
+   532→      </Section>
+   533→
+   534→      {/* ————— contact ————— */}
+   535→      <Section
+   536→        id="contact"
+   537→        label="Contact"
+   538→        eyebrow="Contact"
+   539→        title="Write to the house"
+   540→        lede="One inbox, one studio door, one small team behind both."
+   541→        flash={topic === 'contact'}
+   542→      >
+   543→        <div className="mt-10 grid gap-px overflow-hidden border border-line bg-line md:grid-cols-3">
+   544→          <Reveal className="bg-background">
+   545→            <div className="h-full p-7">
+   546→              <p className="eyebrow">Write</p>
+   547→              <a
+   548→                href="mailto:hello@stylesence.example"
+   549→                className="link-underline mt-3 inline-flex min-h-[44px] items-center font-display text-lg font-light tracking-tight"
+   550→              >
+   551→                hello@stylesence.example
+   552→              </a>
+   553→              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+   554→                Answered within one business day by the same people who pack the parcels.
+   555→              </p>
+   556→            </div>
+   557→          </Reveal>
+   558→          <Reveal delay={0.08} className="bg-background">
+   559→            <div className="h-full p-7">
+   560→              <p className="eyebrow">The studio</p>
+   561→              <address className="mt-3 text-sm not-italic leading-relaxed text-muted-foreground">
+   562→                14A Awolowo Road
+   563→                <br />
+   564→                Ikoyi, Lagos, Nigeria
+   565→              </address>
+   566→              <p className="mt-3 text-sm text-muted-foreground">Walk-ins welcome during studio hours.</p>
+   567→            </div>
+   568→          </Reveal>
+   569→          <Reveal delay={0.16} className="bg-background">
+   570→            <div className="h-full p-7">
+   571→              <p className="eyebrow">Hours</p>
+   572→              <p className="mt-3 font-mono text-sm tabular-nums">Tue – Sat · 10:00 – 18:00</p>
+   573→              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+   574→                West Africa Time. Sundays and Mondays the atelier rests; email still lands.
+   575→              </p>
+   576→            </div>
+   577→          </Reveal>
+   578→        </div>
+   579→
+   580→        <Reveal delay={0.1}>
+   581→          <div className="mt-6 grid items-stretch gap-4 md:grid-cols-2">
+   582→            <Link
+   583→              to="/track"
+   584→              className="group flex min-h-[44px] items-center justify-between gap-4 border border-line px-5 py-4 transition-colors hover:border-foreground"
+   585→            >
+   586→              <span>
+   587→                <span className="eyebrow block">Already ordered?</span>
+   588→                <span className="mt-1 block font-display text-lg font-light tracking-tight">
+   589→                  Track your order
+   590→                </span>
+   591→              </span>
+   592→              <ArrowRight
+   593→                className="h-4 w-4 shrink-0 text-espresso transition-transform group-hover:translate-x-1"
+   594→                strokeWidth={1.5}
+   595→                aria-hidden
+   596→              />
+   597→            </Link>
+   598→            <DevPlaceholder title="Phone & WhatsApp line">
+   599→              A direct studio number is not yet confirmed for this preview — write to
+   600→              hello@stylesence.example and we will reply the same working day.
+   601→            </DevPlaceholder>
+   602→          </div>
+   603→        </Reveal>
+   604→      </Section>
+   605→
+   606→      {/* ————— faq ————— */}
+   607→      <Section
+   608→        id="faq"
+   609→        label="Frequently asked questions"
+   610→        eyebrow="FAQ"
+   611→        title="Frequently asked"
+   612→        lede="The questions that reach us most, answered plainly. Yours not among them — write to us."
+   613→        banded
+   614→        flash={topic === 'faq'}
+   615→      >
+   616→        <Reveal delay={0.08} className="mt-10">
+   617→          <Accordion type="single" collapsible className="border border-line bg-background px-5 sm:px-8">
+   618→            {FAQ_ITEMS.map((item) => (
+   619→              <AccordionItem key={item.q} value={item.q} className="border-line">
+   620→                <AccordionTrigger className="py-5 text-left font-display text-base font-light tracking-tight hover:no-underline sm:text-lg">
+   621→                  {item.q}
+   622→                </AccordionTrigger>
+   623→                <AccordionContent className="pb-6 text-sm leading-relaxed text-muted-foreground">
+   624→                  {item.a}
+   625→                </AccordionContent>
+   626→              </AccordionItem>
+   627→            ))}
+   628→          </Accordion>
+   629→        </Reveal>
+   630→      </Section>
+   631→
+   632→      {/* ————— closing CTA band ————— */}
+   633→      <section aria-label="Begin" className="bg-primary py-16 sm:py-24">
+   634→        <div className="container-site text-center">
+   635→          <Reveal>
+   636→            <p className="eyebrow !text-primary-foreground/70">Begin</p>
+   637→            <h2 className="mx-auto mt-3 max-w-2xl font-display text-3xl font-light leading-tight tracking-tight text-balance text-primary-foreground sm:text-4xl">
+   638→              One piece, kept well, is the whole point.
+   639→            </h2>
+   640→            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-primary-foreground/75">
+   641→              And if a question still holds you back, write first — we would rather answer
+   642→              than hurry you.
+   643→            </p>
+   644→            <div className="mt-8 flex flex-wrap justify-center gap-3">
+   645→              <button
+   646→                type="button"
+   647→                onClick={() => navigate('/shop')}
+   648→                className="h-12 bg-primary-foreground px-8 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-primary transition-colors hover:bg-primary-foreground/85"
+   649→              >
+   650→                Shop the collection
+   651→              </button>
+   652→              <Link
+   653→                to="/journal"
+   654→                className="flex h-12 items-center gap-1.5 border border-primary-foreground/50 px-8 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-primary-foreground transition-colors hover:border-primary-foreground hover:bg-primary-foreground/10"
+   655→              >
+   656→                Read the journal
+   657→                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+   658→              </Link>
+   659→            </div>
+   660→          </Reveal>
+   661→        </div>
+   662→      </section>
+   663→    </div>
+   664→  )
+   665→}
+   666→

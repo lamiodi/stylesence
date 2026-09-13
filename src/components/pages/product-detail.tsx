@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
@@ -18,9 +18,11 @@ import { RatingStars } from '@/components/site/rating-stars'
 import { QuantityStepper } from '@/components/site/quantity-stepper'
 import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { ProductCard } from '@/components/site/product-card'
+import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import { Reveal } from '@/components/site/reveal'
 import { useAddToCart } from '@/lib/cart-client'
 import { useWishlist } from '@/lib/store/wishlist'
+import { useRecentlyViewed } from '@/lib/store/recently-viewed'
 import { useMounted } from '@/hooks/use-mounted'
 import type { ProductDetail } from '@/lib/types'
 
@@ -266,7 +268,36 @@ function ProductInner({ product }: { product: ProductDetail }) {
   const addToCart = useAddToCart()
   const toggleWish = useWishlist((s) => s.toggle)
   const hasWish = useWishlist((s) => s.has)
+  const pushRecent = useRecentlyViewed((s) => s.push)
   const mounted = useMounted()
+
+  // sticky mobile buy bar — appears once the main actions scroll out above
+  const actionsRef = useRef<HTMLDivElement>(null)
+  const [showStickyBar, setShowStickyBar] = useState(false)
+  useEffect(() => {
+    const el = actionsRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        // only when the actions left the viewport upwards (scrolled past, not approaching)
+        setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0)
+      },
+      { threshold: 0 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  // record the visit once per product (external store — safe inside an effect)
+  useEffect(() => {
+    pushRecent({
+      slug: product.slug,
+      name: product.name,
+      price: product.price,
+      primaryImage: product.images[0]?.url ?? null,
+      secondaryImage: product.images[1]?.url ?? null,
+    })
+  }, [product, pushRecent])
 
   const colors = useMemo(() => {
     const seen = new Map<string, string>()
@@ -475,7 +506,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
           </div>
 
           {/* actions */}
-          <div className="mt-6 flex gap-3">
+          <div ref={actionsRef} className="mt-6 flex gap-3">
             <Button
               className="h-12 flex-1 uppercase tracking-[0.2em] text-[0.66rem]"
               disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
@@ -698,6 +729,62 @@ function ProductInner({ product }: { product: ProductDetail }) {
           </p>
         </section>
       ) : null}
+
+      {/* ————— recently viewed ————— */}
+      <RecentlyViewedStrip
+        excludeSlug={product.slug}
+        className="mt-20 border-t border-line pt-12"
+      />
+
+      {/* ————— sticky mobile buy bar (appears once the actions scroll away) ————— */}
+      <div
+        inert={!showStickyBar}
+        aria-hidden={!showStickyBar}
+        className={cn(
+          'no-print fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-background/95 backdrop-blur-md',
+          'px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2.5 lg:hidden',
+          'transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+          showStickyBar ? 'translate-y-0' : 'pointer-events-none translate-y-full',
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-[0.92rem] leading-tight tracking-tight">
+              {product.name}
+            </p>
+            <p className="mt-0.5 truncate font-mono text-[0.74rem] text-muted-foreground tabular-nums">
+              {formatNaira(product.price)}
+              {selectedVariant ? (
+                <span className="text-foreground">
+                  {' '}
+                  · {selectedVariant.color} · {selectedVariant.size}
+                  {qty > 1 ? ` · ×${qty}` : ''}
+                </span>
+              ) : (
+                <span className="text-espresso"> · select a size</span>
+              )}
+            </p>
+          </div>
+          <Button
+            className="h-11 shrink-0 px-7 uppercase tracking-[0.18em] text-[0.64rem]"
+            disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
+            onClick={() => {
+              if (!selectedVariant) {
+                toast.error('Please select a size first.')
+                actionsRef.current?.scrollIntoView({ block: 'center' })
+                return
+              }
+              addToCart.mutate({ variantId: selectedVariant.id, qty })
+            }}
+          >
+            {addToCart.isPending
+              ? 'Adding…'
+              : selectedVariant?.stock === 0
+                ? 'Sold out'
+                : 'Add to bag'}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

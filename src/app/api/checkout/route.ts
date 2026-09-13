@@ -17,6 +17,9 @@ const SHIPPING_RATES: Record<'standard' | 'express', number> = {
   express: 7500,
 }
 
+/** Complimentary standard shipping on merchandise subtotals at/above this value. */
+const FREE_SHIPPING_THRESHOLD = 150_000
+
 class StockError extends Error {}
 
 function stockMessage(name: string, size: string, color: string, stock: number): string {
@@ -67,7 +70,11 @@ export async function POST(req: Request) {
     promoId = row?.id ?? null
   }
 
-  const shipping = freeShipping ? 0 : SHIPPING_RATES[input.shippingMethod]
+  // Complimentary standard shipping over the threshold (matches the storefront
+  // promise on the cart page + announcement bar). Promo free-shipping wins over
+  // everything (also waives express).
+  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && input.shippingMethod === 'standard'
+  const shipping = freeShipping || thresholdFree ? 0 : SHIPPING_RATES[input.shippingMethod]
   const total = subtotal - discount + shipping
 
   let orderNumber: string

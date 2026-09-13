@@ -50,9 +50,13 @@ export function CheckoutPage() {
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const shippingPrice = promo?.freeShipping ? 0 : SHIPPING_METHODS[shipping].price
   const subtotal = cart?.subtotal ?? 0
   const discount = promo?.discount ?? 0
+
+  /** Complimentary standard shipping over ₦150,000 (merchandise subtotal, pre-discount)
+   *  — mirrors the server-side rule in /api/checkout and the cart-page promise. */
+  const thresholdFree = subtotal >= 150_000 && shipping === 'standard'
+  const shippingPrice = promo?.freeShipping || thresholdFree ? 0 : SHIPPING_METHODS[shipping].price
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice
 
   const validate = (): boolean => {
@@ -254,6 +258,7 @@ export function CheckoutPage() {
               >
                 {(Object.keys(SHIPPING_METHODS) as ShippingMethod[]).map((key) => {
                   const m = SHIPPING_METHODS[key]
+                  const methodFree = key === 'standard' && (promo?.freeShipping || thresholdFree)
                   return (
                     <Label
                       key={key}
@@ -268,11 +273,18 @@ export function CheckoutPage() {
                       <div className="flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium">{m.label}</span>
-                          <span className="font-mono text-sm tabular-nums">{formatNaira(m.price)}</span>
+                          <span className={cn('font-mono text-sm tabular-nums', methodFree && 'text-espresso')}>
+                            {methodFree ? 'Complimentary' : formatNaira(m.price)}
+                          </span>
                         </div>
                         <p className="mt-1 text-[0.72rem] text-muted-foreground">
                           {m.eta} · {m.note}
                         </p>
+                        {methodFree ? (
+                          <p className="mt-1 text-[0.66rem] uppercase tracking-[0.14em] text-espresso">
+                            Unlocked — orders over ₦150,000
+                          </p>
+                        ) : null}
                       </div>
                     </Label>
                   )
@@ -348,7 +360,7 @@ export function CheckoutPage() {
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">
                       {SHIPPING_METHODS[shipping].label}
-                      {promo?.freeShipping ? ' — complimentary' : ''}
+                      {shippingPrice === 0 ? ' — complimentary' : ''}
                     </dt>
                     <dd className="font-mono tabular-nums">{formatNaira(shippingPrice)}</dd>
                   </div>

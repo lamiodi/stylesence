@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Package, Truck, Home, ArrowRight } from 'lucide-react'
+import { Check, Package, Truck, Home, ArrowRight, Printer } from 'lucide-react'
 import { navigate, Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatDate, formatNaira } from '@/lib/money'
@@ -78,10 +78,18 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
               ? 'The pieces have been released back to the rail. Nothing was charged — this is a development preview.'
               : 'Your pieces are being prepared. A confirmation email would arrive shortly — dev placeholder.'}
           </p>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="no-print mx-auto mt-6 flex items-center gap-1.5 border-b border-line-strong pb-1 text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+          >
+            <Printer className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+            Print receipt
+          </button>
         </Reveal>
 
         {!cancelled ? (
-          <Reveal delay={0.08} className="mt-12">
+          <Reveal delay={0.08} className="no-print mt-12">
             <ol className="relative flex justify-between border-t border-line pt-8" aria-label="Order progress">
               {STEPS.map((step, i) => {
                 const done = i <= currentStep
@@ -198,14 +206,14 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
           </div>
         </Reveal>
 
-        <Reveal delay={0.16} className="mt-6">
+        <Reveal delay={0.16} className="no-print mt-6">
           <DevPlaceholder title="Transactional email & tracking">
             Confirmation email and courier tracking links are simulated in this environment.
             Order status can be advanced from the admin console.
           </DevPlaceholder>
         </Reveal>
 
-        <Reveal delay={0.2} className="mt-10 flex flex-wrap justify-center gap-3">
+        <Reveal delay={0.2} className="no-print mt-10 flex flex-wrap justify-center gap-3">
           <Button
             className="h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
             onClick={() => navigate('/shop')}

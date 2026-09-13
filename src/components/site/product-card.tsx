@@ -6,6 +6,7 @@ import { Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
 import { ProductImage } from './price'
+import { QuickViewButton } from './quick-view'
 import { useWishlist } from '@/lib/store/wishlist'
 import { useMounted } from '@/hooks/use-mounted'
 import type { ProductCard as ProductCardType } from '@/lib/types'
@@ -69,7 +70,7 @@ export const ProductCard = memo(function ProductCard({
             ) : null}
             {onSale ? (
               <span className="eyebrow bg-espresso px-2.5 py-1 !text-[0.55rem] text-background">
-                Archive Price
+                Archive
               </span>
             ) : null}
           </div>
@@ -149,6 +150,13 @@ export const ProductCard = memo(function ProductCard({
       >
         <Heart className={cn('h-4 w-4', wished && 'fill-espresso')} strokeWidth={1.5} />
       </button>
+
+      {/* quick view — anchored to the image area (image is aspect-[3/4] at the
+          card top; the overlay matches it so the pill sits on the photo, not
+          on the name/price rows below) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 aspect-[3/4]">
+        <QuickViewButton slug={product.slug} name={product.name} compact />
+      </div>
     </article>
   )
 })

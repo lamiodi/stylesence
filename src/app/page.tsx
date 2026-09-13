@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { useRoute, useScrollTop } from '@/lib/router'
+import { useMounted } from '@/hooks/use-mounted'
 import { AnnouncementBar } from '@/components/site/announcement-bar'
 import { Header } from '@/components/site/header'
 import { Footer } from '@/components/site/footer'
@@ -23,11 +24,14 @@ import { WishlistPage } from '@/components/pages/wishlist-page'
 import { JournalPage } from '@/components/pages/journal'
 import { JournalPostPage } from '@/components/pages/journal-post'
 import { AboutPage } from '@/components/pages/about'
+import { HelpPage } from '@/components/pages/help'
+import { TrackOrderPage } from '@/components/pages/track-order'
 import { NotFoundPage } from '@/components/pages/not-found'
 import { AdminApp } from '@/components/admin/admin-app'
 
 function Router() {
   const route = useRoute()
+  const mounted = useMounted()
   useScrollTop(route)
 
   const [s0, s1, s2] = route.segments
@@ -73,6 +77,14 @@ function Router() {
     case 'about':
       page = <AboutPage />
       break
+    case 'help':
+      page = <HelpPage />
+      key = `help:${route.query.get('topic') ?? ''}`
+      break
+    case 'track':
+      page = <TrackOrderPage />
+      key = `track:${route.query.get('order') ?? ''}`
+      break
     case 'admin':
       page = <AdminApp />
       key = `admin:${route.query.get('tab') ?? ''}`
@@ -83,9 +95,12 @@ function Router() {
 
   void s2
 
+  // SSR renders `/` (home) — the client may hydrate against a deep hash link
+  // (#/product/…). Rendering nothing until mounted keeps hydration a match;
+  // the page then appears keyed + animated on the very next frame.
   return (
     <main id="main" className="flex-1">
-      <PageFade keyName={key}>{page}</PageFade>
+      {mounted ? <PageFade keyName={key}>{page}</PageFade> : null}
     </main>
   )
 }

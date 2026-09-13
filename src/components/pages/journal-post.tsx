@@ -87,7 +87,7 @@ export function JournalPostPage({ slug }: { slug: string }) {
       </Reveal>
 
       <Reveal delay={0.14}>
-        <div className="mt-12">
+        <div className="drop-cap mt-12">
           {blocks.map((block, i) => {
             if (block.startsWith('## ')) {
               return (

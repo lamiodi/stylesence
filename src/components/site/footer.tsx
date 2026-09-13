@@ -18,6 +18,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 export function NewsletterForm() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,11 +40,29 @@ export function NewsletterForm() {
         description: '10% off your first order — code SS-FRIEND at the bag.',
       })
       setEmail('')
+      setDone(true)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Subscription failed')
     } finally {
       setBusy(false)
     }
+  }
+
+  if (done) {
+    return (
+      <div className="mt-5 max-w-md border border-line bg-secondary/60 px-5 py-4" role="status">
+        <p className="flex items-center gap-2.5 text-sm">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-espresso/10 text-espresso">
+            <Check className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          </span>
+          <span>
+            You are on the list. <span className="text-muted-foreground">Code</span>{' '}
+            <span className="font-mono text-[0.8rem] text-espresso">SS-FRIEND</span>{' '}
+            <span className="text-muted-foreground">waits at the bag.</span>
+          </span>
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -80,22 +99,24 @@ export function NewsletterForm() {
 }
 
 function ClientCareLinks() {
-  const items = ['Shipping & Returns', 'Size Guide', 'Care Instructions', 'Contact Client Care', 'FAQ']
+  const items: { label: string; to: string }[] = [
+    { label: 'Track your order', to: '/track' },
+    { label: 'Shipping & Returns', to: '/help?topic=shipping' },
+    { label: 'Size Guide', to: '/help?topic=sizing' },
+    { label: 'Care Instructions', to: '/help?topic=care' },
+    { label: 'Contact Client Care', to: '/help?topic=contact' },
+    { label: 'FAQ', to: '/help?topic=faq' },
+  ]
   return (
     <ul className="space-y-2.5">
       {items.map((item) => (
-        <li key={item}>
-          <button
-            type="button"
-            onClick={() =>
-              toast('Dev placeholder', {
-                description: `“${item}” is not implemented in this preview — commercial copy pending.`,
-              })
-            }
-            className="link-underline text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+        <li key={item.label}>
+          <Link
+            to={item.to}
+            className="link-underline text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
-            {item}
-          </button>
+            {item.label}
+          </Link>
         </li>
       ))}
     </ul>
@@ -128,7 +149,7 @@ export function Footer() {
   const categories = data?.categories ?? []
 
   return (
-    <footer className="mt-auto border-t border-line bg-secondary/60">
+    <footer className="no-print mt-auto border-t border-line bg-secondary/60">
       <div className="container-site">
         {/* newsletter band */}
         <div className="grid gap-10 border-b border-line py-14 md:grid-cols-2 md:gap-16">

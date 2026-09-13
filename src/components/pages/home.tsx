@@ -8,6 +8,7 @@ import { Reveal } from '@/components/site/reveal'
 import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card'
 import { ProductImage } from '@/components/site/price'
 import { formatDate, formatNaira } from '@/lib/money'
+import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import type { ProductsResponse, Category, JournalCard } from '@/lib/types'
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -404,6 +405,9 @@ export function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* ————— RECENTLY VIEWED ————— */}
+      <RecentlyViewedStrip className="container-site pb-16 sm:pb-20" />
     </div>
   )
 }

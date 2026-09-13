@@ -99,7 +99,7 @@ export function Header() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 bg-background/92 backdrop-blur-md transition-[border-color,box-shadow] duration-500',
+        'no-print sticky top-0 z-50 bg-background/92 backdrop-blur-md transition-[border-color,box-shadow] duration-500',
         scrolled ? 'border-b border-line-strong shadow-[0_1px_24px_-18px_rgba(0,0,0,0.5)]' : 'border-b border-transparent',
       )}
     >
