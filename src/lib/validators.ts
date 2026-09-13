@@ -150,6 +150,56 @@ export const newsletterInput = z.object({
   email: emailInput,
 })
 
+/* ------------------------------------------------------------------ *
+ * Customer accounts (email + password)
+ * ------------------------------------------------------------------ */
+
+export const customerRegisterInput = z.object({
+  name: requiredText(2, 80, 'Name'),
+  email: emailInput,
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(72, 'Password must be at most 72 characters'),
+})
+
+export const customerLoginInput = z.object({
+  email: emailInput,
+  password: z.string().min(1, 'Password is required').max(72, 'Password must be at most 72 characters'),
+})
+
+/** Optional-or-clearable profile text — empty string/null clears; absent key = not patched. */
+const clearableText = (min: number, max: number, label: string) =>
+  z.preprocess(
+    (v) => {
+      if (v === null || v === undefined) return v
+      if (typeof v === 'string' && v.trim() === '') return null
+      return v
+    },
+    z
+      .string()
+      .trim()
+      .min(min, `${label} must be at least ${min} characters`)
+      .max(max, `${label} must be at most ${max} characters`)
+      .nullable()
+      .optional()
+  )
+
+export const customerPatchInput = z.object({
+  name: requiredText(2, 80, 'Name').optional(),
+  phone: clearableText(7, 40, 'Phone'),
+  defaultAddress: clearableText(5, 200, 'Address'),
+  defaultCity: clearableText(2, 80, 'City'),
+  defaultState: clearableText(2, 80, 'State'),
+})
+
+/** Wishlist slug set — PUT (replace) + POST (merge) share the same shape. */
+export const wishlistSlugsInput = z.object({
+  slugs: z
+    .array(z.string().trim().min(1, 'Wishlist slug cannot be empty'))
+    .max(60, 'At most 60 wishlist pieces'),
+})
+
 export const cartAddInput = z.object({
   variantId: z.string().min(1, 'variantId is required'),
   qty: z
@@ -265,6 +315,17 @@ export const productPatchInput = z.object({
     .array(z.string().trim().min(1, 'Related slug cannot be empty'))
     .max(8, 'At most 8 curated pieces')
     .optional(),
+  /** Full image-set replace (media pipeline) — at least one image, in display order; [] is rejected. */
+  images: z
+    .array(
+      z.object({
+        url: z.string().trim().min(1, 'Image URL is required').max(500, 'Image URL must be at most 500 characters'),
+        alt: optionalText(200, 'Image alt text'),
+      })
+    )
+    .min(1, 'A piece needs at least one image')
+    .max(12, 'At most 12 images')
+    .optional(),
   variantStocks: z
     .array(
       z.object({
@@ -292,3 +353,7 @@ export type CartPatchInput = z.infer<typeof cartPatchInput>
 export type PromoValidateInput = z.infer<typeof promoValidateInput>
 export type PromoInput = z.infer<typeof promoInput>
 export type PromoPatchInput = z.infer<typeof promoPatchInput>
+export type CustomerRegisterInput = z.infer<typeof customerRegisterInput>
+export type CustomerLoginInput = z.infer<typeof customerLoginInput>
+export type CustomerPatchInput = z.infer<typeof customerPatchInput>
+export type WishlistSlugsInput = z.infer<typeof wishlistSlugsInput>

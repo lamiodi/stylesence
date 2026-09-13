@@ -551,6 +551,180 @@ function ImageStudio({ onGenerated }: { onGenerated: (url: string) => void }) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Media pipeline — editable product gallery (edit dialog)
+ * ------------------------------------------------------------------ */
+interface EditableImage {
+  url: string
+  alt: string
+}
+
+function ImagesEditor({
+  images,
+  onChange,
+  nameHint,
+}: {
+  images: EditableImage[]
+  onChange: (images: EditableImage[]) => void
+  nameHint: string
+}) {
+  const [addUrl, setAddUrl] = useState('')
+  const atLimit = images.length >= 12
+
+  const move = (index: number, delta: -1 | 1) => {
+    const target = index + delta
+    if (target < 0 || target >= images.length) return
+    const next = [...images]
+    const [moved] = next.splice(index, 1)
+    next.splice(target, 0, moved)
+    onChange(next)
+  }
+
+  const add = (url: string) => {
+    const trimmed = url.trim()
+    if (!trimmed) {
+      toast.error('Paste an image URL first.')
+      return
+    }
+    if (images.some((img) => img.url === trimmed)) {
+      toast.error('That image URL is already in the gallery.')
+      return
+    }
+    if (atLimit) {
+      toast.error('Twelve images is the limit for one piece.')
+      return
+    }
+    onChange([...images, { url: trimmed, alt: '' }])
+    setAddUrl('')
+  }
+
+  const setAlt = (index: number, alt: string) => {
+    onChange(images.map((img, i) => (i === index ? { ...img, alt } : img)))
+  }
+
+  const remove = (index: number) => {
+    if (images.length <= 1) return // a piece always keeps at least one image
+    onChange(images.filter((_, i) => i !== index))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="eyebrow">Gallery — images, in order</p>
+        <p className="mt-1.5 text-[0.62rem] leading-snug text-muted-foreground">
+          The first image is the shop card; the rest form the product gallery. Reorder with the
+          arrows, refine the alt text, or paint a new one below — a piece always keeps at least
+          one image.
+        </p>
+      </div>
+
+      {images.length === 0 ? (
+        <p className="border border-dashed border-line-strong px-4 py-5 text-center text-sm italic text-muted-foreground">
+          No images yet — add a URL or paint one with the atelier studio below.
+        </p>
+      ) : (
+        <ul className="max-h-72 divide-y divide-line overflow-y-auto border border-line scroll-elegant">
+          {images.map((img, i) => {
+            const rowLabel = img.url.split('/').pop() || img.url
+            return (
+              <li key={`${img.url}-${i}`} className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4">
+                <span className="w-6 shrink-0 font-mono text-[0.68rem] tabular-nums text-muted-foreground" aria-hidden>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <img
+                  src={img.url}
+                  alt={img.alt || rowLabel}
+                  className="h-16 w-12 shrink-0 border border-line object-cover"
+                  loading="lazy"
+                />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="truncate font-mono text-[0.68rem] text-muted-foreground" title={img.url}>
+                    {img.url}
+                  </p>
+                  <Input
+                    value={img.alt}
+                    onChange={(e) => setAlt(i, e.target.value)}
+                    placeholder={`Alt text — describes “${nameHint}”`}
+                    className="h-9 border-line text-xs"
+                    aria-label={`Alt text for image ${i + 1}`}
+                    maxLength={200}
+                  />
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 border-line"
+                    disabled={i === 0}
+                    onClick={() => move(i, -1)}
+                    aria-label={`Move image ${i + 1} up in the gallery`}
+                  >
+                    <ChevronUp className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 border-line"
+                    disabled={i === images.length - 1}
+                    onClick={() => move(i, 1)}
+                    aria-label={`Move image ${i + 1} down in the gallery`}
+                  >
+                    <ChevronDown className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 border-line hover:border-destructive hover:text-destructive"
+                    disabled={images.length <= 1}
+                    onClick={() => remove(i)}
+                    aria-label={`Remove image ${i + 1} from the gallery`}
+                    title={images.length <= 1 ? 'A piece keeps at least one image' : undefined}
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </Button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          value={addUrl}
+          onChange={(e) => setAddUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              add(addUrl)
+            }
+          }}
+          placeholder="/images/products/your-piece-detail.png"
+          className="h-10 border-line-strong font-mono text-xs"
+          aria-label="Add an image URL to the gallery"
+          disabled={atLimit}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 shrink-0 border-line-strong uppercase tracking-[0.16em] text-[0.62rem]"
+          onClick={() => add(addUrl)}
+          disabled={atLimit || !addUrl.trim()}
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+          Add
+          <span className="sr-only">image by URL</span>
+        </Button>
+      </div>
+
+      <ImageStudio onGenerated={(url) => add(url)} />
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
  * Create / edit dialog
  * ------------------------------------------------------------------ */
 function ProductDialog({
@@ -588,6 +762,9 @@ function ProductDialog({
   const [isActive, setIsActive] = useState(product?.isActive ?? true)
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured ?? false)
   const [images, setImages] = useState('')
+  const [editImages, setEditImages] = useState<EditableImage[]>(
+    mode === 'edit' && product ? product.images.map((img) => ({ url: img.url, alt: img.alt ?? '' })) : [],
+  )
   const [relatedSlugs, setRelatedSlugs] = useState<string[]>(product?.curatedRelated ?? [])
   const [variants, setVariants] = useState<VariantRow[]>(
     mode === 'edit' && product
@@ -663,6 +840,10 @@ function ProductDialog({
       body.isActive = isActive
       body.isFeatured = isFeatured
       body.relatedSlugs = relatedSlugs
+      // Media pipeline — full image-set replace, position = gallery order.
+      if (editImages.length > 0) {
+        body.images = editImages.map(({ url, alt }) => ({ url, alt: alt.trim() || undefined }))
+      }
       const stocks = variants
         .filter((v) => v.id)
         .map((v) => ({ id: v.id as string, stock: Math.max(0, Math.round(Number(v.stock) || 0)) }))
@@ -682,7 +863,7 @@ function ProductDialog({
           <DialogDescription>
             {mode === 'create'
               ? 'Add a new piece to the catalogue with its variants.'
-              : 'Adjust details, pricing, visibility and per-variant stock.'}
+              : 'Adjust details, pricing, imagery, visibility and per-variant stock.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -843,25 +1024,13 @@ function ProductDialog({
                 }
               />
             </Field>
-          ) : product && product.images.length > 0 ? (
-            <div className="space-y-2">
-              <p className="eyebrow">Current images</p>
-              <div className="flex flex-wrap gap-2">
-                {product.images.map((img) => (
-                  <img
-                    key={img.url}
-                    src={img.url}
-                    alt={img.alt ?? product.name}
-                    className="h-14 w-12 border border-line object-cover"
-                    loading="lazy"
-                  />
-                ))}
-              </div>
-              <p className="text-[0.62rem] text-muted-foreground">
-                Images are set at creation — re-upload flows land with the media pipeline.
-              </p>
-            </div>
-          ) : null}
+          ) : (
+            <ImagesEditor
+              images={editImages}
+              onChange={setEditImages}
+              nameHint={product?.name ?? 'the piece'}
+            />
+          )}
 
           <div className="space-y-3">
             <p className="eyebrow">Variants {mode === 'edit' ? '— stock' : ''}</p>
@@ -1122,7 +1291,7 @@ export function ProductsManager() {
                 {filtered.map((p) => {
                   const toggling = toggleMutation.isPending && toggleMutation.variables?.id === p.id
                   return (
-                    <TableRow key={p.id}>
+                    <TableRow key={p.id} className="transition-colors hover:bg-secondary/50">
                       <TableCell className="pl-4 sm:pl-5">
                         <div className="flex items-center gap-3 py-1">
                           {p.images[0] ? (

@@ -20,7 +20,8 @@ const PRODUCT_INCLUDE = {
  * PATCH /api/admin/products/[id] — partial update (name, slug, subtitle, price,
  * compareAtPrice (null clears), isActive, isFeatured, categoryId, description,
  * material, care, details, variantStocks, relatedSlugs (curated "Complete the
- * look" set — replaced atomically; [] clears). Returns the full updated product.
+ * look" set — replaced atomically; [] clears), images (media pipeline — full
+ * replace, ≥1 required, position = order). Returns the full updated product.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
@@ -53,6 +54,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     if (input.relatedSlugs.includes(existing.slug)) {
       return fail(400, 'A piece cannot be styled with itself in "Complete the look"')
+    }
+  }
+
+  // Image set (media pipeline) — replace semantics; duplicate URLs rejected.
+  if (input.images !== undefined) {
+    const seenUrls = new Set<string>()
+    for (const img of input.images) {
+      if (seenUrls.has(img.url)) return fail(400, `Image URL "${img.url}" appears more than once`)
+      seenUrls.add(img.url)
     }
   }
 
@@ -112,6 +122,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     } else {
       await db.productRelation.deleteMany({ where: { productId: id } })
     }
+  }
+
+  // Image set (media pipeline) — validated above, replaced atomically below:
+  // deleteMany + createMany with position = display order. The validator
+  // enforces ≥1 image, so the gallery can never be emptied by a PATCH.
+  if (input.images !== undefined) {
+    await db.$transaction([
+      db.productImage.deleteMany({ where: { productId: id } }),
+      db.productImage.createMany({
+        data: input.images.map((img, position) => ({
+          productId: id,
+          url: img.url,
+          alt: img.alt?.trim() || null,
+          position,
+        })),
+      }),
+    ])
   }
 
   const product = await db.product.update({ where: { id }, data, include: PRODUCT_INCLUDE })

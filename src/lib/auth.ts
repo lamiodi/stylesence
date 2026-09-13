@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { cookies } from 'next/headers'
-import type { AdminUser } from '@prisma/client'
+import type { AdminUser, Customer } from '@prisma/client'
 import { db } from '@/lib/db'
 
 /**
@@ -112,4 +112,83 @@ export function recordLoginFailure(email: string): void {
 
 export function clearLoginFailures(email: string): void {
   loginFailures.delete(email)
+}
+
+/* ------------------------------------------------------------------ *
+ * Customer accounts — httpOnly cookie `ss_customer` -> CustomerSession row.
+ * Customers get a 30-day TTL (admins keep the 7-day one above).
+ * ------------------------------------------------------------------ */
+
+export const CUSTOMER_COOKIE = 'ss_customer'
+
+const CUSTOMER_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+const CUSTOMER_SESSION_MAX_AGE_SECONDS = Math.floor(CUSTOMER_SESSION_TTL_MS / 1000)
+
+/** Cookie options for the customer session cookie. */
+export function customerCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: CUSTOMER_SESSION_MAX_AGE_SECONDS,
+  }
+}
+
+/** Create a 30-day CustomerSession row and return its token. */
+export async function createCustomerSession(customerId: string): Promise<{ token: string; expiresAt: Date }> {
+  const token = crypto.randomUUID() + crypto.randomUUID()
+  const expiresAt = new Date(Date.now() + CUSTOMER_SESSION_TTL_MS)
+  await db.customerSession.create({ data: { token, customerId, expiresAt } })
+  return { token, expiresAt }
+}
+
+/** Delete a customer session row by token (used by logout); silently ignores missing rows. */
+export async function deleteCustomerSession(token: string): Promise<void> {
+  await db.customerSession.deleteMany({ where: { token } })
+}
+
+/** Read `ss_customer` cookie, validate the session and return the customer (or null). */
+export async function getCustomerFromCookies(): Promise<Customer | null> {
+  const jar = await cookies()
+  const token = jar.get(CUSTOMER_COOKIE)?.value
+  if (!token) return null
+  const session = await db.customerSession.findUnique({ where: { token }, include: { customer: true } })
+  if (!session) return null
+  if (session.expiresAt.getTime() <= Date.now()) {
+    await db.customerSession.delete({ where: { id: session.id } }).catch(() => undefined)
+    return null
+  }
+  return session.customer
+}
+
+/* ------------------------------------------------------------------ *
+ * Customer login rate limit — a SEPARATE map so customer bursts never
+ * lock the admin console (and vice versa). Same 5 failures / 5 min.
+ * ------------------------------------------------------------------ */
+
+const CUSTOMER_LOGIN_WINDOW_MS = 5 * 60 * 1000
+const CUSTOMER_LOGIN_MAX_FAILURES = 5
+const customerLoginFailures = new Map<string, number[]>()
+
+function recentCustomerFailures(email: string, now: number): number[] {
+  return (customerLoginFailures.get(email) ?? []).filter((t) => now - t < CUSTOMER_LOGIN_WINDOW_MS)
+}
+
+/** False when this email is currently rate-limited for customer logins. */
+export function checkCustomerLoginRateLimit(email: string): boolean {
+  const now = Date.now()
+  const recent = recentCustomerFailures(email, now)
+  customerLoginFailures.set(email, recent)
+  return recent.length < CUSTOMER_LOGIN_MAX_FAILURES
+}
+
+export function recordCustomerLoginFailure(email: string): void {
+  const now = Date.now()
+  const recent = recentCustomerFailures(email, now)
+  recent.push(now)
+  customerLoginFailures.set(email, recent)
+}
+
+export function clearCustomerLoginFailures(email: string): void {
+  customerLoginFailures.delete(email)
 }

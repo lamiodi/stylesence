@@ -80,12 +80,18 @@ export async function DELETE(req: Request) {
   const clear = url.searchParams.get('clear')
 
   const cart = await getCartFromCookie()
-  if (!cart) return fail(404, 'Cart not found')
+  if (!cart && !(clear === '1' || clear === 'true')) return fail(404, 'Cart not found')
 
   if (clear === '1' || clear === 'true') {
-    await db.cartItem.deleteMany({ where: { cartId: cart.cartId } })
-    return respondWithCart(cart.cartId, cart.cookieId)
+    // Idempotent wipe: a session without a cart simply gets a fresh empty one.
+    const target = cart ?? (await getOrCreateCart())
+    await db.cartItem.deleteMany({ where: { cartId: target.cartId } })
+    return respondWithCart(target.cartId, target.cookieId)
   }
+
+  // The clear branch returned above, so a session reaching here has a cart —
+  // the guard simply makes that narrowing visible to TypeScript.
+  if (!cart) return fail(404, 'Cart not found')
 
   if (!itemId) return fail(400, 'Provide itemId or clear=1')
 

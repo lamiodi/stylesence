@@ -184,6 +184,41 @@ model PromoCode {
   updatedAt   DateTime  @updatedAt
 }
 
+model Customer {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  name           String
+  passwordHash   String
+  phone          String?
+  defaultAddress String?
+  defaultCity    String?
+  defaultState   String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  sessions       CustomerSession[]
+  wishlistItems  WishlistItem[]
+}
+
+model CustomerSession {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  slug       String
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, slug])
+}
+
 model JournalPost {
   id          String   @id @default(cuid())
   slug        String   @unique

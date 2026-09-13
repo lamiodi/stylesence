@@ -352,7 +352,20 @@ function ProductInner({ product }: { product: ProductDetail }) {
       <div className="mt-6 grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
         {/* ————— gallery ————— */}
         <div>
-          <div className="relative">
+          <div
+            className="relative outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+            role="group"
+            aria-roledescription="gallery"
+            aria-label="Product gallery — use the arrow keys to browse"
+            tabIndex={product.images.length > 1 ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault()
+                const delta = e.key === 'ArrowRight' ? 1 : -1
+                setImgIndex((i) => (i + delta + product.images.length) % product.images.length)
+              }
+            }}
+          >
             <ProductImage
               key={product.images[imgIndex]?.url ?? 'none'}
               src={product.images[imgIndex]?.url}
@@ -365,6 +378,14 @@ function ProductInner({ product }: { product: ProductDetail }) {
             {product.compareAtPrice && product.compareAtPrice > product.price ? (
               <span className="eyebrow absolute left-4 top-4 bg-espresso px-2.5 py-1 !text-[0.55rem] text-background">
                 Archive price
+              </span>
+            ) : null}
+            {product.images.length > 1 ? (
+              <span
+                className="absolute right-4 top-4 border border-line bg-background/85 px-2.5 py-1 font-mono text-[0.62rem] tracking-[0.12em] text-muted-foreground tabular-nums backdrop-blur-sm"
+                aria-hidden
+              >
+                {String(imgIndex + 1).padStart(2, '0')} / {String(product.images.length).padStart(2, '0')}
               </span>
             ) : null}
           </div>

@@ -364,3 +364,127 @@ Stage Summary:
 7. **Inventory reservations** — decrement at checkout only; no reservation TTL for concurrent buyers.
 8. **SEO/meta** — client-updated <title> only (acceptable for hash SPA).
 9. Ops: dev server died once before this round (relaunched per §9 — `cd /home/z/my-project && (setsid nohup bun run dev >> dev.log 2>&1 &)`, root-200 check after); Prisma schema changes require the restart. The 8-b subagent also had to restart it after `db:push` — expect this every schema change.
+
+---
+
+Task ID: 9-a
+Agent: lead (Z.ai Code)
+Task: Round 9 opening QA sweep + hotfixes
+
+Work Log:
+- Read full worklog (Round 8 state: 13 storefront routes, 7 admin tabs, curated relations, promo analytics, email order history, AI image studio — all verified).
+- Health: dev server UP on arrival (root 200). dev.log clean apart from one `DELETE /api/cart?clear=1 404` trace.
+- agent-browser fresh session sweep: home, shop, PDP (silk-slip-dress), wishlist, journal + post (the-ivory-edit), about, help, track, order (SS-2026-3956), cart, checkout → zero page errors, console clean.
+- Admin login + all 7 tabs → zero errors.
+- DEFECT 1 found: `#/admin` never sets document.title (stale title from previous route persisted, e.g. "Checkout — Style Sence" while in admin). FIXED: AdminShell now runs a tab-synced effect → `Admin · <Tab> — Style Sence` (verified on all 7 tab titles).
+- DEFECT 2 found: `DELETE /api/cart?clear=1` on a cookie-less session returned 404. FIXED: clear branch is now idempotent (getOrCreateCart fallback); curl with a fresh jar → 200 `{items:[],subtotal:0}`. itemId-removal branch unchanged (404 remains correct there).
+
+Stage Summary:
+- Project judged STABLE → feature round. Round 9 focus chosen per worklog priorities: 9-b customer accounts (highest value), 9-c home looks onto curated data, 9-d edit-dialog media pipeline, 9-e styling polish, 9-f regression.
+
+---
+
+Task ID: 9-b
+Agent: full-stack-developer (customer accounts)
+Task: Customer accounts (email + password) — accounts end-to-end: schema, cookie sessions, API, #/account page, checkout prefill, wishlist sync
+
+Work Log:
+- Read the full worklog + every referenced file (auth, validators, api-helpers, cart route + lib, orders route, router, page.tsx, header, track-order EmailResult, wishlist store, checkout, money, types, globals tokens). Confirmed dev server up before starting.
+- PRISMA (additive, `db:push` + dev-server restart per §9): `Customer` (email unique, name, scrypt passwordHash, phone/defaultAddress/defaultCity/defaultState nullable, createdAt/updatedAt), `CustomerSession` (token unique, 30-day expiry, cascade), `WishlistItem` (customerId + bare `slug` + position, `@@unique([customerId, slug])`, cascade) + back-relations. Customers get a 30-day TTL vs the admin's 7.
+- AUTH (`src/lib/auth.ts`, new customer section): `CUSTOMER_COOKIE='ss_customer'`, `customerCookieOptions()` (httpOnly/lax/path/30d), `createCustomerSession`/`deleteCustomerSession`/`getCustomerFromCookies` (expiry check + lazy cleanup — mirrors admin), and a SEPARATE customer login rate-limit Map (5 failures/5 min per email) so customer bursts can never lock the admin console (and vice versa). No NextAuth, per project contract.
+- VALIDATORS (`src/lib/validators.ts`): `customerRegisterInput` (name 2–80 trimmed, email trimmed+lowercased, password 8–72 untrimmed), `customerLoginInput`, `customerPatchInput` — clearable-text semantics: empty string → null (clear), absent key = untouched, non-empty values length-checked (phone ≥7, address ≥5, city ≥2, state ≥2); `wishlistSlugsInput` (array of non-empty slugs, max 60).
+- SERVER WISHLIST LIB (`src/lib/customer-wishlist.ts`): `dedupeSlugs`, `findOffendingWishlistSlug` (every slug must exist AND be active — 400 names the offender), `replaceWishlist` (atomic `$transaction` deleteMany + createMany with position = index — same pattern as ProductRelation curation), `hydrateWishlistItems` (WishlistItem stores bare slugs with NO FK to Product, so products are looked up by slug; active products only; images position asc take 2 → primaryImage/secondaryImage; position order preserved).
+- API ROUTES (all zod-validated via readValidated, cart-route style, JSDoc headers): `POST /api/customer/register` (201 `{customer:{id,name,email}}` + cookie; 409 “An account with this email already exists.” incl. a P2002 unique-race guard), `POST /api/customer/login` (429 “Too many attempts — try again in a few minutes.” after 5 failures; generic 401 “Incorrect email or password.” — no user enumeration), `POST /api/customer/logout` (always 200, deletes session + clears cookie), `GET/PATCH /api/customer/me` (GET always 200 `{customer|null}`; PATCH 401 unauth, 400 “Nothing to update”, safe fields only via new `toCustomerProfile` in api-helpers), `GET /api/customer/orders` (session-gated; orders where email = customer.email — both stored lowercased so effectively case-insensitive; newest-first, take 20, summary rows exactly matching the `GET /api/orders?email=` shape), `GET/PUT /api/customer/wishlist` (GET hydrated `{items}`; PUT validates + atomically replaces + returns hydrated items in submitted order), `POST /api/customer/wishlist/merge` (union submitted-first then existing, deduped, capped at 60, persisted, returns hydrated items).
+- FRONTEND — hooks/types/store: `src/hooks/use-customer.ts` (`useCustomer` on `['customer-me']`, staleTime 5 min + login/register/logout/update-profile mutations; logout drops the cached profile instantly so the overview never flashes); `src/lib/types.ts` + `CustomerView`/`CustomerOrderSummary`/`WishlistItemView`; `src/lib/store/wishlist.ts` gained optional `secondaryImage` on `WishItem`, a `setItems` action (preserves `addedAt` per slug), and `toggle` now takes `WishItemInput` — fully backwards compatible, PDP/card call sites unchanged; `wishlist-page.tsx` passes `secondaryImage` through (hover crossfade now works for restored wishlists).
+- FRONTEND — wishlist sync (`src/lib/wishlist-sync.tsx`, `<WishlistSync />` mounted once in page.tsx inside the QueryClientProvider, renders null): on sign-in detection (query transition to a customer — which also covers refresh-with-session) POSTs local slugs to /merge and adopts the hydrated payload as the new local truth (server order first, then anything added locally while the request was in flight; those mirror back on the next PUT); while signed in, store changes mirror to the server via a debounced 800ms full-list PUT — fire-and-forget, console-only failure logging (no toast spam), local store never rolled back; on sign-out the local set is left as-is (already synced). Stale-response guard = customer-id comparison (also safe under StrictMode double-mount). The zustand store stays the single source of truth for the UI.
+- FRONTEND — account page (`src/components/pages/account-page.tsx`, router `case 'account'` with key `account:${mode}`): signed-out = editorial two-column (stacks on mobile) — sign-in form left (inline destructive alert, busy state, cross-links “Create an account” → `#/account?mode=signup`, “Track an order without an account” → #/track), benefits panel + register form right (order history / faster checkout / wishlist-synced benefits with lucide icons); `?mode=signup` flips the column order and the H1. Signed-in overview: header block (eyebrow YOUR ACCOUNT, serif name, mono email · member-since, Sign out), left sidebar = Profile & delivery card (name/phone/address/city/state select reusing the checkout NG_STATES list; Save → PATCH with inline field errors + toast + local state refresh from the response; “These prefill checkout” note) + Wishlist preview (local-store count + up-to-4 thumbnails + link to #/wishlist), right = Order history in the exact EmailResult row language (mono order number, placed date, pieces, status chip, total, arrow) linking to `#/order/<n>`, scroll-elegant max-h list, editorial empty state + link to #/shop; document.title = “Your account — Style Sence”. Skeleton-gated on the me query (including post-login refetch) so neither form nor overview flashes.
+- FRONTEND — header: User icon button next to wishlist/bag (44px target, `aria-label="Account — signed in as <name>"` when signed in, subtle espresso dot indicator, no name text); all icon buttons unchanged otherwise.
+- FRONTEND — checkout prefill: new `usePrefillField` helper (state-based “touched” flag — no setState-in-effect, no ref-in-render; anything typed always wins) prefills email/fullName/phone/address/city/state ONLY where still empty/untouched; state prefill only when the saved state is in the NG list; “Signed in as <name> — your details are prefilled” note with #/account link under the email field; guest checkout completely untouched.
+- QA — curl (all pass): register 201 shape + cookie; duplicate 409; register/PATCH validation 400s (short name, short phone, empty body “Nothing to update”); login wrong password 401 “Incorrect email or password.” + 429 “Too many attempts — try again in a few minutes.” after exactly 5 failures (separate map — admin login unaffected); me 200 signed-in / `{customer:null}` signed-out; PATCH success + empty-string clears to null + 401 unauth; orders empty + with data (placed real checkout orders with the account email — one via curl SS-2026-3617, one via UI SS-2026-1554 — both appeared in /api/customer/orders with the exact summary shape); wishlist GET/PUT/merge: 400 `Unknown product slug: ghost`, >60 cap 400, submitted order preserved, duplicate slugs deduped, empty list clears, PUT/merge/orders 401 without cookie; logout clears the cookie (me → null afterwards).
+- QA — agent-browser E2E (fresh session, zero page errors / zero console errors throughout, desktop 1440 + mobile 390 + dark mode): register via UI → overview renders (name, member-since, profile form prefilled, wishlist preview, empty order history) → fill profile (phone/address/city/state) → Save → toast “Saved — your details will prefill checkout.” + server state verified via API → PDP add-to-bag → checkout fully prefilled (email/phone/name/address/city/state) + signed-in note → hearted 2 pieces on #/shop while signed in → debounced PUTs visible in the network log (2× PUT /api/customer/wishlist 200) + server wishlist verified → sign out (header loses the dot/label, sign-in form returns, local wishlist KEPT at 2) → cleared the local wishlist while signed out → signed back in → POST /merge 200 → wishlist restored from server (“Wishlist (2 saved)”, items render on #/wishlist) → wrong-password sign-in shows the server's “Incorrect email or password.” inline (role=alert). Mobile 390px: single column (grid 358px), zero in-main overflow, forms stack; desktop: 26rem sidebar + fluid main. One dev-only wrinkle found and fixed during curl QA: hydrate originally used `include: { product }` but WishlistItem deliberately has NO Product relation (bare slug per the brief) — rewrote hydration as a by-slug lookup (inactive/deleted pieces filtered from the view); the two PrismaClientValidationError traces in dev.log are from those pre-fix requests only, everything since is clean 200s.
+- HYGIENE: `bun run lint` → zero findings project-wide; `bunx tsc --noEmit` → zero errors in src/ (only the pre-existing skills/examples/scripts ones owned by others). Also fixed one PRE-EXISTING tsc error in `src/app/api/cart/route.ts` (the 9-a idempotent-clear hotfix left a null-narrowing miss on the itemId path) — type-guard only, zero behavior change, curl-verified 200/404 paths unchanged.
+- CLEANUP: deleted both QA customers (qa.accounts@, browser.qa@) with cascading sessions + wishlist rows, deleted both QA orders (SS-2026-3617, SS-2026-1554) after restoring the decremented stock (+1 on the two silk-slip-dress variants) — DB back to 0 customers / 0 wishlist rows / seed stock. The only residue is two in-memory rate-limit failure entries (qa.rate@, browser.qa@ — 1 failure) which expire after 5 minutes and vanish on restart.
+
+Stage Summary:
+- Customer accounts are live end-to-end: scrypt-hashed email+password accounts with 30-day httpOnly cookie sessions, 8 zod-validated endpoints under /api/customer, the #/account page (sign-in + register + full overview with editable saved details, order history, wishlist preview), a header account button with signed-in indicator, checkout prefill for signed-in customers (guest flow untouched), and wishlist localStorage↔account sync (merge on sign-in + debounced mirror while signed in). No NextAuth, no new npm packages, ivory/charcoal language only, all 44px targets, reduced-motion respected (existing Reveal/PageFade only), React Compiler discipline maintained (no setState-in-effect anywhere new; the checkout prefill uses a touched-flag pattern instead). curl + browser QA fully green; lint/tsc clean; test data removed.
+- Deviations/decisions: (1) WishlistItem has no FK to Product (exactly the brief's model) — hydration is a by-slug lookup and inactive pieces are filtered from every view; PUT/merge 400 on unknown OR inactive slugs (consistent with “exist + active”). (2) PUT/merge dedupe submitted slugs server-side to protect `@@unique([customerId, slug])`. (3) Merge validates submitted slugs like PUT (400 with the offending slug) so stale local entries fail loudly rather than silently vanishing. (4) Register returns 201. (5) The checkout signed-in note shows the customer NAME (link to #/account) — the prefilled email is already visible in the field. (6) `GET /api/customer/me` now fires for every visitor on every page load (the header needs the sign-in state) — tiny payload, accepted. (7) Merge also runs on a page refresh with a live session (idempotent union; doubles as cross-device reconciliation). (8) Wishlist preview reads the local zustand store (single source of truth) rather than a second server query.
+- Remaining risks: the mirror PUT is fire-and-forget — a failed sync diverges silently until the next change/merge (by design, no toast spam); in-memory login rate limits reset on dev-server restart (established project pattern); wishlist rows referencing since-deactivated products linger in the DB (filtered from every view) until the next PUT replace; order history caps at 20 like the guest email lookup; no password-reset/email-verification flows (out of scope).
+
+---
+
+Task ID: 9-c
+Agent: lead (Z.ai Code)
+Task: Home "Shop the look" onto curated ProductRelation data (was static)
+
+Work Log:
+- New `GET /api/looks` (src/app/api/looks/route.ts): curated-first look derivation — anchors = active products with ≥1 ACTIVE curated partner (ProductRelation, position asc), ordered by partner count then recency, take 3; each look = anchor + up to 3 partners, pieces[0] = anchor. Featured top-up (isFeatured desc, createdAt desc, not already used) with same-category partners when curation runs short; look without partners is skipped. Per-look source: 'curated' | 'featured'. Types LookView/LookPiece added to lib/types.ts.
+- home.tsx: LOOKS static array deleted; `['looks']` query (5-min staleTime) + LookSkeleton (aspect-[4/5] + 3 row skeletons, animate-pulse). Look image is now a Link to the anchor PDP (was not clickable); figcaption eyebrow shows `Look 01 — <Category>`; piece rows unchanged + new hairline footer row "THE LOOK — N PIECES · ₦total" (sum, mono tabular-nums). Section hides entirely only when the API returns zero looks AND loading is done.
+- Verified: curl shows 3 curated looks (atelier-blazer, longline-wool-coat, silk-slip-dress) in seeded order; browser snapshot confirmed LOOK 01 — READY-TO-WEAR + 4 piece rows + "THE LOOK — 4 PIECES | ₦470,000"; zero errors; home still 200 + admin unaffected.
+
+Stage Summary:
+- The home "Shop the look" section is now fully data-driven off the admin-curated relations (admin edits curation → home looks change), with featured/category fallback, clickable anchor images, and per-look piece totals. Static LOOKS data removed.
+
+---
+
+Task ID: 9-d
+Agent: lead (Z.ai Code)
+Task: Edit-dialog media pipeline — image gallery editing on PATCH + atelier studio in edit mode
+
+Work Log:
+- validators.ts: `productPatchInput.images` — array of {url (1-500), alt optional}, min(1) 'A piece needs at least one image', max 12. Replace semantics.
+- Admin PATCH /api/admin/products/[id]: duplicate-URL 400 validation up front; atomic replace via $transaction(deleteMany + createMany, position = display order, alt trimmed→null); JSDoc updated. The gallery can never be emptied by a PATCH.
+- products-manager.tsx: new ImagesEditor component (edit dialog) — ordered rows (mono 01/02, thumbnail, mono URL, inline alt Input with product-name placeholder, 44px move-up/move-down/remove buttons, max-h-72 scroll-elegant), remove disabled at 1 image (title explains), add-by-URL input + Add button (Enter supported, duplicate/limit toasts), ImageStudio panel wired to append generated images. ProductDialog: editImages state (mount-initialized from product.images — dialog still remounts via key), edit submit sends `images` (skips when empty), create flow untouched; "Current images" read-only block + stale "re-upload flows land with the media pipeline" placeholder text REMOVED; dialog description now mentions imagery.
+- IMPORTANT OPS LEARNING: after editing validators/route code, the running dev server served STALE compiled route handlers (images field silently stripped by zod → PATCH "succeeded" without applying). A dev-server restart was required. Curl-verified after restart: reorder+custom alt 200 (position + alt persisted, missing alt → null), duplicate 400, [] 400 'A piece needs at least one image', 13 images 400, unauth 401, original state restored.
+- Browser E2E: edit atelier-blazer → ImagesEditor renders (rows, prefilled alts, boundary-disabled arrows, studio) → "Move image 2 up" + Save changes → PATCH 200 logged, dialog closed → state restored via curl. Storefront PDP images intact after all tests.
+
+Stage Summary:
+- The media pipeline is complete: the admin edit dialog now manages the full gallery (reorder/replace/remove/alt text + AI atelier studio) with atomic server-side replace and full 400/401 coverage. Creation-only imagery limitation is gone.
+
+---
+
+Task ID: 9-e
+Agent: lead (Z.ai Code)
+Task: Mandatory styling polish round
+
+Work Log:
+- PDP gallery: mono `01 / 02` counter chip (top-right, border-line bg-background/85 backdrop-blur) + keyboard navigation — gallery wrapper is now a focusable role=group aria-roledescription=gallery; ArrowLeft/ArrowRight cycle images (wraps). Verified: counter 01/02 → ArrowRight → 02/02 → ArrowLeft → 01/02 (with render waits).
+- Wishlist page: account-aware copy — signed-out keeps "on this device"; signed-in shows "saved to your account and this device" + mono "<FirstName> · synced" meta; empty state copy switches to "saved pieces follow your account across devices". Uses the 9-b useCustomer hook (fixed one tsc mismatch: hook returns CustomerView | null directly).
+- Admin products table: rows gained transition-colors hover:bg-secondary/50 hairline hover.
+- Home hero: static "SCROLL" mono cue (uppercase tracking-[0.32em] + 40px vertical hairline, primary-foreground/60, hidden below md, bottom-6 centre) — no animation, reduced-motion-safe by design.
+- MOBILE BUG FOUND & FIXED (real regression from 9-b): the header Account button (40px + gap) made the h-16 grid (1fr/auto/1fr) overflow 390px — wordmark (224px, auto) + 3 action buttons couldn't compress; document scrollWidth was +44px, scrollLeft achievable 44. Fixed by compacting the wordmark on the smallest breakpoint: text-[1.35rem] tracking-[0.34em] → text-[1.15rem] tracking-[0.22em] (sm: unchanged at 1.5rem/0.4em). Verified: wordmark 167px, overflow 0px on home/PDP/account/shop/wishlist/checkout at 390px; 768px wordmark back to 24px/265px.
+
+Stage Summary:
+- Five polish items shipped (gallery counter + keyboard nav, wishlist account-awareness, admin row hover, hero scroll cue, wordmark/mobile-header regression fix). All verified in-browser; zero errors.
+
+---
+
+Task ID: 9-f
+Agent: lead (Z.ai Code)
+Task: Round 9 final regression + handover
+
+Work Log:
+- agent-browser fresh-session sweep: 14 storefront routes (incl. #/account, #/nonexistent-route 404 page) — ZERO page errors, console clean. Admin login + all 7 tabs — zero errors, per-tab titles correct.
+- Account golden path (round-trip): registered "QA Nine" via the UI → account overview (email + member-since, sign out, order history empty state, dev placeholder note) → wishlist signed-in copy + "Account — signed in as QA Nine" header button → add-to-bag (size S radio → ADD TO BAG enabled → bag dialog) → checkout prefilled ck-email/ck-name from the account + "Signed in as" note → cart cleared (idempotent clear endpoint from 9-a), signed out, QA customer deleted from the DB (scripts/qa-cleanup-temp.ts, removed after run; 0 customers remain).
+- Mobile 390px: 0px horizontal overflow on home, PDP, account, shop, wishlist, checkout (after the wordmark fix). Dark mode via the manual toggle: body lab(12.19 …) + class 'dark' ✔ toggled back clean.
+- `bun run lint` → zero findings. `bunx tsc --noEmit` → zero errors in src/. dev.log (last 200 lines) → zero Error/⨯/Failed lines. QA browser closed.
+
+Stage Summary:
+- Round 9 delivered: customer accounts end-to-end (9-b subagent), data-driven home looks (9-c), the full media pipeline on the edit dialog (9-d), 5 styling details + 1 regression fix (9-e), and 2 QA hotfixes at round open (9-a: admin document.title, idempotent cart clear). All verified.
+
+## Current project status (assessment — end of Round 9)
+
+- The storefront now has 14 routes (incl. #/account), the admin console 7 tabs, and the full commerce loop is live: browse → account/wishlist (synced) → cart → promo → checkout (prefilled for signed-in customers) → order + tracking.
+- Customer accounts: email+password (scrypt, 30-day sessions, rate-limited), profile with default shipping details, order history by account email, DB-backed wishlist with merge-on-sign-in + debounced mirror while signed in. Guest checkout remains fully supported.
+- Content loops are complete: curated relations feed both the PDP "Complete the look" and the home "Shop the look"; the admin can manage imagery end-to-end (URLs + AI atelier studio, reorder/replace/alt) on create AND edit.
+- Code hygiene: lint 0, tsc 0 (src), React Compiler discipline maintained, prefers-reduced-motion honoured (new UI is static or reuses existing gated patterns).
+
+## Unresolved issues / risks & next-phase priorities
+
+1. **Ops (IMPORTANT)**: Turbopack served STALE route handlers after validator/route edits this round — a dev-server restart was required before curl tests reflected the code. When a route behaves as if a new field is being ignored, restart the dev server before debugging further.
+2. **Password reset / email verification** — accounts have no reset flow (out of scope this round); transactional email remains a dev placeholder.
+3. **Wishlist mirror is fire-and-forget** — a failed PUT diverges silently until the next change or sign-in merge.
+4. **Promo enhancements** — per-customer single-use codes, stacking, time-series stats remain open.
+5. **Inventory reservations** — still decrement-at-checkout only.
+6. **`GET /api/admin/products/[id]` does not exist (405)** — admin edits read from the list endpoint; add a single-product GET if a future feature needs it.
+7. **Header wishlist & theme buttons are hidden below sm** — account+search+bag remain; acceptable density, revisit if more actions land.
+8. Real payments (Paystack/Flutterwave) — dev placeholder by design.

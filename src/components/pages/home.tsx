@@ -9,7 +9,7 @@ import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card
 import { ProductImage } from '@/components/site/price'
 import { formatDate, formatNaira } from '@/lib/money'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
-import type { ProductsResponse, Category, JournalCard } from '@/lib/types'
+import type { ProductsResponse, Category, JournalCard, LookView } from '@/lib/types'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -17,33 +17,19 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json()
 }
 
-/** Curated editorial looks — the house styling, shoppable. */
-const LOOKS: { image: string; title: string; pieces: { slug: string; name: string; price: number }[] }[] = [
-  {
-    image: '/images/editorial/look-1.png',
-    title: 'The Quiet Uniform',
-    pieces: [
-      { slug: 'cashmere-crewneck', name: 'Relaxed Cashmere Crewneck', price: 96000 },
-      { slug: 'wide-leg-trouser', name: 'Wide-Leg Trouser', price: 89000 },
-    ],
-  },
-  {
-    image: '/images/editorial/look-2.png',
-    title: 'Evening, Considered',
-    pieces: [
-      { slug: 'atelier-blazer', name: 'The Atelier Blazer', price: 165000 },
-      { slug: 'silk-slip-dress', name: 'The Ivory Silk Slip Dress', price: 148000 },
-    ],
-  },
-  {
-    image: '/images/editorial/look-3.png',
-    title: 'The Long Line',
-    pieces: [
-      { slug: 'longline-wool-coat', name: 'Longline Wool Coat', price: 245000 },
-      { slug: 'merino-turtleneck', name: 'Sculpted Merino Turtleneck', price: 68000 },
-    ],
-  },
-]
+/** Loading placeholder for an editorial look (image + piece rows). */
+function LookSkeleton() {
+  return (
+    <div className="animate-pulse" aria-hidden>
+      <div className="aspect-[4/5] bg-secondary" />
+      <div className="mt-4 space-y-2.5">
+        <div className="h-11 bg-secondary" />
+        <div className="h-11 bg-secondary" />
+        <div className="h-11 bg-secondary" />
+      </div>
+    </div>
+  )
+}
 
 function SectionHead({
   eyebrow,
@@ -100,9 +86,15 @@ export function HomePage() {
     queryFn: () => fetchJson<{ posts: JournalCard[] }>('/api/journal'),
     staleTime: 5 * 60_000,
   })
+  const { data: looksData, isLoading: loadingLooks } = useQuery({
+    queryKey: ['looks'],
+    queryFn: () => fetchJson<{ looks: LookView[] }>('/api/looks'),
+    staleTime: 5 * 60_000,
+  })
 
   const categories = catsData?.categories ?? []
   const posts = journalData?.posts ?? []
+  const looks = looksData?.looks ?? []
 
   return (
     <div>
@@ -148,6 +140,16 @@ export function HomePage() {
                 </button>
               </div>
             </Reveal>
+          </div>
+          {/* scroll cue — a quiet invitation (static; honours reduced-motion by design) */}
+          <div
+            aria-hidden
+            className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2.5 md:flex"
+          >
+            <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-primary-foreground/60">
+              Scroll
+            </span>
+            <span className="h-10 w-px bg-primary-foreground/35" />
           </div>
         </div>
       </section>
@@ -286,58 +288,78 @@ export function HomePage() {
       </section>
 
       {/* ————— SHOP THE LOOK ————— */}
-      <section className="container-site py-16 sm:py-20" aria-label="Shop the look">
-        <Reveal>
-          <SectionHead eyebrow="Styled by the house" title="Shop the look" />
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            Three looks from the Autumn editorial — hover a piece to see it, tap to make it yours.
-          </p>
-        </Reveal>
-        <div className="mt-10 grid gap-10 md:grid-cols-3 lg:gap-12">
-          {LOOKS.map((look, i) => (
-            <Reveal key={look.image} delay={i * 0.08}>
-              <figure className="group/look">
-                <div className="relative overflow-hidden">
-                  <ProductImage
-                    src={look.image}
-                    alt={look.title}
-                    label={look.title}
-                    ratio="aspect-[4/5]"
-                    className="transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/look:scale-[1.03]"
-                  />
-                  <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary/80 via-primary/30 to-transparent p-4 pt-12">
-                    <p className="eyebrow !text-primary-foreground/80">Look {String(i + 1).padStart(2, '0')}</p>
-                    <p className="mt-1 font-display text-xl font-light text-primary-foreground">{look.title}</p>
-                  </figcaption>
-                </div>
-                <ul className="mt-4 space-y-2.5">
-                  {look.pieces.map((piece) => (
-                    <li key={piece.slug}>
+      {loadingLooks || looks.length > 0 ? (
+        <section className="container-site py-16 sm:py-20" aria-label="Shop the look">
+          <Reveal>
+            <SectionHead eyebrow="Styled by the house" title="Shop the look" href="/shop" hrefLabel="Shop all pieces" />
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Looks composed from the collection — every piece chosen to speak to the others.
+              Tap a piece to make it yours.
+            </p>
+          </Reveal>
+          <div className="mt-10 grid gap-10 md:grid-cols-3 lg:gap-12">
+            {loadingLooks
+              ? Array.from({ length: 3 }).map((_, i) => <LookSkeleton key={i} />)
+              : looks.map((look, i) => (
+                  <Reveal key={look.slug} delay={i * 0.08}>
+                    <figure className="group/look">
                       <Link
-                        to={`/product/${piece.slug}`}
-                        className="group/row flex items-center gap-3 border border-line bg-card px-3 py-2.5 transition-colors hover:border-foreground"
+                        to={`/product/${look.slug}`}
+                        className="block focus-visible:outline-2 focus-visible:outline-ring"
+                        aria-label={`View ${look.title}`}
                       >
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-espresso" aria-hidden />
-                        <span className="min-w-0 flex-1 truncate font-display text-[0.92rem] tracking-tight group-hover/row:text-espresso">
-                          {piece.name}
-                        </span>
-                        <span className="shrink-0 font-mono text-[0.72rem] text-muted-foreground tabular-nums">
-                          {formatNaira(piece.price)}
-                        </span>
-                        <ArrowUpRight
-                          className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-colors group-hover/row:text-espresso"
-                          strokeWidth={1.5}
-                          aria-hidden
-                        />
+                        <div className="relative overflow-hidden">
+                          <ProductImage
+                            src={look.image}
+                            alt={look.title}
+                            label={look.title}
+                            ratio="aspect-[4/5]"
+                            className="transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/look:scale-[1.03]"
+                          />
+                          <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary/80 via-primary/30 to-transparent p-4 pt-12">
+                            <p className="eyebrow !text-primary-foreground/80">
+                              Look {String(i + 1).padStart(2, '0')}
+                              {look.categoryName ? ` — ${look.categoryName}` : ''}
+                            </p>
+                            <p className="mt-1 font-display text-xl font-light text-primary-foreground">{look.title}</p>
+                          </figcaption>
+                        </div>
                       </Link>
-                    </li>
-                  ))}
-                </ul>
-              </figure>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+                      <ul className="mt-4 space-y-2.5">
+                        {look.pieces.map((piece) => (
+                          <li key={piece.slug}>
+                            <Link
+                              to={`/product/${piece.slug}`}
+                              className="group/row flex items-center gap-3 border border-line bg-card px-3 py-2.5 transition-colors hover:border-foreground"
+                            >
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-espresso" aria-hidden />
+                              <span className="min-w-0 flex-1 truncate font-display text-[0.92rem] tracking-tight group-hover/row:text-espresso">
+                                {piece.name}
+                              </span>
+                              <span className="shrink-0 font-mono text-[0.72rem] text-muted-foreground tabular-nums">
+                                {formatNaira(piece.price)}
+                              </span>
+                              <ArrowUpRight
+                                className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-colors group-hover/row:text-espresso"
+                                strokeWidth={1.5}
+                                aria-hidden
+                              />
+                            </Link>
+                          </li>
+                        ))}
+                        <li className="flex items-baseline justify-between border-t border-line pt-3" aria-label="Look total">
+                          <span className="eyebrow !text-[0.58rem]">The look — {look.pieces.length} pieces</span>
+                          <span className="font-mono text-[0.78rem] tracking-tight text-foreground tabular-nums">
+                            {formatNaira(look.pieces.reduce((sum, p) => sum + p.price, 0))}
+                          </span>
+                        </li>
+                      </ul>
+                    </figure>
+                  </Reveal>
+                ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* ————— ATELIER BAND (inverted) ————— */}
       <section className="bg-primary py-16 sm:py-24" aria-label="Atelier">

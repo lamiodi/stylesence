@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { z } from 'zod'
-import type { Order, OrderItem, Product, ProductImage, ProductVariant, Review } from '@prisma/client'
+import type { Customer, Order, OrderItem, Product, ProductImage, ProductVariant, Review } from '@prisma/client'
 
 /**
  * Shared helpers for the Style Sence JSON API.
@@ -193,5 +193,19 @@ export function toAdminReview(r: Review & { product: { name: string; slug: strin
     body: r.body,
     status: r.status,
     createdAt: r.createdAt,
+  }
+}
+
+/** Customer profile shape — safe fields only (never the password hash). */
+export function toCustomerProfile(c: Customer) {
+  return {
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    defaultAddress: c.defaultAddress,
+    defaultCity: c.defaultCity,
+    defaultState: c.defaultState,
+    createdAt: c.createdAt,
   }
 }

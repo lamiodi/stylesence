@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Lock, ArrowRight } from 'lucide-react'
-import { navigate } from '@/lib/router'
+import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import { ProductImage } from '@/components/site/price'
 import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
 import { useCart } from '@/lib/cart-client'
+import { useCustomer } from '@/hooks/use-customer'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 import { SHIPPING_METHODS, type ShippingMethod } from '@/lib/types'
@@ -25,6 +26,19 @@ const NG_STATES = [
   'Kaduna', 'Ogun', 'Anambra', 'Delta', 'Abia', 'Imo', 'Plateau', 'Cross River',
 ]
 
+/** Controlled field with a signed-in default that only fills an empty,
+ *  untouched input — anything the customer has typed always wins. */
+function usePrefillField(fallback: string) {
+  const [value, setValue] = useState('')
+  const [touched, setTouched] = useState(false)
+  const set = (next: string) => {
+    setTouched(true)
+    setValue(next)
+  }
+  const displayed = touched || value !== '' ? value : fallback
+  return [displayed, set] as const
+}
+
 export function CheckoutPage() {
   useEffect(() => {
     document.title = 'Checkout — Style Sence'
@@ -32,6 +46,7 @@ export function CheckoutPage() {
 
   const qc = useQueryClient()
   const { data: cart, isLoading } = useCart()
+  const { data: customer } = useCustomer()
   const items = cart?.items ?? []
 
   const promoCode = usePromoStore((s) => s.code)
@@ -39,12 +54,16 @@ export function CheckoutPage() {
   const { data: promoData } = usePromoValidation(promoCode, cart?.subtotal ?? 0)
   const promo = promoData?.promo
 
-  const [email, setEmail] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [address, setAddress] = useState('')
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
+  // Signed-in customers get their saved details prefilled — but only into
+  // fields that are still empty/untouched; guest checkout is untouched.
+  const [email, setEmail] = usePrefillField(customer?.email ?? '')
+  const [fullName, setFullName] = usePrefillField(customer?.name ?? '')
+  const [phone, setPhone] = usePrefillField(customer?.phone ?? '')
+  const [address, setAddress] = usePrefillField(customer?.defaultAddress ?? '')
+  const [city, setCity] = usePrefillField(customer?.defaultCity ?? '')
+  const [state, setState] = usePrefillField(
+    customer?.defaultState && NG_STATES.includes(customer.defaultState) ? customer.defaultState : '',
+  )
   const [notes, setNotes] = useState('')
   const [shipping, setShipping] = useState<ShippingMethod>('standard')
   const [busy, setBusy] = useState(false)
@@ -156,6 +175,15 @@ export function CheckoutPage() {
                     aria-invalid={!!errors.email}
                   />
                   {errors.email ? <p className="text-[0.7rem] text-destructive">{errors.email}</p> : null}
+                  {customer ? (
+                    <p className="text-[0.66rem] leading-relaxed text-muted-foreground">
+                      Signed in as{' '}
+                      <Link to="/account" className="link-underline font-medium text-foreground">
+                        {customer.name}
+                      </Link>{' '}
+                      — your details are prefilled.
+                    </p>
+                  ) : null}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ck-phone" className="eyebrow">Phone *</Label>

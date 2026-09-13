@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ProductCard } from '@/components/site/product-card'
 import { Reveal } from '@/components/site/reveal'
 import { useWishlist } from '@/lib/store/wishlist'
+import { useCustomer } from '@/hooks/use-customer'
 import { useMounted } from '@/hooks/use-mounted'
 import { formatNaira } from '@/lib/money'
 
@@ -16,6 +17,7 @@ export function WishlistPage() {
   const remove = useWishlist((s) => s.remove)
   const clear = useWishlist((s) => s.clear)
   const mounted = useMounted()
+  const { data: customer } = useCustomer()
   useEffect(() => {
     document.title = 'Wishlist — Style Sence'
   }, [])
@@ -32,8 +34,15 @@ export function WishlistPage() {
             <p className="mt-3 text-sm text-muted-foreground">
               {list.length === 0
                 ? 'Pieces you love will gather here.'
-                : `${list.length} ${list.length === 1 ? 'piece' : 'pieces'} — kept on this device.`}
+                : `${list.length} ${list.length === 1 ? 'piece' : 'pieces'} — ${
+                    customer ? 'saved to your account and this device.' : 'kept on this device.'
+                  }`}
             </p>
+            {customer && list.length > 0 ? (
+              <p className="mt-1.5 font-mono text-[0.66rem] tracking-[0.08em] text-muted-foreground/70">
+                {customer.name.split(' ')[0]} · synced
+              </p>
+            ) : null}
           </div>
           {list.length > 0 ? (
             <button
@@ -56,7 +65,9 @@ export function WishlistPage() {
             <Heart className="h-8 w-8 text-muted-foreground/40" strokeWidth={1} aria-hidden />
             <p className="mt-5 font-display text-3xl font-light italic">Nothing saved — yet.</p>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Tap the heart on any piece and it will wait for you here, on this device.
+              {customer
+                ? 'Tap the heart on any piece — saved pieces follow your account across devices.'
+                : 'Tap the heart on any piece and it will wait for you here, on this device.'}
             </p>
             <Button
               className="mt-8 h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
@@ -79,7 +90,7 @@ export function WishlistPage() {
                   price: item.price,
                   compareAtPrice: null,
                   primaryImage: item.primaryImage,
-                  secondaryImage: null,
+                  secondaryImage: item.secondaryImage ?? null,
                   colors: [],
                   sizes: [],
                   rating: null,

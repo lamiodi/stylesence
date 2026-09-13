@@ -4,7 +4,7 @@
  * Admin console shell — auth + navigation.
  * Feature panels live in ./dashboard.tsx, ./products-manager.tsx etc.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { LogOut, ExternalLink, LayoutDashboard, Package, ClipboardList, Star, Mail, Users, Tag } from 'lucide-react'
@@ -142,6 +142,13 @@ function AdminShell({ admin }: { admin: AdminInfo }) {
   const tab = (TABS.find((t) => t.key === route.query.get('tab'))?.key ?? 'dashboard') as TabKey
 
   const setTab = (key: TabKey) => navigate(`/admin?tab=${key}`)
+
+  // Keep the document title in sync with the active console tab (parity with
+  // the storefront pages, which all set their own titles on route change).
+  const activeLabel = TABS.find((t) => t.key === tab)?.label ?? 'Dashboard'
+  useEffect(() => {
+    document.title = `Admin · ${activeLabel} — Style Sence`
+  }, [activeLabel])
 
   const logout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {})

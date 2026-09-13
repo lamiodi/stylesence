@@ -27,8 +27,10 @@ import { JournalPostPage } from '@/components/pages/journal-post'
 import { AboutPage } from '@/components/pages/about'
 import { HelpPage } from '@/components/pages/help'
 import { TrackOrderPage } from '@/components/pages/track-order'
+import { AccountPage } from '@/components/pages/account-page'
 import { NotFoundPage } from '@/components/pages/not-found'
 import { AdminApp } from '@/components/admin/admin-app'
+import { WishlistSync } from '@/lib/wishlist-sync'
 
 function Router() {
   const route = useRoute()
@@ -86,6 +88,10 @@ function Router() {
       page = <TrackOrderPage />
       key = `track:${route.query.get('mode') ?? ''}:${route.query.get('order') ?? ''}:${route.query.get('email') ?? ''}`
       break
+    case 'account':
+      page = <AccountPage />
+      key = `account:${route.query.get('mode') ?? ''}`
+      break
     case 'admin':
       page = <AdminApp />
       key = `admin:${route.query.get('tab') ?? ''}`
@@ -130,6 +136,7 @@ export default function Home() {
           <Footer />
           <CartSheet />
           <ScrollToTop />
+          <WishlistSync />
         </div>
       </QueryClientProvider>
     </ThemeProvider>

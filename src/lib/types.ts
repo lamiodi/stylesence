@@ -171,3 +171,57 @@ export const SHIPPING_METHODS = {
   express: { label: 'Express Delivery', price: 7500, eta: '1–2 business days', note: ' Lagos same-day dispatch before 11am.' },
 } as const
 export type ShippingMethod = keyof typeof SHIPPING_METHODS
+
+/* ——— Customer accounts ——— */
+
+/** Signed-in customer profile (safe fields — never a password hash). */
+export interface CustomerView {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  defaultAddress: string | null
+  defaultCity: string | null
+  defaultState: string | null
+  createdAt: string
+}
+
+/** Order history row for the account page (same shape as GET /api/orders?email=). */
+export interface CustomerOrderSummary {
+  orderNumber: string
+  status: string
+  total: number
+  itemCount: number
+  createdAt: string
+}
+
+/** Server-hydrated wishlist item. */
+export interface WishlistItemView {
+  slug: string
+  name: string
+  price: number
+  primaryImage: string | null
+  secondaryImage: string | null
+}
+
+/* ——— Editorial looks (home "Shop the look") ——— */
+
+/** One shoppable piece inside a look (anchor is always pieces[0]). */
+export interface LookPiece {
+  slug: string
+  name: string
+  price: number
+}
+
+/** A home look: an anchor piece + its curated partners (or category fallback). */
+export interface LookView {
+  slug: string
+  title: string
+  subtitle: string | null
+  categoryName: string | null
+  image: string | null
+  pieces: LookPiece[]
+  /** 'curated' = built from admin ProductRelation curation; 'featured' = featured/category fallback. */
+  source: 'curated' | 'featured'
+}
+

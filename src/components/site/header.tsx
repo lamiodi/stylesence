@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Search, Heart, ShoppingBag, Menu, X, Sun, Moon } from 'lucide-react'
+import { Search, Heart, ShoppingBag, Menu, X, Sun, Moon, User } from 'lucide-react'
 import { Link, navigate, useRoute } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/lib/cart-client'
 import { useWishlist, useUi } from '@/lib/store/wishlist'
+import { useCustomer } from '@/hooks/use-customer'
 import { useMounted } from '@/hooks/use-mounted'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
@@ -28,7 +29,7 @@ const CATEGORIES = [
 function Wordmark({ className }: { className?: string }) {
   return (
     <Link to="/" className={cn('group block text-center', className)} ariaLabel="Style Sence — home">
-      <span className="font-display text-[1.35rem] font-light uppercase leading-none tracking-[0.34em] text-foreground transition-opacity group-hover:opacity-70 sm:text-[1.5rem] sm:tracking-[0.4em]">
+      <span className="font-display text-[1.15rem] font-light uppercase leading-none tracking-[0.22em] text-foreground transition-opacity group-hover:opacity-70 sm:text-[1.5rem] sm:tracking-[0.4em]">
         Style&nbsp;Sence
       </span>
       <span className="mt-1 block text-[0.5rem] font-medium uppercase tracking-[0.5em] text-muted-foreground">
@@ -55,6 +56,7 @@ export function Header() {
   const [q, setQ] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
   const { data: cart } = useCart()
+  const { data: customer } = useCustomer()
   const wishCount = useWishlist((s) => s.items.length)
   const setCartOpen = useUi((s) => s.setCartOpen)
   const { theme, setTheme } = useTheme()
@@ -236,6 +238,20 @@ export function Header() {
               onClick={() => setSearchOpen((v) => !v)}
             >
               {searchOpen ? <X className="h-5 w-5" strokeWidth={1.5} /> : <Search className="h-5 w-5" strokeWidth={1.5} />}
+            </button>
+            <button
+              type="button"
+              className={iconBtn}
+              aria-label={mounted && customer ? `Account — signed in as ${customer.name}` : 'Account'}
+              onClick={() => navigate('/account')}
+            >
+              <User className="h-5 w-5" strokeWidth={1.5} />
+              {mounted && customer ? (
+                <span
+                  aria-hidden
+                  className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-espresso"
+                />
+              ) : null}
             </button>
             <button
               type="button"
