@@ -44,6 +44,11 @@ const JOBS: Job[] = [
   { file: 'public/images/products/quilted-linen-jacket.png', size: '864x1152', prompt: 'Full-length editorial studio photograph of a model wearing an ivory diamond-quilted linen jacket with a flip collar and throat latch, welt pockets, ' + STYLE },
   { file: 'public/images/products/cashmere-ribbed-scarf.png', size: '864x1152', prompt: 'Editorial studio photograph of a model with an espresso brushed cashmere ribbed scarf wrapped once around the neck, hand-knotted fringe visible, ivory sweater beneath, ' + STYLE },
   { file: 'public/images/products/leather-mini-tote.png', size: '864x1152', prompt: 'Editorial still life of a charcoal vegetable-tanned calfskin mini tote bag with polished brass hardware and hand-burnished edges, standing on an ivory plinth, ' + STYLE },
+
+  // ——— Round 13: two-piece sets
+  { file: 'public/images/products/sandwashed-silk-set.png', size: '864x1152', prompt: 'Full-length editorial studio photograph of a model wearing a two-piece sandwashed ivory silk set: a bias-cut shell camisole with delicate straps paired with a matching fluid bias midi skirt, ' + STYLE },
+  { file: 'public/images/products/tailored-wool-set.png', size: '864x1152', prompt: 'Full-length editorial studio photograph of a model wearing a matching charcoal two-piece suit set: a soft-shoulder one-button tailored blazer with straight wide-leg trousers of the same wool, ' + STYLE },
+  { file: 'public/images/products/satin-evening-set.png', size: '864x1152', prompt: 'Full-length editorial studio photograph of a model wearing a champagne satin two-piece evening set: a draped cowl-neck camisole with wide-leg floor-sweeping satin trousers, liquid sheen, ' + STYLE },
 ]
 
 async function generateOne(zai: ReturnType<typeof ZAI> extends Promise<infer T> ? T : any, job: Job, attempt = 1): Promise<boolean> {

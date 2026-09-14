@@ -1,0 +1,1032 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useMemo, useRef, useState } from 'react'
+     4→import { useQuery } from '@tanstack/react-query'
+     5→import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail, ShoppingBag, Maximize2 } from 'lucide-react'
+     6→import { toast } from 'sonner'
+     7→import { Link, navigate } from '@/lib/router'
+     8→import { cn } from '@/lib/utils'
+     9→import { formatDate, formatNaira } from '@/lib/money'
+    10→import { Button } from '@/components/ui/button'
+    11→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+    12→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
+    13→import { Textarea } from '@/components/ui/textarea'
+    14→import { Input } from '@/components/ui/input'
+    15→import { Label } from '@/components/ui/label'
+    16→import { ProductImage, Price } from '@/components/site/price'
+    17→import { RatingStars } from '@/components/site/rating-stars'
+    18→import { QuantityStepper } from '@/components/site/quantity-stepper'
+    19→import { DevPlaceholder } from '@/components/site/dev-placeholder'
+    20→import { ProductCard } from '@/components/site/product-card'
+    21→import { GalleryLightbox } from '@/components/site/gallery-lightbox'
+    22→import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
+    23→import { Reveal } from '@/components/site/reveal'
+    24→import { useAddToCart, useAddLookToCart } from '@/lib/cart-client'
+    25→import { useWishlist } from '@/lib/store/wishlist'
+    26→import { useRecentlyViewed } from '@/lib/store/recently-viewed'
+    27→import { useMounted } from '@/hooks/use-mounted'
+    28→import { useCustomer } from '@/hooks/use-customer'
+    29→import type { ProductDetail } from '@/lib/types'
+    30→
+    31→const SIZE_GUIDE = [
+    32→  ['XS', '32–34', '84', '66', '92'],
+    33→  ['S', '35–37', '88', '70', '96'],
+    34→  ['M', '38–40', '94', '76', '102'],
+    35→  ['L', '41–43', '100', '82', '108'],
+    36→  ['XL', '44–46', '106', '88', '114'],
+    37→] as const
+    38→
+    39→function SizeGuideDialog() {
+    40→  return (
+    41→    <Dialog>
+    42→      <DialogTrigger asChild>
+    43→        <button
+    44→          type="button"
+    45→          className="flex items-center gap-1.5 text-[0.68rem] uppercase tracking-[0.16em] text-muted-foreground underline decoration-line-strong underline-offset-4 transition-colors hover:text-foreground"
+    46→        >
+    47→          <Ruler className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+    48→          Size guide
+    49→        </button>
+    50→      </DialogTrigger>
+    51→      <DialogContent className="max-w-md rounded-[--radius] border-line bg-background">
+    52→        <DialogHeader>
+    53→          <DialogTitle className="font-display text-2xl font-light">Size guide</DialogTitle>
+    54→          <DialogDescription className="text-muted-foreground">
+    55→            Measurements in centimetres. Between sizes? Our cuts run generous — size down for
+    56→            tailoring, stay true for knits.
+    57→          </DialogDescription>
+    58→        </DialogHeader>
+    59→        <div className="overflow-x-auto">
+    60→          <table className="w-full text-sm">
+    61→            <thead>
+    62→              <tr className="border-b border-line text-left">
+    63→                <th className="eyebrow py-2 pr-4">Size</th>
+    64→                <th className="eyebrow py-2 pr-4">UK/EU</th>
+    65→                <th className="eyebrow py-2 pr-4">Bust</th>
+    66→                <th className="eyebrow py-2 pr-4">Waist</th>
+    67→                <th className="eyebrow py-2">Hip</th>
+    68→              </tr>
+    69→            </thead>
+    70→            <tbody className="font-mono text-[0.8rem] tabular-nums">
+    71→              {SIZE_GUIDE.map((row) => (
+    72→                <tr key={row[0]} className="border-b border-line last:border-0">
+    73→                  {row.map((cell, i) => (
+    74→                    <td key={i} className={cn('py-2 pr-4', i === 0 && 'font-medium font-sans')}>
+    75→                      {cell}
+    76→                    </td>
+    77→                  ))}
+    78→                </tr>
+    79→              ))}
+    80→            </tbody>
+    81→          </table>
+    82→        </div>
+    83→        <DevPlaceholder compact title="Fit consultations">
+    84→          Video fit consultations are simulated in this preview.
+    85→        </DevPlaceholder>
+    86→      </DialogContent>
+    87→    </Dialog>
+    88→  )
+    89→}
+    90→
+    91→function WriteReviewDialog({ slug, product }: { slug: string; product: string }) {
+    92→  const [rating, setRating] = useState(5)
+    93→  const [author, setAuthor] = useState('')
+    94→  const [email, setEmail] = useState('')
+    95→  const [title, setTitle] = useState('')
+    96→  const [body, setBody] = useState('')
+    97→  const [busy, setBusy] = useState(false)
+    98→  const [open, setOpen] = useState(false)
+    99→
+   100→  const submit = async (e: React.FormEvent) => {
+   101→    e.preventDefault()
+   102→    if (author.trim().length < 2) return toast.error('Please add your name.')
+   103→    if (body.trim().length < 10) return toast.error('Please write at least a sentence or two.')
+   104→    setBusy(true)
+   105→    try {
+   106→      const res = await fetch(`/api/products/${slug}/reviews`, {
+   107→        method: 'POST',
+   108→        headers: { 'Content-Type': 'application/json' },
+   109→        body: JSON.stringify({
+   110→          author: author.trim(),
+   111→          email: email.trim() || undefined,
+   112→          rating,
+   113→          title: title.trim() || undefined,
+   114→          body: body.trim(),
+   115→        }),
+   116→      })
+   117→      const data = await res.json()
+   118→      if (!res.ok) throw new Error(data.error ?? 'Could not submit review')
+   119→      toast.success('Thank you — your review is awaiting moderation.')
+   120→      setOpen(false)
+   121→      setAuthor('')
+   122→      setEmail('')
+   123→      setTitle('')
+   124→      setBody('')
+   125→      setRating(5)
+   126→    } catch (err) {
+   127→      toast.error(err instanceof Error ? err.message : 'Could not submit review')
+   128→    } finally {
+   129→      setBusy(false)
+   130→    }
+   131→  }
+   132→
+   133→  return (
+   134→    <Dialog open={open} onOpenChange={setOpen}>
+   135→      <DialogTrigger asChild>
+   136→        <Button
+   137→          variant="outline"
+   138→          className="h-11 border-line-strong px-6 uppercase tracking-[0.18em] text-[0.62rem] hover:border-foreground"
+   139→        >
+   140→          Write a review
+   141→        </Button>
+   142→      </DialogTrigger>
+   143→      <DialogContent className="max-w-lg rounded-[--radius] border-line bg-background">
+   144→        <DialogHeader>
+   145→          <DialogTitle className="font-display text-2xl font-light">{product}</DialogTitle>
+   146→          <DialogDescription>Your honest impressions — on the record.</DialogDescription>
+   147→        </DialogHeader>
+   148→        <form onSubmit={submit} className="space-y-4">
+   149→          <div>
+   150→            <Label className="eyebrow">Your rating</Label>
+   151→            <div className="mt-2 flex items-center gap-1.5">
+   152→              {[1, 2, 3, 4, 5].map((star) => (
+   153→                <button
+   154→                  key={star}
+   155→                  type="button"
+   156→                  onClick={() => setRating(star)}
+   157→                  aria-label={`${star} star${star > 1 ? 's' : ''}`}
+   158→                  aria-pressed={rating === star}
+   159→                  className={cn(
+   160→                    'flex h-9 w-9 items-center justify-center border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   161→                    rating >= star ? 'border-espresso' : 'border-line-strong',
+   162→                  )}
+   163→                >
+   164→                  <span className={cn('text-sm', rating >= star ? 'text-espresso' : 'text-muted-foreground/50')}>
+   165→                    ★
+   166→                  </span>
+   167→                </button>
+   168→              ))}
+   169→              <span className="ml-2 font-mono text-sm tabular-nums text-muted-foreground">{rating}.0</span>
+   170→            </div>
+   171→          </div>
+   172→          <div className="grid gap-4 sm:grid-cols-2">
+   173→            <div className="space-y-1.5">
+   174→              <Label htmlFor="rv-name" className="eyebrow">Name *</Label>
+   175→              <Input id="rv-name" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Adaeze O." className="h-10 border-line-strong" />
+   176→            </div>
+   177→            <div className="space-y-1.5">
+   178→              <Label htmlFor="rv-email" className="eyebrow">Email (optional)</Label>
+   179→              <Input id="rv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="h-10 border-line-strong" />
+   180→            </div>
+   181→          </div>
+   182→          <div className="space-y-1.5">
+   183→            <Label htmlFor="rv-title" className="eyebrow">Title</Label>
+   184→            <Input id="rv-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="It moves like water" className="h-10 border-line-strong" />
+   185→          </div>
+   186→          <div className="space-y-1.5">
+   187→            <Label htmlFor="rv-body" className="eyebrow">Your review *</Label>
+   188→            <Textarea id="rv-body" value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Fit, feel, fabric — tell it as it is." className="border-line-strong" />
+   189→          </div>
+   190→          <div className="flex justify-end gap-3 pt-1">
+   191→            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="uppercase tracking-[0.16em] text-[0.62rem]">
+   192→              Cancel
+   193→            </Button>
+   194→            <Button type="submit" disabled={busy} className="uppercase tracking-[0.16em] text-[0.62rem]">
+   195→              {busy ? 'Sending…' : 'Submit review'}
+   196→            </Button>
+   197→          </div>
+   198→        </form>
+   199→      </DialogContent>
+   200→    </Dialog>
+   201→  )
+   202→}
+   203→
+   204→/* ------------------------------------------------------------------ *
+   205→ * Back-in-stock waitlist — shown when the selected variant is sold out.
+   206→ * Remounts via `key={variant.id}` so switching variants resets the form
+   207→ * (the email prefill survives — it re-derives from the customer query).
+   208→ * ------------------------------------------------------------------ */
+   209→function StockWaitlistForm({
+   210→  slug,
+   211→  variantId,
+   212→  color,
+   213→  size,
+   214→}: {
+   215→  slug: string
+   216→  variantId: string
+   217→  color: string
+   218→  size: string
+   219→}) {
+   220→  const { data: customer } = useCustomer()
+   221→  const [email, setEmail] = useState('')
+   222→  const [touched, setTouched] = useState(false)
+   223→  const [busy, setBusy] = useState(false)
+   224→  const [error, setError] = useState<string | null>(null)
+   225→  const [done, setDone] = useState<{ email: string; already: boolean } | null>(null)
+   226→
+   227→  // Signed-in customers get their email prefilled — but only while the field
+   228→  // is empty/untouched; anything typed always wins (checkout's prefill pattern).
+   229→  const displayed = touched || email !== '' ? email : (customer?.email ?? '')
+   230→
+   231→  const submit = async (e: React.FormEvent) => {
+   232→    e.preventDefault()
+   233→    const value = displayed.trim()
+   234→    if (!value) {
+   235→      setError('Please enter your email address.')
+   236→      return
+   237→    }
+   238→    setBusy(true)
+   239→    setError(null)
+   240→    try {
+   241→      const res = await fetch(`/api/products/${slug}/stock-alerts`, {
+   242→        method: 'POST',
+   243→        headers: { 'Content-Type': 'application/json' },
+   244→        body: JSON.stringify({ variantId, email: value }),
+   245→      })
+   246→      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; alreadyWaiting?: boolean; error?: string }
+   247→      if (!res.ok) throw new Error(data.error ?? 'Could not join the waitlist')
+   248→      setDone({ email: value, already: data.alreadyWaiting === true })
+   249→    } catch (err) {
+   250→      setError(err instanceof Error ? err.message : 'Could not join the waitlist')
+   251→    } finally {
+   252→      setBusy(false)
+   253→    }
+   254→  }
+   255→
+   256→  if (done) {
+   257→    return (
+   258→      <div className="border border-line bg-secondary/50 p-4" role="status">
+   259→        <div className="flex items-start gap-3">
+   260→          <Check className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
+   261→          <div className="min-w-0">
+   262→            <p className="eyebrow">On the list</p>
+   263→            <p className="mt-1.5 text-sm leading-relaxed">
+   264→              {done.already
+   265→                ? `You’re already on the list — we’ll write when ${color} · ${size} returns.`
+   266→                : `You’re on the list — we’ll write when ${color} · ${size} returns.`}
+   267→            </p>
+   268→            <p className="mt-1 truncate font-mono text-[0.68rem] text-muted-foreground">{done.email}</p>
+   269→          </div>
+   270→        </div>
+   271→      </div>
+   272→    )
+   273→  }
+   274→
+   275→  return (
+   276→    <form onSubmit={submit} noValidate className="border border-line bg-secondary/50 p-4">
+   277→      <p className="eyebrow">Back in stock</p>
+   278→      <p className="mt-1.5 text-[0.72rem] leading-relaxed text-muted-foreground">
+   279→        We’ll write the moment {color} · {size} returns.
+   280→      </p>
+   281→      <div className="mt-3 flex items-center gap-2">
+   282→        <div className="flex h-11 min-w-0 flex-1 items-center gap-2 border border-line-strong px-3 transition-colors focus-within:border-foreground">
+   283→          <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />
+   284→          <input
+   285→            type="email"
+   286→            autoComplete="email"
+   287→            value={displayed}
+   288→            onChange={(e) => {
+   289→              setTouched(true)
+   290→              setEmail(e.target.value)
+   291→            }}
+   292→            disabled={busy}
+   293→            aria-label="Email for back-in-stock notification"
+   294→            placeholder="you@example.com"
+   295→            className="w-full bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none"
+   296→          />
+   297→        </div>
+   298→        <button
+   299→          type="submit"
+   300→          disabled={busy}
+   301→          className="h-11 shrink-0 border border-line-strong px-4 text-[0.62rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
+   302→        >
+   303→          {busy ? '…' : 'Notify me'}
+   304→        </button>
+   305→      </div>
+   306→      {error ? (
+   307→        <p role="alert" className="mt-2 text-[0.72rem] font-medium text-destructive">
+   308→          {error}
+   309→        </p>
+   310→      ) : null}
+   311→    </form>
+   312→  )
+   313→}
+   314→
+   315→export function ProductDetailPage({ slug }: { slug: string }) {
+   316→  const { data, isLoading, isError } = useQuery({
+   317→    queryKey: ['product', slug],
+   318→    queryFn: async () => {
+   319→      const res = await fetch(`/api/products/${slug}`)
+   320→      if (!res.ok) throw new Error('Not found')
+   321→      return (await res.json()) as { product: ProductDetail }
+   322→    },
+   323→    retry: false,
+   324→  })
+   325→
+   326→  const product = data?.product
+   327→
+   328→  useEffect(() => {
+   329→    if (product) document.title = `${product.name} — Style Sence`
+   330→  }, [product])
+   331→
+   332→  if (isLoading) {
+   333→    return (
+   334→      <div className="container-site grid gap-10 py-14 lg:grid-cols-2 lg:gap-16" aria-busy>
+   335→        <div className="animate-pulse">
+   336→          <div className="aspect-[3/4] bg-secondary" />
+   337→          <div className="mt-3 flex gap-3">
+   338→            {[0, 1].map((i) => <div key={i} className="h-20 w-16 bg-secondary" />)}
+   339→          </div>
+   340→        </div>
+   341→        <div className="animate-pulse space-y-4 pt-6">
+   342→          <div className="h-3 w-24 bg-secondary" />
+   343→          <div className="h-9 w-3/4 bg-secondary" />
+   344→          <div className="h-4 w-1/2 bg-secondary" />
+   345→          <div className="h-6 w-32 bg-secondary" />
+   346→          <div className="h-24 w-full bg-secondary" />
+   347→          <div className="h-11 w-full bg-secondary" />
+   348→        </div>
+   349→      </div>
+   350→    )
+   351→  }
+   352→
+   353→  if (isError || !product) {
+   354→    return (
+   355→      <div className="container-site flex flex-col items-center py-32 text-center">
+   356→        <p className="font-display text-4xl font-light italic">This piece has left the rail.</p>
+   357→        <p className="mt-3 text-sm text-muted-foreground">
+   358→          It may have been retired or the link is mistaken.
+   359→        </p>
+   360→        <Button
+   361→          className="mt-8 h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
+   362→          onClick={() => navigate('/shop')}
+   363→        >
+   364→          Back to the collection
+   365→        </Button>
+   366→      </div>
+   367→    )
+   368→  }
+   369→
+   370→  // key resets all selection state when the product changes
+   371→  return <ProductInner key={product.id} product={product} />
+   372→}
+   373→
+   374→function ProductInner({ product }: { product: ProductDetail }) {
+   375→  const [color, setColor] = useState<string | null>(product.variants[0]?.color ?? null)
+   376→  // One-size products (single OR multi-colour) start with the size pre-selected —
+   377→  // the size rail is hidden for them, so the default colour must land on a variant.
+   378→  const [size, setSize] = useState<string | null>(() =>
+   379→    product.variants.length === 1 || product.variants.every((v) => v.size === 'One Size')
+   380→      ? product.variants[0]?.size ?? null
+   381→      : null,
+   382→  )
+   383→  const [qty, setQty] = useState(1)
+   384→  const [imgIndex, setImgIndex] = useState(0)
+   385→  const [lightboxOpen, setLightboxOpen] = useState(false)
+   386→  const addToCart = useAddToCart()
+   387→  const addLook = useAddLookToCart()
+   388→  const toggleWish = useWishlist((s) => s.toggle)
+   389→  const hasWish = useWishlist((s) => s.has)
+   390→  const pushRecent = useRecentlyViewed((s) => s.push)
+   391→  const mounted = useMounted()
+   392→
+   393→  // sticky mobile buy bar — appears once the main actions scroll out above
+   394→  const actionsRef = useRef<HTMLDivElement>(null)
+   395→  const [showStickyBar, setShowStickyBar] = useState(false)
+   396→  useEffect(() => {
+   397→    const el = actionsRef.current
+   398→    if (!el || typeof IntersectionObserver === 'undefined') return
+   399→    const io = new IntersectionObserver(
+   400→      ([entry]) => {
+   401→        // only when the actions left the viewport upwards (scrolled past, not approaching)
+   402→        setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0)
+   403→      },
+   404→      { threshold: 0 },
+   405→    )
+   406→    io.observe(el)
+   407→    return () => io.disconnect()
+   408→  }, [])
+   409→
+   410→  // record the visit once per product (external store — safe inside an effect)
+   411→  useEffect(() => {
+   412→    pushRecent({
+   413→      slug: product.slug,
+   414→      name: product.name,
+   415→      price: product.price,
+   416→      primaryImage: product.images[0]?.url ?? null,
+   417→      secondaryImage: product.images[1]?.url ?? null,
+   418→    })
+   419→  }, [product, pushRecent])
+   420→
+   421→  const colors = useMemo(() => {
+   422→    const seen = new Map<string, string>()
+   423→    for (const v of product.variants) if (!seen.has(v.color)) seen.set(v.color, v.colorHex)
+   424→    return [...seen.entries()].map(([name, hex]) => ({ name, hex }))
+   425→  }, [product])
+   426→
+   427→  const sizesForColor = useMemo(
+   428→    () => (color ? product.variants.filter((v) => v.color === color) : []),
+   429→    [product, color],
+   430→  )
+   431→
+   432→  const selectedVariant = useMemo(
+   433→    () => product.variants.find((v) => v.color === color && v.size === size) ?? null,
+   434→    [product, color, size],
+   435→  )
+   436→
+   437→  const wished = mounted && hasWish(product.slug)
+   438→  const oneSize = product.variants.every((v) => v.size === 'One Size')
+   439→  const stockNote =
+   440→    selectedVariant && selectedVariant.stock === 0
+   441→      ? 'Sold out — join the waitlist below'
+   442→      : selectedVariant && selectedVariant.stock <= 3
+   443→        ? `Only ${selectedVariant.stock} left in this colour & size`
+   444→        : null
+   445→
+   446→  const distribution = [5, 4, 3, 2, 1].map((star) => ({
+   447→    star,
+   448→    count: product.reviews.filter((r) => r.rating === star).length,
+   449→  }))
+   450→  const maxCount = Math.max(1, ...distribution.map((d) => d.count))
+   451→
+   452→  // "Add the look" — the in-stock related pieces, ready for one-click bagging.
+   453→  const lookPieces = product.related.filter((r) => r.defaultVariantId)
+   454→  const lookTotal = lookPieces.reduce((sum, r) => sum + r.price, 0)
+   455→  const soldOutLookPieces = product.related.length - lookPieces.length
+   456→
+   457→  return (
+   458→    <div className="container-site py-8 sm:py-12">
+   459→      {/* breadcrumb */}
+   460→      <nav aria-label="Breadcrumb" className="eyebrow !text-[0.58rem]">
+   461→        <Link to="/" className="hover:text-foreground">Home</Link>
+   462→        <ChevronRight className="mx-1.5 inline h-2.5 w-2.5" aria-hidden />
+   463→        <Link to="/shop" className="hover:text-foreground">Shop</Link>
+   464→        {product.category ? (
+   465→          <>
+   466→            <ChevronRight className="mx-1.5 inline h-2.5 w-2.5" aria-hidden />
+   467→            <Link to={`/shop?category=${product.category.slug}`} className="hover:text-foreground">
+   468→              {product.category.name}
+   469→            </Link>
+   470→          </>
+   471→        ) : null}
+   472→        <ChevronRight className="mx-1.5 inline h-2.5 w-2.5" aria-hidden />
+   473→        <span className="text-foreground">{product.name}</span>
+   474→      </nav>
+   475→
+   476→      <div className="mt-6 grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
+   477→        {/* ————— gallery ————— */}
+   478→        <div>
+   479→          <div
+   480→            className="relative outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+   481→            role="group"
+   482→            aria-roledescription="gallery"
+   483→            aria-label="Product gallery — use the arrow keys to browse"
+   484→            tabIndex={product.images.length > 1 ? 0 : undefined}
+   485→            onKeyDown={(e) => {
+   486→              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+   487→                e.preventDefault()
+   488→                const delta = e.key === 'ArrowRight' ? 1 : -1
+   489→                setImgIndex((i) => (i + delta + product.images.length) % product.images.length)
+   490→              }
+   491→            }}
+   492→          >
+   493→            <button
+   494→              type="button"
+   495→              aria-label="Expand image"
+   496→              aria-haspopup="dialog"
+   497→              onClick={() => {
+   498→                if (product.images.length > 0) setLightboxOpen(true)
+   499→              }}
+   500→              className="block w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-ring"
+   501→            >
+   502→              <ProductImage
+   503→                key={product.images[imgIndex]?.url ?? 'none'}
+   504→                src={product.images[imgIndex]?.url}
+   505→                alt={product.images[imgIndex]?.alt ?? product.name}
+   506→                label={product.name}
+   507→                ratio="aspect-[3/4]"
+   508→                eager
+   509→                className="w-full"
+   510→              />
+   511→            </button>
+   512→            {product.compareAtPrice && product.compareAtPrice > product.price ? (
+   513→              <span className="eyebrow absolute left-4 top-4 bg-espresso px-2.5 py-1 !text-[0.55rem] text-background">
+   514→                Archive price
+   515→              </span>
+   516→            ) : null}
+   517→            {product.images.length > 1 ? (
+   518→              <span
+   519→                className="absolute right-4 top-4 border border-line bg-background/85 px-2.5 py-1 font-mono text-[0.62rem] tracking-[0.12em] text-muted-foreground tabular-nums backdrop-blur-sm"
+   520→                aria-hidden
+   521→              >
+   522→                {String(imgIndex + 1).padStart(2, '0')} / {String(product.images.length).padStart(2, '0')}
+   523→              </span>
+   524→            ) : null}
+   525→            {product.images.length > 0 ? (
+   526→              <button
+   527→                type="button"
+   528→                aria-label="Expand image"
+   529→                aria-haspopup="dialog"
+   530→                onClick={() => setLightboxOpen(true)}
+   531→                className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center border border-line bg-background/85 text-muted-foreground backdrop-blur-sm transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+   532→              >
+   533→                <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+   534→              </button>
+   535→            ) : null}
+   536→          </div>
+   537→          {product.images.length > 1 ? (
+   538→            <div className="mt-3 flex gap-3">
+   539→              {product.images.map((img, i) => (
+   540→                <button
+   541→                  key={img.url}
+   542→                  type="button"
+   543→                  onClick={() => setImgIndex(i)}
+   544→                  aria-label={`View image ${i + 1} of ${product.images.length}`}
+   545→                  aria-pressed={imgIndex === i}
+   546→                  className={cn(
+   547→                    'w-20 border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   548→                    imgIndex === i ? 'border-foreground' : 'border-transparent hover:border-line-strong',
+   549→                  )}
+   550→                >
+   551→                  <ProductImage src={img.url} alt={img.alt ?? product.name} label="" ratio="aspect-[3/4]" />
+   552→                </button>
+   553→              ))}
+   554→            </div>
+   555→          ) : null}
+   556→
+   557→          {/* ————— zoom lightbox (shares imgIndex with the gallery) ————— */}
+   558→          <GalleryLightbox
+   559→            images={product.images}
+   560→            index={imgIndex}
+   561→            open={lightboxOpen}
+   562→            onOpenChange={setLightboxOpen}
+   563→            onNavigate={setImgIndex}
+   564→            label={product.name}
+   565→          />
+   566→        </div>
+   567→
+   568→        {/* ————— info ————— */}
+   569→        <div className="lg:pt-2">
+   570→          {product.category ? <p className="eyebrow">{product.category.name}</p> : null}
+   571→          <h1 className="mt-2 font-display text-3xl font-light leading-tight tracking-tight text-balance sm:text-4xl">
+   572→            {product.name}
+   573→          </h1>
+   574→          {product.subtitle ? (
+   575→            <p className="mt-1.5 font-display text-lg italic text-muted-foreground">{product.subtitle}</p>
+   576→          ) : null}
+   577→
+   578→          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+   579→            <Price price={product.price} compareAtPrice={product.compareAtPrice} size="lg" />
+   580→            {product.rating ? (
+   581→              <a
+   582→                href="#reviews"
+   583→                className="flex items-center gap-2 text-[0.72rem] text-muted-foreground transition-colors hover:text-foreground"
+   584→                onClick={(e) => {
+   585→                  e.preventDefault()
+   586→                  document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' })
+   587→                }}
+   588→              >
+   589→                <RatingStars rating={product.rating} />
+   590→                {product.rating.toFixed(1)} · {product.reviewCount} reviews
+   591→              </a>
+   592→            ) : (
+   593→              <span className="text-[0.72rem] text-muted-foreground">No reviews yet — be first</span>
+   594→            )}
+   595→          </div>
+   596→
+   597→          <div className="mt-5 border-t border-line pt-5">
+   598→            {product.description.split('\n\n').map((para, i) => (
+   599→              <p key={i} className="mb-3 text-sm leading-relaxed text-muted-foreground last:mb-0">
+   600→                {para}
+   601→              </p>
+   602→            ))}
+   603→          </div>
+   604→
+   605→          {/* colour */}
+   606→          <div className="mt-6">
+   607→            <p className="eyebrow">
+   608→              Colour — <span className="text-foreground">{color ?? 'Select'}</span>
+   609→            </p>
+   610→            <div className="mt-2.5 flex flex-wrap gap-2.5" role="radiogroup" aria-label="Colour">
+   611→              {colors.map((c) => (
+   612→                <button
+   613→                  key={c.name}
+   614→                  type="button"
+   615→                  role="radio"
+   616→                  aria-checked={color === c.name}
+   617→                  onClick={() => {
+   618→                    setColor(c.name)
+   619→                    if (oneSize) setSize('One Size')
+   620→                  }}
+   621→                  className={cn(
+   622→                    'flex items-center gap-2 border px-3 py-2 text-[0.72rem] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   623→                    color === c.name
+   624→                      ? 'border-foreground text-foreground'
+   625→                      : 'border-line-strong text-muted-foreground hover:border-foreground hover:text-foreground',
+   626→                  )}
+   627→                >
+   628→                  <span
+   629→                    className="h-4 w-4 rounded-full border border-line-strong"
+   630→                    style={{ backgroundColor: c.hex }}
+   631→                    aria-hidden
+   632→                  />
+   633→                  {c.name}
+   634→                </button>
+   635→              ))}
+   636→            </div>
+   637→          </div>
+   638→
+   639→          {/* size */}
+   640→          {!oneSize ? (
+   641→            <div className="mt-6">
+   642→              <div className="flex items-baseline justify-between">
+   643→                <p className="eyebrow">
+   644→                  Size — <span className="text-foreground">{size ?? 'Select'}</span>
+   645→                </p>
+   646→                <SizeGuideDialog />
+   647→              </div>
+   648→              <div className="mt-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label="Size">
+   649→                {sizesForColor.map((v) => {
+   650→                  const soldOut = v.stock === 0
+   651→                  return (
+   652→                    <button
+   653→                      key={v.id}
+   654→                      type="button"
+   655→                      role="radio"
+   656→                      aria-checked={size === v.size}
+   657→                      disabled={soldOut}
+   658→                      onClick={() => setSize(v.size)}
+   659→                      className={cn(
+   660→                        'h-11 min-w-14 border px-4 font-mono text-[0.78rem] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+   661→                        size === v.size
+   662→                          ? 'border-foreground bg-foreground text-background'
+   663→                          : soldOut
+   664→                            ? 'cursor-not-allowed border-line text-muted-foreground/40 line-through'
+   665→                            : 'border-line-strong text-muted-foreground hover:border-foreground hover:text-foreground',
+   666→                      )}
+   667→                    >
+   668→                      {v.size}
+   669→                    </button>
+   670→                  )
+   671→                })}
+   672→              </div>
+   673→            </div>
+   674→          ) : null}
+   675→
+   676→          {/* qty + stock */}
+   677→          <div className="mt-6 flex items-center gap-5">
+   678→            <QuantityStepper value={qty} onChange={setQty} min={1} max={Math.min(10, selectedVariant?.stock ?? 10)} />
+   679→            {stockNote ? (
+   680→              <p className={cn('text-[0.72rem] font-medium', selectedVariant?.stock === 0 ? 'text-destructive' : 'text-espresso')}>
+   681→                {stockNote}
+   682→              </p>
+   683→            ) : null}
+   684→          </div>
+   685→
+   686→          {/* actions */}
+   687→          <div ref={actionsRef} className="mt-6 flex gap-3">
+   688→            <Button
+   689→              className="h-12 flex-1 uppercase tracking-[0.2em] text-[0.66rem]"
+   690→              disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
+   691→              onClick={() => {
+   692→                if (!selectedVariant) return toast.error('Please select a size first.')
+   693→                addToCart.mutate({ variantId: selectedVariant.id, qty })
+   694→              }}
+   695→            >
+   696→              {addToCart.isPending
+   697→                ? 'Adding…'
+   698→                : selectedVariant?.stock === 0
+   699→                  ? 'Sold out'
+   700→                  : 'Add to bag'}
+   701→            </Button>
+   702→            <Button
+   703→              variant="outline"
+   704→              aria-pressed={wished}
+   705→              className="h-12 w-12 border-line-strong p-0 hover:border-espresso hover:text-espresso"
+   706→              onClick={() => {
+   707→                const added = toggleWish({
+   708→                  slug: product.slug,
+   709→                  name: product.name,
+   710→                  price: product.price,
+   711→                  primaryImage: product.images[0]?.url ?? null,
+   712→                  addedAt: Date.now(),
+   713→                })
+   714→                toast(added ? 'Saved to wishlist' : 'Removed from wishlist', {
+   715→                  description: product.name,
+   716→                })
+   717→              }}
+   718→              aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
+   719→            >
+   720→              <Heart className={cn('h-[1.1rem] w-[1.1rem]', wished && 'fill-espresso text-espresso')} strokeWidth={1.5} />
+   721→            </Button>
+   722→          </div>
+   723→
+   724→          {/* ————— back-in-stock waitlist (sold-out variant selected) ————— */}
+   725→          {selectedVariant && selectedVariant.stock === 0 ? (
+   726→            <div className="mt-5" aria-live="polite">
+   727→              <StockWaitlistForm
+   728→                key={selectedVariant.id}
+   729→                slug={product.slug}
+   730→                variantId={selectedVariant.id}
+   731→                color={selectedVariant.color}
+   732→                size={selectedVariant.size}
+   733→              />
+   734→            </div>
+   735→          ) : null}
+   736→
+   737→          {/* delivery promise — mirrors checkout's canonical SHIPPING_METHODS copy */}
+   738→          <div className="mt-5 flex items-start gap-2.5 border border-line bg-secondary/50 px-3.5 py-3">
+   739→            <Truck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />
+   740→            <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
+   741→              Standard <span className="font-mono tabular-nums">₦3,500</span> · 3–5 business days, nationwide courier ·
+   742→              Express <span className="font-mono tabular-nums">₦7,500</span> · 1–2 business days, Lagos dispatch ·{' '}
+   743→              <span className="text-espresso">complimentary standard over ₦150,000</span>
+   744→            </p>
+   745→          </div>
+   746→
+   747→          {/* accordions */}
+   748→          <div className="mt-8 border-t border-line">
+   749→            <Accordion type="single" collapsible className="border-0">
+   750→              {product.details.length > 0 ? (
+   751→                <AccordionItem value="details" className="border-line">
+   752→                  <AccordionTrigger className="py-4 text-[0.7rem] font-medium uppercase tracking-[0.2em] hover:no-underline">
+   753→                    Details
+   754→                  </AccordionTrigger>
+   755→                  <AccordionContent className="pb-5">
+   756→                    <ul className="space-y-2">
+   757→                      {product.details.map((d, i) => (
+   758→                        <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground">
+   759→                          <span className="mt-[0.55rem] h-[3px] w-[3px] shrink-0 rounded-full bg-espresso" aria-hidden />
+   760→                          {d}
+   761→                        </li>
+   762→                      ))}
+   763→                    </ul>
+   764→                  </AccordionContent>
+   765→                </AccordionItem>
+   766→              ) : null}
+   767→              {product.material || product.care ? (
+   768→                <AccordionItem value="material" className="border-line">
+   769→                  <AccordionTrigger className="py-4 text-[0.7rem] font-medium uppercase tracking-[0.2em] hover:no-underline">
+   770→                    Material &amp; care
+   771→                  </AccordionTrigger>
+   772→                  <AccordionContent className="pb-5 text-sm leading-relaxed text-muted-foreground">
+   773→                    {product.material ? (
+   774→                      <p>
+   775→                        <span className="eyebrow mr-2 !text-[0.58rem]">Cloth</span>
+   776→                        {product.material}
+   777→                      </p>
+   778→                    ) : null}
+   779→                    {product.care ? (
+   780→                      <p className="mt-2">
+   781→                        <span className="eyebrow mr-2 !text-[0.58rem]">Care</span>
+   782→                        {product.care}
+   783→                      </p>
+   784→                    ) : null}
+   785→                  </AccordionContent>
+   786→                </AccordionItem>
+   787→              ) : null}
+   788→              <AccordionItem value="shipping" className="border-line">
+   789→                <AccordionTrigger className="py-4 text-[0.7rem] font-medium uppercase tracking-[0.2em] hover:no-underline">
+   790→                  Shipping &amp; returns
+   791→                </AccordionTrigger>
+   792→                <AccordionContent className="pb-5">
+   793→                  <ul className="space-y-2.5 text-sm text-muted-foreground">
+   794→                    <li className="flex gap-2.5">
+   795→                      <Truck className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
+   796→                      Standard ₦3,500 — 3–5 days nationwide · Express ₦7,500 — 1–2 days
+   797→                    </li>
+   798→                    <li className="flex gap-2.5">
+   799→                      <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
+   800→                      Complimentary returns within 14 days, tags attached
+   801→                    </li>
+   802→                  </ul>
+   803→                  <DevPlaceholder compact className="mt-3" title="Courier & returns portal">
+   804→                    Live courier booking and returns portal are simulated in this environment.
+   805→                  </DevPlaceholder>
+   806→                </AccordionContent>
+   807→              </AccordionItem>
+   808→            </Accordion>
+   809→          </div>
+   810→        </div>
+   811→      </div>
+   812→
+   813→      {/* ————— reviews ————— */}
+   814→      <section id="reviews" className="mt-20 scroll-mt-24 border-t border-line pt-12">
+   815→        <div className="grid gap-10 lg:grid-cols-[20rem_1fr] lg:gap-16">
+   816→          <Reveal>
+   817→            <p className="eyebrow">Client notes</p>
+   818→            <h2 className="mt-2 font-display text-3xl font-light tracking-tight">Reviews</h2>
+   819→            {product.rating ? (
+   820→              <>
+   821→                <div className="mt-5 flex items-end gap-3">
+   822→                  <span className="font-display text-6xl font-light leading-none">
+   823→                    {product.rating.toFixed(1)}
+   824→                  </span>
+   825→                  <div className="pb-1.5">
+   826→                    <RatingStars rating={product.rating} size={16} />
+   827→                    <p className="mt-1 text-[0.7rem] text-muted-foreground">
+   828→                      {product.reviewCount} verified reviews
+   829→                    </p>
+   830→                  </div>
+   831→                </div>
+   832→                <div className="mt-6 space-y-1.5">
+   833→                  {distribution.map((d) => (
+   834→                    <div key={d.star} className="flex w-full items-center gap-3" aria-label={`${d.star} star reviews: ${d.count}`}>
+   835→                      <span className="w-6 font-mono text-[0.68rem] text-muted-foreground tabular-nums">{d.star}★</span>
+   836→                      <span className="relative h-1.5 flex-1 overflow-hidden bg-secondary">
+   837→                        <span
+   838→                          className="absolute inset-y-0 left-0 bg-espresso"
+   839→                          style={{ width: `${(d.count / maxCount) * 100}%` }}
+   840→                        />
+   841→                      </span>
+   842→                      <span className="w-6 text-right font-mono text-[0.68rem] text-muted-foreground tabular-nums">{d.count}</span>
+   843→                    </div>
+   844→                  ))}
+   845→                </div>
+   846→              </>
+   847→            ) : (
+   848→              <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+   849→                No reviews yet. Yours would set the tone.
+   850→              </p>
+   851→            )}
+   852→            <div className="mt-7">
+   853→              <WriteReviewDialog slug={product.slug} product={product.name} />
+   854→            </div>
+   855→          </Reveal>
+   856→
+   857→          <Reveal delay={0.1}>
+   858→            {product.reviews.length === 0 ? (
+   859→              <div className="border border-dashed border-line-strong px-8 py-16 text-center">
+   860→                <p className="font-display text-xl italic text-muted-foreground">
+   861→                  The quiet before the first note.
+   862→                </p>
+   863→              </div>
+   864→            ) : (
+   865→              <ul className="divide-y divide-line border-t border-line">
+   866→                {product.reviews.map((r) => (
+   867→                  <li key={r.id} className="py-6">
+   868→                    <div className="flex flex-wrap items-center justify-between gap-2">
+   869→                      <div className="flex items-center gap-3">
+   870→                        <RatingStars rating={r.rating} size={12} />
+   871→                        <span className="text-[0.72rem] font-medium">{r.author}</span>
+   872→                      </div>
+   873→                      <span className="text-[0.66rem] uppercase tracking-[0.14em] text-muted-foreground/70">
+   874→                        {formatDate(r.createdAt)}
+   875→                      </span>
+   876→                    </div>
+   877→                    {r.title ? (
+   878→                      <h3 className="mt-2 font-display text-lg font-light tracking-tight">{r.title}</h3>
+   879→                    ) : null}
+   880→                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{r.body}</p>
+   881→                  </li>
+   882→                ))}
+   883→              </ul>
+   884→            )}
+   885→          </Reveal>
+   886→        </div>
+   887→      </section>
+   888→
+   889→      {/* ————— related (curated "Complete the look" when styled by the atelier) ————— */}
+   890→      {product.related.length > 0 ? (
+   891→        <section className="mt-20 border-t border-line pt-12">
+   892→          <div className="flex items-end justify-between">
+   893→            <div>
+   894→              <p className="eyebrow">
+   895→                {product.relatedSource === 'curated' || product.relatedSource === 'mixed'
+   896→                  ? 'Styled by the atelier'
+   897→                  : 'Styled together'}
+   898→              </p>
+   899→              <h2 className="mt-2 font-display text-3xl font-light tracking-tight">Complete the look</h2>
+   900→            </div>
+   901→            <Link
+   902→              to="/shop"
+   903→              className="eyebrow-ink hidden items-center gap-1.5 border-b border-foreground pb-1 transition-colors hover:border-espresso hover:text-espresso sm:flex"
+   904→            >
+   905→              <ArrowLeft className="h-3 w-3 rotate-180" strokeWidth={1.5} aria-hidden />
+   906→              All pieces
+   907→            </Link>
+   908→          </div>
+   909→          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 md:gap-x-6">
+   910→            {product.related.map((r) => (
+   911→              <ProductCard
+   912→                key={r.slug}
+   913→                product={{
+   914→                  id: r.slug,
+   915→                  slug: r.slug,
+   916→                  name: r.name,
+   917→                  subtitle: null,
+   918→                  price: r.price,
+   919→                  compareAtPrice: null,
+   920→                  primaryImage: r.primaryImage,
+   921→                  secondaryImage: r.secondaryImage,
+   922→                  colors: [],
+   923→                  sizes: [],
+   924→                  rating: null,
+   925→                  reviewCount: 0,
+   926→                  isNew: false,
+   927→                }}
+   928→                eager
+   929→              />
+   930→            ))}
+   931→          </div>
+   932→
+   933→          {/* one-click bundle — only when at least two related pieces are in stock */}
+   934→          {lookPieces.length >= 2 ? (
+   935→            <Reveal className="mt-8">
+   936→              <div className="flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+   937→                <div>
+   938→                  <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+   939→                    The look — {lookPieces.length} pieces · {formatNaira(lookTotal)}
+   940→                  </p>
+   941→                  {soldOutLookPieces > 0 ? (
+   942→                    <p className="mt-1 text-[0.72rem] leading-relaxed text-muted-foreground">
+   943→                      {soldOutLookPieces} sold-out piece{soldOutLookPieces === 1 ? '' : 's'} skipped — join the waitlist on its page.
+   944→                    </p>
+   945→                  ) : (
+   946→                    <p className="mt-1 text-[0.72rem] leading-relaxed text-muted-foreground">
+   947→                      Each piece is added in its first available size — adjust sizes in the bag.
+   948→                    </p>
+   949→                  )}
+   950→                </div>
+   951→                <button
+   952→                  type="button"
+   953→                  disabled={addLook.isPending}
+   954→                  onClick={() =>
+   955→                    addLook.mutate(
+   956→                      lookPieces.map((r) => ({ variantId: r.defaultVariantId as string, name: r.name })),
+   957→                    )
+   958→                  }
+   959→                  className="flex h-12 shrink-0 items-center justify-center gap-2 border border-foreground px-7 text-[0.68rem] font-medium uppercase tracking-[0.18em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
+   960→                >
+   961→                  <ShoppingBag className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+   962→                  {addLook.isPending ? 'Adding the look…' : 'Add the look to bag'}
+   963→                </button>
+   964→              </div>
+   965→            </Reveal>
+   966→          ) : null}
+   967→
+   968→          <p className="mt-6 font-mono text-[0.68rem] text-muted-foreground/70">
+   969→            {formatNaira(product.price)} · in {product.category?.name ?? 'the collection'}
+   970→          </p>
+   971→        </section>
+   972→      ) : null}
+   973→
+   974→      {/* ————— recently viewed ————— */}
+   975→      <RecentlyViewedStrip
+   976→        excludeSlug={product.slug}
+   977→        className="mt-20 border-t border-line pt-12"
+   978→      />
+   979→
+   980→      {/* ————— sticky mobile buy bar (appears once the actions scroll away) ————— */}
+   981→      <div
+   982→        inert={!showStickyBar}
+   983→        aria-hidden={!showStickyBar}
+   984→        className={cn(
+   985→          'no-print fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-background/95 backdrop-blur-md',
+   986→          'px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2.5 lg:hidden',
+   987→          'transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+   988→          showStickyBar ? 'translate-y-0' : 'pointer-events-none translate-y-full',
+   989→        )}
+   990→      >
+   991→        <div className="flex items-center gap-3">
+   992→          <div className="min-w-0 flex-1">
+   993→            <p className="truncate font-display text-[0.92rem] leading-tight tracking-tight">
+   994→              {product.name}
+   995→            </p>
+   996→            <p className="mt-0.5 truncate font-mono text-[0.74rem] text-muted-foreground tabular-nums">
+   997→              {formatNaira(product.price)}
+   998→              {selectedVariant ? (
+   999→                <span className="text-foreground">
+  1000→                  {' '}
+  1001→                  · {selectedVariant.color} · {selectedVariant.size}
+  1002→                  {qty > 1 ? ` · ×${qty}` : ''}
+  1003→                </span>
+  1004→              ) : (
+  1005→                <span className="text-espresso"> · select a size</span>
+  1006→              )}
+  1007→            </p>
+  1008→          </div>
+  1009→          <Button
+  1010→            className="h-11 shrink-0 px-7 uppercase tracking-[0.18em] text-[0.64rem]"
+  1011→            disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
+  1012→            onClick={() => {
+  1013→              if (!selectedVariant) {
+  1014→                toast.error('Please select a size first.')
+  1015→                actionsRef.current?.scrollIntoView({ block: 'center' })
+  1016→                return
+  1017→              }
+  1018→              addToCart.mutate({ variantId: selectedVariant.id, qty })
+  1019→            }}
+  1020→          >
+  1021→            {addToCart.isPending
+  1022→              ? 'Adding…'
+  1023→              : selectedVariant?.stock === 0
+  1024→                ? 'Sold out'
+  1025→                : 'Add to bag'}
+  1026→          </Button>
+  1027→        </div>
+  1028→      </div>
+  1029→    </div>
+  1030→  )
+  1031→}
+  1032→

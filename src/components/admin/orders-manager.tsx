@@ -8,9 +8,10 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Eye, Package, Search } from 'lucide-react'
+import { Check, Eye, Package, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNaira, formatDate, formatDateShort } from '@/lib/money'
+import { formatMeasurements, shippingLabel, type CustomMeasurements } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -53,6 +54,10 @@ interface AdminOrderItem {
   imageUrl: string | null
   unitPrice: number
   qty: number
+  /** Round 13 made-to-order snapshot (raw JSON string for measurements). */
+  sizeMode?: string
+  customMeasurements?: string | null
+  notes?: string | null
 }
 
 interface AdminOrder {
@@ -72,6 +77,10 @@ interface AdminOrder {
   status: OrderStatus
   createdAt: string
   notes?: string | null
+  /** Round 13 made-to-order: production tier, add-on fee, client confirmation. */
+  productionTier?: string
+  productionFee?: number
+  confirmedProduction?: boolean
   items: AdminOrderItem[]
 }
 
@@ -109,6 +118,39 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+/** Round 13 production timeline chip — what the atelier works to. */
+function ProductionBadge({ tier }: { tier: string }) {
+  const express = tier === 'express'
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-[3px] px-2 py-0.5 font-mono text-[0.58rem] font-medium uppercase tracking-[0.16em]',
+        express
+          ? 'bg-espresso text-accent-foreground'
+          : 'border border-line-strong text-muted-foreground',
+      )}
+    >
+      {express ? 'Express · 2–3 days' : 'Standard · 7–10 days'}
+    </span>
+  )
+}
+
+/** Parse a raw customMeasurements JSON string from the admin API. Falls back to
+ *  the raw string (truncated) when the payload isn’t the expected shape. */
+function measurementText(raw: string | null | undefined): string {
+  if (!raw) return ''
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') {
+      const formatted = formatMeasurements(parsed as CustomMeasurements)
+      if (formatted) return formatted
+    }
+  } catch {
+    // Not JSON — show the raw payload below.
+  }
+  return raw.length > 64 ? `${raw.slice(0, 64)}…` : raw
+}
+
 function PanelError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="border border-destructive/40 bg-destructive/5 p-6" role="alert">
@@ -132,11 +174,22 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
         <DialogHeader>
           <div className="flex flex-wrap items-center justify-between gap-3 pr-6">
             <DialogTitle className="font-mono text-lg tracking-tight">{order.orderNumber}</DialogTitle>
-            <StatusBadge status={order.status} />
+            <div className="flex flex-wrap items-center gap-2">
+              {order.productionTier ? <ProductionBadge tier={order.productionTier} /> : null}
+              <StatusBadge status={order.status} />
+            </div>
           </div>
-          <DialogDescription>
-            {formatDate(order.createdAt)} · {itemCount} item{itemCount === 1 ? '' : 's'} ·{' '}
-            {formatNaira(order.total)}
+          <DialogDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>
+              {formatDate(order.createdAt)} · {itemCount} item{itemCount === 1 ? '' : 's'} ·{' '}
+              {formatNaira(order.total)}
+            </span>
+            {order.confirmedProduction ? (
+              <span className="flex items-center gap-1.5 text-espresso">
+                <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                Client confirmed measurements/details
+              </span>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
 
@@ -169,6 +222,23 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
                     <p className="mt-0.5 text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
                       {it.color} · {it.size} · qty {it.qty} × {formatNaira(it.unitPrice)}
                     </p>
+                    {it.sizeMode === 'custom' ? (
+                      <div className="mt-1.5 min-w-0 space-y-1">
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="inline-flex items-center border border-line-strong px-1.5 py-px font-mono text-[0.56rem] font-medium uppercase tracking-[0.16em] text-espresso">
+                            Custom
+                          </span>
+                          <span className="min-w-0 font-mono text-[0.66rem] tabular-nums text-muted-foreground [overflow-wrap:anywhere]">
+                            {measurementText(it.customMeasurements)}
+                          </span>
+                        </p>
+                        {it.notes ? (
+                          <p className="text-[0.66rem] leading-relaxed italic text-muted-foreground">
+                            <span className="not-italic text-foreground">Atelier note:</span> “{it.notes}”
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <p className="shrink-0 font-mono text-xs tabular-nums">{formatNaira(it.unitPrice * it.qty)}</p>
                 </li>
@@ -196,7 +266,7 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
                   {order.country ? ` · ${order.country}` : ''}
                 </p>
                 <p className="mt-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground">
-                  {order.shippingMethod} — {formatNaira(order.shipping)}
+                  {shippingLabel(order.shippingMethod)} — {formatNaira(order.shipping)}
                 </p>
               </div>
             </div>
@@ -222,6 +292,12 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
                 <dt className="text-muted-foreground">Shipping</dt>
                 <dd className="font-mono tabular-nums">{formatNaira(order.shipping)}</dd>
               </div>
+              {order.productionFee && order.productionFee > 0 ? (
+                <div className="flex justify-end gap-8">
+                  <dt className="text-muted-foreground">Express production</dt>
+                  <dd className="font-mono tabular-nums">+{formatNaira(order.productionFee)}</dd>
+                </div>
+              ) : null}
               <Separator className="my-1 bg-line" />
               <div className="flex justify-end gap-8">
                 <dt className="text-[0.68rem] uppercase tracking-[0.18em]">Total</dt>

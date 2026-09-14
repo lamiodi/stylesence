@@ -3,22 +3,28 @@ import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { getCartFromCookie } from '@/lib/cart'
 import { checkoutInput } from '@/lib/validators'
 import { evaluatePromoStack } from '@/lib/promo'
+import { PRODUCTION_TIERS } from '@/lib/types'
 
 /**
  * POST /api/checkout
- * Re-checks stock, atomically decrements it, snapshots order items,
+ * Re-checks stock, atomically decrements it, snapshots order items
+ * (incl. Round-13 made-to-order measurements + per-item tailoring notes),
  * creates a PAID order (dev placeholder payment), clears the cart.
+ * Round 13: delivery tiers (local / nationwide / international) with a country
+ * field, a production timeline (standard 7–10 · express 2–3 working days,
+ * fee = dev placeholder), and a mandatory pre-production confirmation.
  * Optional `promoCodes` (up to 2 — one money-saving + one shipping, both
  * stackable) is validated, applied and usage-incremented per code.
  * → 201 `{ order: { orderNumber, total, discount } }`.
  */
 
-const SHIPPING_RATES: Record<'standard' | 'express', number> = {
-  standard: 3500,
-  express: 7500,
+const SHIPPING_RATES: Record<'local' | 'nationwide' | 'international', number> = {
+  local: 2500,
+  nationwide: 3500,
+  international: 25000, // dev placeholder — live international rates pending
 }
 
-/** Complimentary standard shipping on merchandise subtotals at/above this value. */
+/** Complimentary nationwide shipping on merchandise subtotals at/above this value. */
 const FREE_SHIPPING_THRESHOLD = 150_000
 
 class StockError extends Error {}
@@ -79,12 +85,21 @@ export async function POST(req: Request) {
     promoIds = rows.map((r) => r.id)
   }
 
-  // Complimentary standard shipping over the threshold (matches the storefront
+  // Round 13 delivery tiers: local + nationwide are Nigeria-only; international
+  // is the only method for addresses outside Nigeria.
+  if (input.country !== 'Nigeria' && (input.shippingMethod === 'local' || input.shippingMethod === 'nationwide')) {
+    return fail(400, 'Local and nationwide delivery are only available within Nigeria — choose international delivery.')
+  }
+
+  // Complimentary nationwide shipping over the threshold (matches the storefront
   // promise on the cart page + announcement bar). Promo free-shipping wins over
-  // everything (also waives express).
-  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && input.shippingMethod === 'standard'
+  // everything (also waives international).
+  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && input.shippingMethod === 'nationwide'
   const shipping = freeShipping || thresholdFree ? 0 : SHIPPING_RATES[input.shippingMethod]
-  const total = subtotal - discount + shipping
+  // Round 13 production timeline — express is a paid add-on (fee is a dev placeholder).
+  const productionTier = input.productionTier ?? 'standard'
+  const productionFee = PRODUCTION_TIERS[productionTier].fee
+  const total = subtotal - discount + shipping + productionFee
 
   let orderNumber: string
   try {
@@ -118,6 +133,7 @@ export async function POST(req: Request) {
             address: input.address,
             city: input.city,
             state: input.state,
+            country: input.country,
             notes: input.notes ?? null,
             shippingMethod: input.shippingMethod,
             shipping,
@@ -125,6 +141,9 @@ export async function POST(req: Request) {
             discount,
             promoCode,
             promoCodes,
+            productionTier,
+            productionFee,
+            confirmedProduction: true,
             total,
             status: 'PAID',
           },
@@ -142,11 +161,14 @@ export async function POST(req: Request) {
             variantId: item.variantId,
             productName: item.variant.product.name,
             productSlug: item.variant.product.slug,
-            size: item.variant.size,
+            size: item.sizeMode === 'custom' ? `${item.variant.size} (custom)` : item.variant.size,
             color: item.variant.color,
             imageUrl: item.variant.product.images[0]?.url ?? null,
             unitPrice: item.variant.product.price,
             qty: item.qty,
+            sizeMode: item.sizeMode,
+            customMeasurements: item.customMeasurements,
+            notes: item.notes,
           })),
         })
         created = order

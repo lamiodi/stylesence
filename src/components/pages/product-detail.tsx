@@ -26,7 +26,7 @@ import { useWishlist } from '@/lib/store/wishlist'
 import { useRecentlyViewed } from '@/lib/store/recently-viewed'
 import { useMounted } from '@/hooks/use-mounted'
 import { useCustomer } from '@/hooks/use-customer'
-import type { ProductDetail } from '@/lib/types'
+import { MEASUREMENT_FIELDS, type CustomMeasurements, type MeasurementKey, type ProductDetail } from '@/lib/types'
 
 const SIZE_GUIDE = [
   ['XS', '32–34', '84', '66', '92'],
@@ -34,7 +34,33 @@ const SIZE_GUIDE = [
   ['M', '38–40', '94', '76', '102'],
   ['L', '41–43', '100', '82', '108'],
   ['XL', '44–46', '106', '88', '114'],
+  ['XXL', '47–49', '112', '94', '120'],
 ] as const
+
+/* ——— Round 13 made-to-order: client measurement inputs ——— */
+
+type FitMode = 'standard' | 'custom'
+
+/** Typical values — used only as placeholders, never defaults. */
+const MEASUREMENT_PLACEHOLDERS: Record<MeasurementKey, string> = {
+  bust: '92',
+  waist: '74',
+  hips: '98',
+  shoulder: '39',
+  sleeve: '58',
+  length: '105',
+  height: '168',
+}
+
+const EMPTY_MEASUREMENTS: Record<MeasurementKey, string> = {
+  bust: '',
+  waist: '',
+  hips: '',
+  shoulder: '',
+  sleeve: '',
+  length: '',
+  height: '',
+}
 
 function SizeGuideDialog() {
   return (
@@ -79,6 +105,13 @@ function SizeGuideDialog() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="eyebrow !text-[0.58rem]">How to measure</p>
+          <p className="mt-1.5 text-[0.72rem] leading-relaxed text-muted-foreground">
+            Measure over light clothing with the tape level — snug, never tight.
+            All values are in centimetres.
+          </p>
         </div>
         <DevPlaceholder compact title="Fit consultations">
           Video fit consultations are simulated in this preview.
@@ -383,12 +416,22 @@ function ProductInner({ product }: { product: ProductDetail }) {
   const [qty, setQty] = useState(1)
   const [imgIndex, setImgIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // Round 13 made-to-order: standard sizes vs custom measurements on top of a base size.
+  const [fitMode, setFitMode] = useState<FitMode>('standard')
+  // Measurement state lives as STRINGS (empty = not provided) and survives A↔B toggles.
+  const [measurements, setMeasurements] = useState<Record<MeasurementKey, string>>(EMPTY_MEASUREMENTS)
+  const [touchedMeasure, setTouchedMeasure] = useState<Partial<Record<MeasurementKey, boolean>>>({})
+  const [measureAttempted, setMeasureAttempted] = useState(false)
+  const [notes, setNotes] = useState('')
   const addToCart = useAddToCart()
   const addLook = useAddLookToCart()
   const toggleWish = useWishlist((s) => s.toggle)
-  const hasWish = useWishlist((s) => s.has)
+  // subscribe to the ITEMS array so the heart's aria-pressed/label live-updates
+  // when the wishlist changes anywhere else (worklog unresolved issue #2)
+  const wishItems = useWishlist((s) => s.items)
   const pushRecent = useRecentlyViewed((s) => s.push)
   const mounted = useMounted()
+  const firstMeasureRef = useRef<HTMLInputElement | null>(null)
 
   // sticky mobile buy bar — appears once the main actions scroll out above
   const actionsRef = useRef<HTMLDivElement>(null)
@@ -434,7 +477,78 @@ function ProductInner({ product }: { product: ProductDetail }) {
     [product, color, size],
   )
 
-  const wished = mounted && hasWish(product.slug)
+  /* ——— Round 13: custom measurements — validated on blur AND on add-attempt ——— */
+  const measurementErrors = useMemo(() => {
+    const errs: Partial<Record<MeasurementKey, string>> = {}
+    for (const f of MEASUREMENT_FIELDS) {
+      const raw = measurements[f.key].trim()
+      if (!raw) continue
+      const num = Number(raw)
+      if (!Number.isFinite(num)) {
+        errs[f.key] = `${f.label} must be a number`
+      } else if (num < f.min || num > f.max) {
+        errs[f.key] = `${f.label} must be between ${f.min} and ${f.max} cm`
+      }
+    }
+    return errs
+  }, [measurements])
+
+  /** Only the entered, valid fields — what actually rides on the add payload. */
+  const parsedMeasurements = useMemo(() => {
+    const out: CustomMeasurements = {}
+    for (const f of MEASUREMENT_FIELDS) {
+      const raw = measurements[f.key].trim()
+      if (!raw) continue
+      const num = Number(raw)
+      if (Number.isFinite(num) && num >= f.min && num <= f.max) out[f.key] = num
+    }
+    return out
+  }, [measurements])
+
+  const enteredMeasureCount = MEASUREMENT_FIELDS.filter(
+    (f) => measurements[f.key].trim() !== '',
+  ).length
+
+  const visibleMeasureError = (key: MeasurementKey): string | undefined =>
+    (touchedMeasure[key] || measureAttempted) ? measurementErrors[key] : undefined
+
+  /** Shared add-to-bag — main button and sticky mobile bar both route through here. */
+  const handleAddToBag = (fromStickyBar = false) => {
+    if (!selectedVariant) {
+      toast.error('Please select a size first.')
+      if (fromStickyBar) actionsRef.current?.scrollIntoView({ block: 'center' })
+      return
+    }
+    if (fitMode === 'custom') {
+      setMeasureAttempted(true)
+      // reveal inline errors on every entered field for this attempt
+      setTouchedMeasure((t) => {
+        const next = { ...t }
+        for (const f of MEASUREMENT_FIELDS) if (measurements[f.key].trim() !== '') next[f.key] = true
+        return next
+      })
+      if (enteredMeasureCount === 0) {
+        toast.error('Add at least one measurement so the atelier can cut to you.')
+        firstMeasureRef.current?.focus()
+        return
+      }
+      if (Object.keys(measurementErrors).length > 0) {
+        toast.error('Some measurements need a second look — see the highlighted fields.')
+        const firstInvalid = MEASUREMENT_FIELDS.find((f) => measurementErrors[f.key])
+        document.getElementById(firstInvalid ? `meas-${firstInvalid.key}` : 'meas-bust')?.focus()
+        return
+      }
+    }
+    addToCart.mutate({
+      variantId: selectedVariant.id,
+      qty,
+      sizeMode: fitMode,
+      customMeasurements: fitMode === 'custom' ? parsedMeasurements : undefined,
+      notes: notes.trim() || undefined,
+    })
+  }
+
+  const wished = mounted && wishItems.some((i) => i.slug === product.slug)
   const oneSize = product.variants.every((v) => v.size === 'One Size')
   const stockNote =
     selectedVariant && selectedVariant.stock === 0
@@ -606,6 +720,11 @@ function ProductInner({ product }: { product: ProductDetail }) {
           <div className="mt-6">
             <p className="eyebrow">
               Colour — <span className="text-foreground">{color ?? 'Select'}</span>
+              {colors.length > 1 ? (
+                <span className="ml-2 font-mono !text-[0.58rem] font-normal normal-case tracking-[0.06em] text-muted-foreground/75">
+                  {colors.length} colourways
+                </span>
+              ) : null}
             </p>
             <div className="mt-2.5 flex flex-wrap gap-2.5" role="radiogroup" aria-label="Colour">
               {colors.map((c) => (
@@ -636,16 +755,128 @@ function ProductInner({ product }: { product: ProductDetail }) {
             </div>
           </div>
 
-          {/* size */}
+          {/* size — standard sizes vs custom measurements (multi-size pieces only) */}
           {!oneSize ? (
             <div className="mt-6">
-              <div className="flex items-baseline justify-between">
+              <p className="eyebrow">
+                Size — Option {fitMode === 'standard' ? 'A' : 'B'} ·{' '}
+                <span className="text-foreground">
+                  {fitMode === 'standard' ? 'Standard sizes' : 'Custom measurements'}
+                </span>
+              </p>
+              <div
+                className="mt-2.5 grid grid-cols-2 border border-line-strong"
+                role="radiogroup"
+                aria-label="Size options"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={fitMode === 'standard'}
+                  onClick={() => setFitMode('standard')}
+                  className={cn(
+                    'flex h-11 items-center justify-center px-2 text-[0.66rem] font-medium uppercase tracking-[0.12em] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                    fitMode === 'standard'
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  Standard sizes
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={fitMode === 'custom'}
+                  onClick={() => setFitMode('custom')}
+                  className={cn(
+                    'flex h-11 items-center justify-center border-l border-line px-2 text-[0.66rem] font-medium uppercase tracking-[0.12em] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                    fitMode === 'custom'
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  Custom measurements
+                </button>
+              </div>
+
+              {fitMode === 'custom' ? (
+                <div className="mt-4">
+                  <p className="flex items-center gap-1.5 text-[0.72rem] italic leading-relaxed text-muted-foreground">
+                    <Ruler className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                    For the best fit, we recommend providing your measurements.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3.5">
+                    {MEASUREMENT_FIELDS.map((f) => {
+                      const error = visibleMeasureError(f.key)
+                      return (
+                        <div key={f.key}>
+                          <Label htmlFor={`meas-${f.key}`} className="eyebrow !text-[0.58rem]">
+                            {f.label}
+                          </Label>
+                          <div className="relative mt-1.5">
+                            <Input
+                              id={`meas-${f.key}`}
+                              ref={f.key === 'bust' ? firstMeasureRef : undefined}
+                              inputMode="decimal"
+                              autoComplete="off"
+                              value={measurements[f.key]}
+                              onChange={(e) =>
+                                setMeasurements((m) => ({ ...m, [f.key]: e.target.value }))
+                              }
+                              onBlur={() =>
+                                setTouchedMeasure((t) => ({ ...t, [f.key]: true }))
+                              }
+                              placeholder={MEASUREMENT_PLACEHOLDERS[f.key]}
+                              aria-invalid={error ? true : undefined}
+                              aria-describedby={error ? `meas-${f.key}-error` : undefined}
+                              className="h-11 border-line-strong pr-11 font-mono text-[0.8rem] tabular-nums focus-visible:ring-0"
+                            />
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[0.64rem] uppercase tracking-[0.08em] text-muted-foreground/70"
+                            >
+                              cm
+                            </span>
+                          </div>
+                          {error ? (
+                            <p
+                              id={`meas-${f.key}-error`}
+                              role="alert"
+                              className="mt-1 text-[0.7rem] font-medium text-destructive"
+                            >
+                              {error}
+                            </p>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* the size rail — still required under Option B (closest size for the atelier) */}
+              <div className="flex items-baseline justify-between gap-3">
                 <p className="eyebrow">
-                  Size — <span className="text-foreground">{size ?? 'Select'}</span>
+                  {fitMode === 'custom' ? (
+                    <>
+                      Closest size — <span className="text-foreground">{size ?? 'Select'}</span>
+                      <span className="ml-1.5 font-mono !text-[0.58rem] font-normal normal-case tracking-[0.06em] text-muted-foreground/75">
+                        pattern reference for the atelier
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Size — <span className="text-foreground">{size ?? 'Select'}</span>
+                    </>
+                  )}
                 </p>
                 <SizeGuideDialog />
               </div>
-              <div className="mt-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label="Size">
+              <div
+                className="mt-2.5 flex flex-wrap gap-2"
+                role="radiogroup"
+                aria-label={fitMode === 'custom' ? 'Closest size — pattern reference' : 'Size'}
+              >
                 {sizesForColor.map((v) => {
                   const soldOut = v.stock === 0
                   return (
@@ -683,15 +914,33 @@ function ProductInner({ product }: { product: ProductDetail }) {
             ) : null}
           </div>
 
+          {/* tailoring notes — rides along on every add (all pieces, incl. one-size) */}
+          <div className="mt-6">
+            <Label htmlFor="order-notes" className="eyebrow">
+              Additional instructions for your order (optional)
+            </Label>
+            <Textarea
+              id="order-notes"
+              rows={2}
+              maxLength={500}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Make it tighter around the waist · add extra length · make the sleeves longer · adjust the neckline…"
+              className="mt-2 min-h-0 border-line-strong text-sm"
+            />
+            {notes.length > 350 ? (
+              <p aria-live="polite" className="mt-1 text-right font-mono text-[0.66rem] text-muted-foreground tabular-nums">
+                {notes.length} / 500
+              </p>
+            ) : null}
+          </div>
+
           {/* actions */}
           <div ref={actionsRef} className="mt-6 flex gap-3">
             <Button
               className="h-12 flex-1 uppercase tracking-[0.2em] text-[0.66rem]"
               disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
-              onClick={() => {
-                if (!selectedVariant) return toast.error('Please select a size first.')
-                addToCart.mutate({ variantId: selectedVariant.id, qty })
-              }}
+              onClick={() => handleAddToBag()}
             >
               {addToCart.isPending
                 ? 'Adding…'
@@ -734,14 +983,24 @@ function ProductInner({ product }: { product: ProductDetail }) {
             </div>
           ) : null}
 
-          {/* delivery promise — mirrors checkout's canonical SHIPPING_METHODS copy */}
+          {/* delivery promise — made-to-order production + Round 13 delivery tiers */}
           <div className="mt-5 flex items-start gap-2.5 border border-line bg-secondary/50 px-3.5 py-3">
             <Truck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />
-            <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
-              Standard <span className="font-mono tabular-nums">₦3,500</span> · 3–5 business days, nationwide courier ·
-              Express <span className="font-mono tabular-nums">₦7,500</span> · 1–2 business days, Lagos dispatch ·{' '}
-              <span className="text-espresso">complimentary standard over ₦150,000</span>
-            </p>
+            <div className="min-w-0 space-y-1">
+              <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
+                Every piece is made to order — standard production{' '}
+                <span className="font-mono tabular-nums">7–10</span> working days · express{' '}
+                <span className="font-mono tabular-nums">2–3</span> working days (add-on fee at
+                checkout).
+              </p>
+              <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
+                Local <span className="font-mono tabular-nums">₦2,500</span> · Lagos 1–2 days ·
+                Nationwide <span className="font-mono tabular-nums">₦3,500</span> · 3–5 days ·
+                International <span className="font-mono tabular-nums">₦25,000</span> (dev
+                placeholder) ·{' '}
+                <span className="text-espresso">complimentary nationwide over ₦150,000</span>
+              </p>
+            </div>
           </div>
 
           {/* accordions */}
@@ -793,7 +1052,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                   <ul className="space-y-2.5 text-sm text-muted-foreground">
                     <li className="flex gap-2.5">
                       <Truck className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
-                      Standard ₦3,500 — 3–5 days nationwide · Express ₦7,500 — 1–2 days
+                      Local ₦2,500 — 1–2 days · Nationwide ₦3,500 — 3–5 days · International ₦25,000 — 7–14 days · complimentary nationwide over ₦150,000
                     </li>
                     <li className="flex gap-2.5">
                       <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
@@ -999,6 +1258,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                 <span className="text-foreground">
                   {' '}
                   · {selectedVariant.color} · {selectedVariant.size}
+                  {fitMode === 'custom' && enteredMeasureCount > 0 ? ' · Custom fit' : ''}
                   {qty > 1 ? ` · ×${qty}` : ''}
                 </span>
               ) : (
@@ -1009,14 +1269,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
           <Button
             className="h-11 shrink-0 px-7 uppercase tracking-[0.18em] text-[0.64rem]"
             disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
-            onClick={() => {
-              if (!selectedVariant) {
-                toast.error('Please select a size first.')
-                actionsRef.current?.scrollIntoView({ block: 'center' })
-                return
-              }
-              addToCart.mutate({ variantId: selectedVariant.id, qty })
-            }}
+            onClick={() => handleAddToBag(true)}
           >
             {addToCart.isPending
               ? 'Adding…'

@@ -3,8 +3,17 @@
 /** Client-side cart hooks over the /api/cart endpoints. */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import type { CartState } from '@/lib/types'
+import type { CartState, CustomMeasurements } from '@/lib/types'
 import { useUi } from '@/lib/store/wishlist'
+
+/** Round 13 made-to-order add payload — custom measurements + tailoring notes ride along. */
+export type AddToCartInput = {
+  variantId: string
+  qty: number
+  sizeMode?: 'standard' | 'custom'
+  customMeasurements?: CustomMeasurements
+  notes?: string
+}
 
 async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -28,7 +37,7 @@ export function useAddToCart() {
   const qc = useQueryClient()
   const setCartOpen = useUi((s) => s.setCartOpen)
   return useMutation({
-    mutationFn: (input: { variantId: string; qty: number }) =>
+    mutationFn: (input: AddToCartInput) =>
       jsonFetch<{ cart: CartState }>('/api/cart', {
         method: 'POST',
         body: JSON.stringify(input),

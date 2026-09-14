@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Lock, ArrowRight } from 'lucide-react'
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ProductImage } from '@/components/site/price'
 import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
@@ -20,11 +21,24 @@ import { useCustomer } from '@/hooks/use-customer'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 import { FREE_SHIPPING_THRESHOLD } from '@/components/site/shipping-meter'
-import { SHIPPING_METHODS, type ShippingMethod } from '@/lib/types'
+import {
+  PRODUCTION_TIERS,
+  SHIPPING_METHODS,
+  formatMeasurements,
+  type ProductionTier,
+  type ShippingMethod,
+} from '@/lib/types'
 
 const NG_STATES = [
   'Lagos', 'FCT — Abuja', 'Rivers', 'Oyo', 'Enugu', 'Kano', 'Akwa Ibom', 'Edo',
   'Kaduna', 'Ogun', 'Anambra', 'Delta', 'Abia', 'Imo', 'Plateau', 'Cross River',
+]
+
+/** Round 13 delivery destinations. Nigeria unlocks the local + nationwide
+ *  couriers; every other country is international-only (server-enforced). */
+const COUNTRIES = [
+  'Nigeria', 'Ghana', 'United Kingdom', 'United States', 'Canada',
+  'South Africa', 'United Arab Emirates', 'France', 'Germany',
 ]
 
 /** Controlled field with a signed-in default that only fills an empty,
@@ -63,10 +77,35 @@ export function CheckoutPage() {
   const [state, setState] = usePrefillField(
     customer?.defaultState && NG_STATES.includes(customer.defaultState) ? customer.defaultState : '',
   )
+  const [country, setCountry] = useState('Nigeria')
   const [notes, setNotes] = useState('')
-  const [shipping, setShipping] = useState<ShippingMethod>('standard')
+  const [shipping, setShipping] = useState<ShippingMethod>('nationwide')
+  const [productionTier, setProductionTier] = useState<ProductionTier>('standard')
+  const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const confirmRef = useRef<HTMLDivElement>(null)
+
+  /** Round 13 geo rules, mirrored client-side (the server rejects mismatches
+   *  with a 400): local is Lagos metro only, nationwide is Nigeria-only,
+   *  international ships everywhere. */
+  const methodEnabled = (key: ShippingMethod) =>
+    key === 'international' || (country === 'Nigeria' && (key === 'nationwide' || state === 'Lagos'))
+
+  const disabledNote = (key: ShippingMethod): string | null =>
+    key === 'local' ? 'Lagos metro only — select Lagos as your state'
+      : key === 'nationwide' ? 'Within Nigeria only'
+        : null
+
+  // Keep the delivery selection valid as the address context changes — in
+  // lockstep with the disabled cards below and the server's geo rules.
+  useEffect(() => {
+    if (country !== 'Nigeria' && shipping !== 'international') {
+      setShipping('international')
+    } else if (country === 'Nigeria' && shipping === 'local' && state !== 'Lagos') {
+      setShipping('nationwide')
+    }
+  }, [country, state, shipping])
 
   // The checkout email participates in promo validation so single-use-per-customer
   // codes fail visibly here (the server re-checks authoritatively with this email).
@@ -77,22 +116,31 @@ export function CheckoutPage() {
   const discount = promoData?.discount ?? 0
   const stackFreeShipping = promoData?.freeShipping ?? false
 
-  /** Complimentary standard shipping over ₦150,000 (merchandise subtotal, pre-discount)
-   *  — mirrors the server-side rule in /api/checkout and the cart-page promise. */
-  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && shipping === 'standard'
+  /** Complimentary nationwide shipping over ₦150,000 (merchandise subtotal,
+   *  pre-discount) — mirrors the server rule in /api/checkout; a free-shipping
+   *  promo waives EVERY method (including international). */
+  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && shipping === 'nationwide'
   const shippingPrice = stackFreeShipping || thresholdFree ? 0 : SHIPPING_METHODS[shipping].price
-  const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice
+  /** Express production add-on (fee is a clearly-labelled dev placeholder). */
+  const productionFee = PRODUCTION_TIERS[productionTier].fee
+  const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice + productionFee
 
-  const validate = (): boolean => {
+  const validate = (): Record<string, string> => {
     const e: Record<string, string> = {}
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = 'A valid email is required.'
     if (fullName.trim().length < 2) e.fullName = 'Your full name is required.'
     if (phone.trim().length < 7) e.phone = 'A reachable phone number is required.'
     if (address.trim().length < 5) e.address = 'Your street address is required.'
     if (city.trim().length < 2) e.city = 'Your city is required.'
-    if (!state) e.state = 'Select your state.'
-    setErrors(e)
-    return Object.keys(e).length === 0
+    if (state.trim().length < 2) {
+      e.state = country === 'Nigeria' ? 'Select your state.' : 'Your state / region is required.'
+    }
+    // Round 13: production cannot start until the customer confirms their
+    // measurements/details — the checkbox is mandatory before payment.
+    if (!confirmed) {
+      e.confirmedProduction = 'Please confirm your measurements and details before placing the order.'
+    }
+    return e
   }
 
   const placeOrder = async () => {
@@ -100,8 +148,16 @@ export function CheckoutPage() {
       toast.error('Your bag is empty.')
       return navigate('/shop')
     }
-    if (!validate()) {
-      toast.error('Please review the highlighted fields.')
+    const errs = validate()
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      if (errs.confirmedProduction) {
+        toast.error(errs.confirmedProduction)
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        confirmRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+      } else {
+        toast.error('Please review the highlighted fields.')
+      }
       return
     }
     setBusy(true)
@@ -115,9 +171,12 @@ export function CheckoutPage() {
           phone: phone.trim(),
           address: address.trim(),
           city: city.trim(),
-          state,
+          state: state.trim(),
+          country,
           notes: notes.trim() || undefined,
           shippingMethod: shipping,
+          productionTier,
+          confirmedProduction: true,
           promoCodes: promoCodes.length > 0 ? promoCodes : undefined,
         }),
       })
@@ -136,6 +195,12 @@ export function CheckoutPage() {
 
   const fieldCls = (k: string) =>
     cn('h-11 border-line-strong bg-background focus-visible:ring-0', errors[k] && 'border-destructive')
+
+  const selectCls = (k: string) =>
+    cn(
+      'h-11 w-full rounded-[--radius] border border-line-strong bg-background px-3 text-sm focus:outline-none focus-visible:outline-2 focus-visible:outline-ring',
+      errors[k] && 'border-destructive',
+    )
 
   return (
     <div className="container-site py-10 sm:py-14">
@@ -236,6 +301,20 @@ export function CheckoutPage() {
                   />
                   {errors.address ? <p className="text-[0.7rem] text-destructive">{errors.address}</p> : null}
                 </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="ck-country" className="eyebrow">Country *</Label>
+                  <select
+                    id="ck-country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    autoComplete="country-name"
+                    className={selectCls('country')}
+                  >
+                    {COUNTRIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ck-city" className="eyebrow">City *</Label>
                   <Input
@@ -250,22 +329,36 @@ export function CheckoutPage() {
                   {errors.city ? <p className="text-[0.7rem] text-destructive">{errors.city}</p> : null}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="ck-state" className="eyebrow">State *</Label>
-                  <select
-                    id="ck-state"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    className={cn(
-                      'h-11 w-full rounded-[--radius] border border-line-strong bg-background px-3 text-sm focus:outline-none focus-visible:outline-2 focus-visible:outline-ring',
-                      errors.state && 'border-destructive',
-                    )}
-                    aria-invalid={!!errors.state}
-                  >
-                    <option value="">Select state…</option>
-                    {NG_STATES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  {country === 'Nigeria' ? (
+                    <>
+                      <Label htmlFor="ck-state" className="eyebrow">State *</Label>
+                      <select
+                        id="ck-state"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        className={selectCls('state')}
+                        aria-invalid={!!errors.state}
+                      >
+                        <option value="">Select state…</option>
+                        {NG_STATES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <>
+                      <Label htmlFor="ck-state" className="eyebrow">State / Region *</Label>
+                      <Input
+                        id="ck-state"
+                        autoComplete="address-level1"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="Greater London"
+                        className={fieldCls('state')}
+                        aria-invalid={!!errors.state}
+                      />
+                    </>
+                  )}
                   {errors.state ? <p className="text-[0.7rem] text-destructive">{errors.state}</p> : null}
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
@@ -291,21 +384,30 @@ export function CheckoutPage() {
               >
                 {(Object.keys(SHIPPING_METHODS) as ShippingMethod[]).map((key) => {
                   const m = SHIPPING_METHODS[key]
+                  const enabled = methodEnabled(key)
+                  const note = disabledNote(key)
                   // A shipping promo waives EVERY method (mirrors the server rule);
-                  // the ₦150k threshold only unlocks standard.
-                  const methodFree = stackFreeShipping || (key === 'standard' && thresholdFree)
+                  // the ₦150k threshold only unlocks nationwide. Disabled cards stay
+                  // priced but never claim the complimentary unlock.
+                  const methodFree =
+                    enabled && (stackFreeShipping || (key === 'nationwide' && subtotal >= FREE_SHIPPING_THRESHOLD))
                   return (
                     <Label
                       key={key}
                       className={cn(
-                        'flex cursor-pointer items-start gap-3 border p-4 transition-colors',
-                        shipping === key
-                          ? 'border-foreground bg-secondary/60'
-                          : 'border-line-strong hover:border-foreground',
+                        'flex items-start gap-3 border p-4 transition-colors',
+                        enabled
+                          ? cn(
+                              'cursor-pointer',
+                              shipping === key
+                                ? 'border-foreground bg-secondary/60'
+                                : 'border-line-strong hover:border-foreground',
+                            )
+                          : 'cursor-not-allowed border-line-strong opacity-50',
                       )}
                     >
-                      <RadioGroupItem value={key} className="mt-0.5" />
-                      <div className="flex-1">
+                      <RadioGroupItem value={key} disabled={!enabled} className="mt-0.5" />
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium">{m.label}</span>
                           <span className={cn('font-mono text-sm tabular-nums', methodFree && 'text-espresso')}>
@@ -313,8 +415,18 @@ export function CheckoutPage() {
                           </span>
                         </div>
                         <p className="mt-1 text-[0.72rem] text-muted-foreground">
-                          {m.eta} · {m.note}
+                          {key === 'international'
+                            ? `${m.eta} · Door-to-door international courier`
+                            : `${m.eta} · ${m.note}`}
                         </p>
+                        {key === 'international' ? (
+                          <p className="mt-1 text-[0.66rem] text-espresso">
+                            Duties handled at the door — rate is a dev placeholder.
+                          </p>
+                        ) : null}
+                        {note ? (
+                          <p className="mt-1 text-[0.7rem] font-medium text-foreground">{note}</p>
+                        ) : null}
                         {methodFree ? (
                           <p className="mt-1 text-[0.66rem] uppercase tracking-[0.14em] text-espresso">
                             {stackFreeShipping
@@ -332,8 +444,90 @@ export function CheckoutPage() {
               </DevPlaceholder>
             </section>
 
+            <section aria-label="Production timeline">
+              <h2 className="font-display text-xl tracking-tight">04 — Production</h2>
+              <p className="mt-1.5 text-[0.72rem] leading-relaxed text-muted-foreground">
+                Every piece is cut to order in the Lagos atelier — choose how soon yours moves through production.
+              </p>
+              <RadioGroup
+                value={productionTier}
+                onValueChange={(v) => setProductionTier(v as ProductionTier)}
+                className="mt-4 grid gap-3 sm:grid-cols-2"
+              >
+                {(Object.keys(PRODUCTION_TIERS) as ProductionTier[]).map((key) => {
+                  const t = PRODUCTION_TIERS[key]
+                  return (
+                    <Label
+                      key={key}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 border p-4 transition-colors',
+                        productionTier === key
+                          ? 'border-foreground bg-secondary/60'
+                          : 'border-line-strong hover:border-foreground',
+                      )}
+                    >
+                      <RadioGroupItem value={key} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-medium">{t.label}</span>
+                          {t.fee > 0 ? (
+                            <span className="font-mono text-sm tabular-nums">+{formatNaira(t.fee)}</span>
+                          ) : (
+                            <span className="text-[0.8rem] text-muted-foreground">Included</span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[0.72rem] text-muted-foreground">{t.eta}</p>
+                      </div>
+                    </Label>
+                  )
+                })}
+              </RadioGroup>
+              <DevPlaceholder compact className="mt-3" title="Express fee">
+                The ₦15,000 express production fee is a dev placeholder — production pricing pending.
+              </DevPlaceholder>
+            </section>
+
             <section aria-label="Payment">
-              <h2 className="font-display text-xl tracking-tight">04 — Payment</h2>
+              <h2 className="font-display text-xl tracking-tight">05 — Payment</h2>
+              {/* Round 13 pre-production confirmation — mandatory before payment. */}
+              <div
+                ref={confirmRef}
+                className={cn(
+                  'mt-4 border bg-secondary/50 p-4',
+                  errors.confirmedProduction ? 'border-destructive' : 'border-line',
+                )}
+              >
+                <div className="flex items-start gap-3.5">
+                  <Checkbox
+                    id="ck-confirm"
+                    checked={confirmed}
+                    onCheckedChange={(v) => {
+                      const next = v === true
+                      setConfirmed(next)
+                      if (next) {
+                        setErrors((prev) => {
+                          if (!prev.confirmedProduction) return prev
+                          const copy = { ...prev }
+                          delete copy.confirmedProduction
+                          return copy
+                        })
+                      }
+                    }}
+                    aria-invalid={!!errors.confirmedProduction}
+                    /* 44px touch target — the invisible hit area extends 14px
+                     * around the 16px checkbox box. */
+                    className="relative mt-0.5 before:absolute before:-inset-[0.875rem] before:content-['']"
+                  />
+                  <Label htmlFor="ck-confirm" className="cursor-pointer text-sm leading-relaxed">
+                    I confirm that my measurements/details are correct. Production will begin once payment is completed.
+                  </Label>
+                </div>
+                {errors.confirmedProduction ? (
+                  <p className="mt-2.5 text-[0.7rem] text-destructive" role="alert">
+                    {errors.confirmedProduction}
+                  </p>
+                ) : null}
+              </div>
               <div className="mt-4 border border-dashed border-espresso/45 bg-[color-mix(in_oklch,var(--espresso)_7%,transparent)] p-5">
                 <div className="flex items-center gap-2.5">
                   <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
@@ -372,6 +566,23 @@ export function CheckoutPage() {
                       <p className="mt-0.5 text-[0.66rem] uppercase tracking-[0.12em] text-muted-foreground">
                         {item.variant.color} · {item.variant.size} · ×{item.qty}
                       </p>
+                      {item.sizeMode === 'custom' ? (
+                        <div className="mt-1 space-y-0.5">
+                          <p className="inline-flex items-center border border-espresso/35 px-1.5 py-px font-mono text-[0.6rem] uppercase tracking-[0.14em] text-espresso">
+                            Custom fit
+                          </p>
+                          {item.customMeasurements ? (
+                            <p className="truncate font-mono text-[0.62rem] tabular-nums text-muted-foreground">
+                              {formatMeasurements(item.customMeasurements)}
+                            </p>
+                          ) : null}
+                          {item.notes ? (
+                            <p className="truncate text-[0.62rem] italic text-muted-foreground">
+                              “{item.notes}”
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                     <span className="font-mono text-[0.78rem] tabular-nums">
                       {formatNaira(item.product.price * item.qty)}
@@ -414,6 +625,12 @@ export function CheckoutPage() {
                     </dt>
                     <dd className="font-mono tabular-nums">{formatNaira(shippingPrice)}</dd>
                   </div>
+                  {productionFee > 0 ? (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Express production</dt>
+                      <dd className="font-mono tabular-nums">+{formatNaira(productionFee)}</dd>
+                    </div>
+                  ) : null}
                 </dl>
                 <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
                   <span className="font-display text-lg">Total</span>

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { ProductImage } from '@/components/site/price'
 import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
-import type { OrderView } from '@/lib/types'
+import { PRODUCTION_TIERS, formatMeasurements, shippingLabel, type OrderView } from '@/lib/types'
 
 const STEPS = [
   { key: 'PAID', label: 'Order placed', icon: Check },
@@ -189,6 +189,19 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {order.address}, {order.city}, {order.state}, {order.country}
                 </p>
+                <p className="mt-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-espresso">
+                  {PRODUCTION_TIERS[order.productionTier].label} · {PRODUCTION_TIERS[order.productionTier].eta}
+                </p>
+                {order.notes ? (
+                  <div className="mt-2">
+                    <p className="font-sans text-[0.58rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                      Delivery notes
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed italic text-muted-foreground">
+                      {order.notes}
+                    </p>
+                  </div>
+                ) : null}
               </div>
               <p className="text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground">
                 {formatDate(order.createdAt)}
@@ -215,6 +228,26 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
                     <p className="mt-0.5 text-[0.66rem] uppercase tracking-[0.12em] text-muted-foreground">
                       {item.color} · {item.size} · ×{item.qty}
                     </p>
+                    {item.sizeMode === 'custom' ? (
+                      <div className="mt-1.5 space-y-1">
+                        <span className="inline-flex items-center border border-line-strong px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.18em] text-espresso">
+                          Custom measurements
+                        </span>
+                        <p className="font-mono text-[0.7rem] tabular-nums text-muted-foreground">
+                          {formatMeasurements(item.customMeasurements)}
+                        </p>
+                        {item.notes ? (
+                          <div>
+                            <p className="font-sans text-[0.58rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                              Atelier note
+                            </p>
+                            <p className="line-clamp-2 text-xs leading-relaxed italic text-muted-foreground">
+                              “{item.notes}”
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <span className="font-mono text-sm tabular-nums">
                     {formatNaira(item.unitPrice * item.qty)}
@@ -241,16 +274,25 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
               ) : null}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">
-                  {order.shippingMethod === 'express' ? 'Express delivery' : 'Standard delivery'}
+                  {shippingLabel(order.shippingMethod)}
                   {order.shipping === 0 ? ' — complimentary' : ''}
                 </dt>
                 <dd className="font-mono tabular-nums">{formatNaira(order.shipping)}</dd>
               </div>
+              {order.productionFee > 0 ? (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Express production</dt>
+                  <dd className="font-mono tabular-nums">+{formatNaira(order.productionFee)}</dd>
+                </div>
+              ) : null}
               <div className="flex items-baseline justify-between border-t border-line pt-3">
                 <dt className="font-display text-lg">Total</dt>
                 <dd className="font-mono text-xl font-medium tabular-nums">{formatNaira(order.total)}</dd>
               </div>
             </dl>
+            <p className="border-t border-line px-6 py-4 text-[0.66rem] leading-relaxed text-muted-foreground">
+              Every piece is cut to order — production begins now that payment is complete.
+            </p>
           </div>
         </Reveal>
 

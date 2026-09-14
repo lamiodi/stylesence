@@ -122,8 +122,15 @@ model CartItem {
   variantId String
   variant   ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
   qty       Int             @default(1)
+  /** Round 13 made-to-order: 'standard' (size as stocked) | 'custom' (client measurements). */
+  sizeMode         String  @default("standard")
+  /** Custom measurements JSON — {bust,waist,hips,shoulder,sleeve,length,height} in cm. */
+  customMeasurements String?
+  /** Per-item tailoring instructions ("make it tighter around the waist"…). */
+  notes            String?
 
-  @@unique([cartId, variantId])
+  // No unique(cartId, variantId) since Round 13: custom lines with different
+  // measurements (or a standard + custom mix) for the same variant coexist.
 }
 
 model Order {
@@ -145,6 +152,12 @@ model Order {
   promoCode     String?
   /** ALL applied codes, comma-separated uppercase ("SS-FRIEND,SENCE-SHIP") — stacked promos since Round 12. */
   promoCodes    String?
+  /** Round 13 production timeline: 'standard' (7–10 working days) | 'express' (2–3, fee applies). */
+  productionTier  String  @default("standard")
+  /** Express production add-on fee charged (0 on standard). Dev placeholder amount. */
+  productionFee   Int     @default(0)
+  /** Client confirmed measurements/details before payment — required since Round 13. */
+  confirmedProduction Boolean @default(false)
   total         Int
   status        String      @default("PAID")
   items         OrderItem[]
@@ -164,6 +177,12 @@ model OrderItem {
   imageUrl    String?
   unitPrice   Int
   qty         Int
+  /** Round 13 made-to-order snapshot: 'standard' | 'custom'. */
+  sizeMode           String  @default("standard")
+  /** Measurements JSON the garment was cut to (custom lines only). */
+  customMeasurements String?
+  /** Per-item tailoring instructions captured on the PDP. */
+  notes              String?
 }
 
 model NewsletterSubscriber {

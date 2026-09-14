@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { PROMO_STACK_MAX } from '@/lib/promo'
+import { MEASUREMENT_FIELDS } from '@/lib/types'
 
 /**
  * Zod schemas for every mutating endpoint (API contract v1).
@@ -76,8 +77,15 @@ export const checkoutInput = z.object({
   address: requiredText(4, 200, 'Address'),
   city: requiredText(2, 80, 'City'),
   state: requiredText(2, 80, 'State'),
+  country: requiredText(2, 80, 'Country'),
   notes: optionalText(500, 'Notes'),
-  shippingMethod: z.enum(['standard', 'express']),
+  shippingMethod: z.enum(['local', 'nationwide', 'international']),
+  /** Round 13 production timeline — express carries a fee (dev placeholder amount). */
+  productionTier: z.enum(['standard', 'express']).default('standard'),
+  /** Round 13 pre-production confirmation — the checkbox before payment. */
+  confirmedProduction: z.boolean().refine((v) => v === true, {
+    message: 'Please confirm your measurements and details before production begins',
+  }),
   promoCodes: z
     .array(z.string().trim().min(1).max(40))
     .max(2, 'At most two promo codes per order')
@@ -225,14 +233,50 @@ export const wishlistSlugsInput = z.object({
     .max(60, 'At most 60 wishlist pieces'),
 })
 
-export const cartAddInput = z.object({
-  variantId: z.string().min(1, 'variantId is required'),
-  qty: z
-    .number()
-    .int('Quantity must be a whole number')
-    .min(1, 'Quantity must be between 1 and 10')
-    .max(10, 'Quantity must be between 1 and 10'),
-})
+/* ——— Round 13: made-to-order measurements (cm) ——— */
+
+/** One optional measurement, validated against its MEASUREMENT_FIELDS range. */
+function measurementField(key: (typeof MEASUREMENT_FIELDS)[number]['key']) {
+  const def = MEASUREMENT_FIELDS.find((f) => f.key === key)!
+  return z.coerce
+    .number({ message: `${def.label} must be a number` })
+    .refine((v) => Number.isFinite(v), `${def.label} must be a number`)
+    .refine((v) => v >= def.min && v <= def.max, `${def.label} must be between ${def.min} and ${def.max} cm`)
+    .optional()
+}
+
+/** Client measurements — every field optional, but at least one is required. */
+export const customMeasurementsInput = z
+  .object({
+    bust: measurementField('bust'),
+    waist: measurementField('waist'),
+    hips: measurementField('hips'),
+    shoulder: measurementField('shoulder'),
+    sleeve: measurementField('sleeve'),
+    length: measurementField('length'),
+    height: measurementField('height'),
+  })
+  .refine((m) => Object.values(m).some((v) => v !== undefined), {
+    message: 'Add at least one measurement so the atelier can cut to you',
+  })
+
+export const cartAddInput = z
+  .object({
+    variantId: z.string().min(1, 'variantId is required'),
+    qty: z
+      .number()
+      .int('Quantity must be a whole number')
+      .min(1, 'Quantity must be between 1 and 10')
+      .max(10, 'Quantity must be between 1 and 10'),
+    /** 'standard' = size as stocked · 'custom' = client measurements on top of the base size. */
+    sizeMode: z.enum(['standard', 'custom']).default('standard'),
+    customMeasurements: customMeasurementsInput.optional(),
+    notes: optionalText(500, 'Instructions'),
+  })
+  .refine((d) => d.sizeMode !== 'custom' || d.customMeasurements !== undefined, {
+    message: 'Custom measurements are required for a custom-fit line',
+    path: ['customMeasurements'],
+  })
 
 /** POST /api/products/[slug]/stock-alerts — back-in-stock waitlist signup. */
 export const stockAlertInput = z.object({
@@ -380,6 +424,7 @@ export type ProductPatchInput = z.infer<typeof productPatchInput>
 export type OrderPatchInput = z.infer<typeof orderPatchInput>
 export type ReviewPatchInput = z.infer<typeof reviewPatchInput>
 export type CartAddInput = z.infer<typeof cartAddInput>
+export type CustomMeasurementsInput = z.infer<typeof customMeasurementsInput>
 export type CartPatchInput = z.infer<typeof cartPatchInput>
 export type StockAlertInput = z.infer<typeof stockAlertInput>
 export type PromoValidateInput = z.infer<typeof promoValidateInput>

@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const parsed = await readValidated(req, cartAddInput)
   if (!parsed.ok) return parsed.response
-  const { variantId, qty } = parsed.data
+  const { variantId, qty, sizeMode, customMeasurements, notes } = parsed.data
 
   const variant = await db.productVariant.findUnique({
     where: { id: variantId },
@@ -39,15 +39,37 @@ export async function POST(req: Request) {
 
   const { cartId, cookieId } = await getOrCreateCart()
 
-  const existing = await db.cartItem.findUnique({
-    where: { cartId_variantId: { cartId, variantId } },
+  // Round 13 made-to-order lines: a custom line merges only with the SAME
+  // custom line (identical measurements + notes on the same variant);
+  // a standard add merges only with a standard line. Different measurements,
+  // or a standard + custom mix on one variant, coexist as separate rows
+  // (the Round-13 schema dropped the unique(cartId, variantId) index).
+  const isCustom = sizeMode === 'custom' && customMeasurements !== undefined
+  const measurementsJson = isCustom ? JSON.stringify(customMeasurements) : null
+  const notesValue = notes ?? null
+
+  const existing = await db.cartItem.findFirst({
+    where: isCustom
+      ? { cartId, variantId, sizeMode: 'custom', customMeasurements: measurementsJson, notes: notesValue }
+      : { cartId, variantId, sizeMode: 'standard' },
+    orderBy: { id: 'desc' },
   })
+
   if (existing) {
     // Merge: cap the combined quantity at available stock.
     const capped = Math.min(existing.qty + qty, variant.stock)
     await db.cartItem.update({ where: { id: existing.id }, data: { qty: capped } })
   } else {
-    await db.cartItem.create({ data: { cartId, variantId, qty } })
+    await db.cartItem.create({
+      data: {
+        cartId,
+        variantId,
+        qty,
+        sizeMode: isCustom ? 'custom' : 'standard',
+        customMeasurements: measurementsJson,
+        notes: notesValue,
+      },
+    })
   }
 
   return respondWithCart(cartId, cookieId)

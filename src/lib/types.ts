@@ -103,6 +103,12 @@ export interface CartItem {
   qty: number
   variant: { id: string; size: string; color: string; colorHex: string; stock: number }
   product: { slug: string; name: string; price: number; primaryImage: string | null }
+  /** Round 13 made-to-order: how the size was chosen. */
+  sizeMode: 'standard' | 'custom'
+  /** Client measurements in cm — present on custom lines. */
+  customMeasurements: CustomMeasurements | null
+  /** Per-item tailoring instructions ("make it tighter around the waist"…). */
+  notes: string | null
 }
 
 export interface CartState {
@@ -119,6 +125,10 @@ export interface OrderItemView {
   imageUrl: string | null
   unitPrice: number
   qty: number
+  /** Round 13 made-to-order snapshot. */
+  sizeMode: 'standard' | 'custom'
+  customMeasurements: CustomMeasurements | null
+  notes: string | null
 }
 
 export interface OrderView {
@@ -131,6 +141,8 @@ export interface OrderView {
   state: string
   country: string
   phone: string | null
+  /** Delivery notes captured at checkout. */
+  notes: string | null
   shippingMethod: string
   shipping: number
   subtotal: number
@@ -138,6 +150,10 @@ export interface OrderView {
   promoCode: string | null
   /** All applied codes (stacking, Round 12) — null on legacy single-code orders. */
   promoCodes: string[] | null
+  /** Round 13 production timeline — 'standard' (7–10 working days) | 'express' (2–3, fee applies). */
+  productionTier: 'standard' | 'express'
+  /** Express production add-on charged (0 on standard). */
+  productionFee: number
   total: number
   createdAt: string
   items: OrderItemView[]
@@ -181,11 +197,67 @@ export interface PromoStackInfo {
 export const ORDER_STATUSES = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 
+/* ——— Round 13: made-to-order measurements (cm) ——— */
+
+/** The seven measurements the atelier accepts, with sane validation ranges. */
+export const MEASUREMENT_FIELDS = [
+  { key: 'bust', label: 'Bust', min: 60, max: 180 },
+  { key: 'waist', label: 'Waist', min: 50, max: 160 },
+  { key: 'hips', label: 'Hips', min: 60, max: 190 },
+  { key: 'shoulder', label: 'Shoulder', min: 30, max: 60 },
+  { key: 'sleeve', label: 'Sleeve length', min: 25, max: 75 },
+  { key: 'length', label: 'Dress length', min: 40, max: 160 },
+  { key: 'height', label: 'Height', min: 120, max: 210 },
+] as const
+
+export type MeasurementKey = (typeof MEASUREMENT_FIELDS)[number]['key']
+export type CustomMeasurements = Partial<Record<MeasurementKey, number>>
+
+/** "Bust 92 · Waist 74 · Height 168" for compact display. */
+export function formatMeasurements(m: CustomMeasurements | null | undefined): string {
+  if (!m) return ''
+  return MEASUREMENT_FIELDS.map((f) => {
+    const short = f.key === 'length' ? 'Length' : f.label.replace(' length', '')
+    return `${short} ${m[f.key]}`
+  })
+    .filter((s) => !s.endsWith(' undefined'))
+    .join(' · ')
+}
+
+/* ——— Round 13: production timeline ——— */
+
+/** Made-to-order production tiers. Express fee is a clearly-labelled dev placeholder. */
+export const PRODUCTION_TIERS = {
+  standard: { label: 'Standard Production', eta: '7–10 working days', fee: 0 },
+  express: { label: 'Express Production', eta: '2–3 working days', fee: 15_000 },
+} as const
+export type ProductionTier = keyof typeof PRODUCTION_TIERS
+
 export const SHIPPING_METHODS = {
-  standard: { label: 'Standard Delivery', price: 3500, eta: '3–5 business days', note: ' Nationwide courier with tracking.' },
-  express: { label: 'Express Delivery', price: 7500, eta: '1–2 business days', note: ' Lagos same-day dispatch before 11am.' },
+  local: { label: 'Local Delivery', price: 2500, eta: '1–2 business days', note: 'Lagos metro courier — same-day dispatch before 11am.' },
+  nationwide: { label: 'Nationwide Delivery', price: 3500, eta: '3–5 business days', note: 'Nationwide courier with tracking.' },
+  international: { label: 'International Delivery', price: 25000, eta: '7–14 business days', note: 'Door-to-door international courier, duties handled at the door.' },
 } as const
 export type ShippingMethod = keyof typeof SHIPPING_METHODS
+
+/** Display label for a stored shippingMethod — current keys plus legacy
+ *  pre-Round-13 orders ('standard'/'express'). */
+export function shippingLabel(method: string): string {
+  switch (method) {
+    case 'local':
+      return SHIPPING_METHODS.local.label
+    case 'nationwide':
+      return SHIPPING_METHODS.nationwide.label
+    case 'international':
+      return SHIPPING_METHODS.international.label
+    case 'express':
+      return 'Express Delivery'
+    case 'standard':
+      return 'Nationwide Delivery'
+    default:
+      return method
+  }
+}
 
 /* ——— Customer accounts ——— */
 

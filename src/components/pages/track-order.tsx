@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ProductImage } from '@/components/site/price'
 import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
-import { SHIPPING_METHODS, type OrderView } from '@/lib/types'
+import { PRODUCTION_TIERS, SHIPPING_METHODS, formatMeasurements, shippingLabel, type OrderView } from '@/lib/types'
 
 /* ——— constants ——— */
 
@@ -44,6 +44,17 @@ const STATUS_LABELS: Record<string, string> = {
   SHIPPED: 'On its way',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
+}
+
+/** Delivery eta for a STORED shippingMethod — current keys plus the
+ *  historical etas of legacy pre-Round-13 methods ('standard'/'express'). */
+const DELIVERY_ETA: Record<string, string> = {
+  local: SHIPPING_METHODS.local.eta,
+  nationwide: SHIPPING_METHODS.nationwide.eta,
+  international: SHIPPING_METHODS.international.eta,
+  // legacy pre-Round-13 methods (historical etas)
+  standard: '3–5 business days',
+  express: '1–2 business days',
 }
 
 /* ——— recent-lookup history (localStorage, guarded) ——— */
@@ -526,8 +537,10 @@ function OrderResult({ order }: { order: OrderView }) {
   const cancelled = order.status === 'CANCELLED'
   const delivered = order.status === 'DELIVERED'
   const currentStep = STEPS.findIndex((s) => s.key === order.status)
-  const method =
-    order.shippingMethod === 'express' ? SHIPPING_METHODS.express : SHIPPING_METHODS.standard
+  // Legacy pre-Round-13 orders store 'standard'/'express' — shippingLabel maps
+  // those to their display names; the eta falls back to the historical values.
+  const deliveryLabel = shippingLabel(order.shippingMethod)
+  const deliveryEta: string | undefined = DELIVERY_ETA[order.shippingMethod]
 
   return (
     <div>
@@ -537,6 +550,9 @@ function OrderResult({ order }: { order: OrderView }) {
           <p className="font-mono text-sm font-medium tracking-[0.08em]">{order.orderNumber}</p>
           <p className="text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground">
             Placed {formatDate(order.createdAt)}
+          </p>
+          <p className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-espresso">
+            {PRODUCTION_TIERS[order.productionTier].label} · {PRODUCTION_TIERS[order.productionTier].eta}
           </p>
           <span
             className={cn(
@@ -676,6 +692,26 @@ function OrderResult({ order }: { order: OrderView }) {
                     <p className="mt-0.5 text-[0.66rem] uppercase tracking-[0.12em] text-muted-foreground">
                       {item.color} · {item.size} · ×{item.qty}
                     </p>
+                    {item.sizeMode === 'custom' ? (
+                      <div className="mt-1.5 space-y-1">
+                        <span className="inline-flex items-center border border-line-strong px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.18em] text-espresso">
+                          Custom measurements
+                        </span>
+                        <p className="font-mono text-[0.7rem] tabular-nums text-muted-foreground">
+                          {formatMeasurements(item.customMeasurements)}
+                        </p>
+                        {item.notes ? (
+                          <div>
+                            <p className="font-sans text-[0.58rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                              Atelier note
+                            </p>
+                            <p className="line-clamp-2 text-xs leading-relaxed italic text-muted-foreground">
+                              “{item.notes}”
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <span className="flex flex-col items-end font-mono tabular-nums">
                     <span className="text-sm">{formatNaira(item.unitPrice)}</span>
@@ -713,12 +749,22 @@ function OrderResult({ order }: { order: OrderView }) {
                   ) : null}
                 </address>
                 <div className="border-t border-line pt-4">
-                  <p className="text-sm font-medium">{method.label}</p>
+                  <p className="text-sm font-medium">{deliveryLabel}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {method.eta} ·{' '}
+                    {deliveryEta ?? 'Courier dispatch times apply'} ·{' '}
                     {order.shipping === 0 ? 'Complimentary' : formatNaira(order.shipping)}
                   </p>
                 </div>
+                {order.notes ? (
+                  <div className="border-t border-line pt-4">
+                    <p className="font-sans text-[0.58rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                      Delivery notes
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed italic text-muted-foreground">
+                      {order.notes}
+                    </p>
+                  </div>
+                ) : null}
                 <DevPlaceholder title="Courier tracking">
                   A live courier tracking link will appear here once the dispatch integration is
                   connected.
@@ -747,11 +793,17 @@ function OrderResult({ order }: { order: OrderView }) {
                   </div>
                 ) : null}
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">{method.label}</dt>
+                  <dt className="text-muted-foreground">{deliveryLabel}</dt>
                   <dd className="font-mono tabular-nums">
                     {order.shipping === 0 ? 'Complimentary' : formatNaira(order.shipping)}
                   </dd>
                 </div>
+                {order.productionFee > 0 ? (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Express production</dt>
+                    <dd className="font-mono tabular-nums">+{formatNaira(order.productionFee)}</dd>
+                  </div>
+                ) : null}
                 <div className="flex items-baseline justify-between border-t border-line pt-3">
                   <dt className="font-display text-lg">Total</dt>
                   <dd className="font-mono text-xl font-medium tabular-nums">

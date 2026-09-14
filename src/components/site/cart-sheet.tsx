@@ -7,6 +7,7 @@ import { navigate } from '@/lib/router'
 import { formatNaira } from '@/lib/money'
 import { useCart, useUpdateCartItem, useRemoveCartItem } from '@/lib/cart-client'
 import { useUi } from '@/lib/store/wishlist'
+import { formatMeasurements } from '@/lib/types'
 import { ProductImage } from './price'
 import { QuantityStepper } from './quantity-stepper'
 import { FreeShippingMeter } from './shipping-meter'
@@ -108,6 +109,23 @@ export function CartSheet() {
                         <p className="mt-0.5 text-[0.7rem] uppercase tracking-[0.14em] text-muted-foreground">
                           {item.variant.color} · {item.variant.size}
                         </p>
+                        {item.sizeMode === 'custom' ? (
+                          <div className="mt-1 min-w-0">
+                            <p className="flex items-center gap-1.5">
+                              <span className="shrink-0 border border-line-strong px-1 py-px font-mono text-[0.56rem] uppercase tracking-[0.16em] text-espresso">
+                                Custom fit
+                              </span>
+                              <span className="truncate font-mono text-[0.62rem] tabular-nums text-muted-foreground">
+                                {formatMeasurements(item.customMeasurements)}
+                              </span>
+                            </p>
+                            {item.notes ? (
+                              <p className="mt-0.5 truncate text-[0.62rem] italic text-muted-foreground">
+                                “{item.notes}”
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                       <button
                         type="button"

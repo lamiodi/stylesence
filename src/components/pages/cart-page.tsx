@@ -14,7 +14,7 @@ import { useCart, useUpdateCartItem, useRemoveCartItem, useClearCart } from '@/l
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 import { FreeShippingMeter } from '@/components/site/shipping-meter'
-import type { ProductsResponse } from '@/lib/types'
+import { formatMeasurements, type ProductsResponse } from '@/lib/types'
 
 async function fetchBestsellers(): Promise<ProductsResponse> {
   const res = await fetch('/api/products?sort=rating&perPage=4')
@@ -112,6 +112,26 @@ export function CartPage() {
                         <p className="mt-1 text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground">
                           {item.variant.color} · Size {item.variant.size}
                         </p>
+                        {item.sizeMode === 'custom' ? (
+                          <div className="mt-2 space-y-1.5">
+                            <span className="inline-flex items-center border border-line-strong px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.18em] text-espresso">
+                              Custom measurements
+                            </span>
+                            <p className="font-mono text-[0.7rem] tabular-nums text-muted-foreground">
+                              {formatMeasurements(item.customMeasurements)}
+                            </p>
+                            {item.notes ? (
+                              <div>
+                                <p className="font-sans text-[0.58rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                                  Atelier note
+                                </p>
+                                <p className="line-clamp-2 text-xs leading-relaxed italic text-muted-foreground">
+                                  “{item.notes}”
+                                </p>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
                         <p className="mt-1 font-mono text-[0.72rem] text-muted-foreground/80 tabular-nums">
                           {formatNaira(item.product.price)} each
                         </p>

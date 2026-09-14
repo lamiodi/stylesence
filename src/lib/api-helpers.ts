@@ -164,6 +164,9 @@ export function toAdminOrder(o: Order & { items: OrderItem[] }) {
     discount: o.discount,
     promoCode: o.promoCode,
     promoCodes: o.promoCodes ? o.promoCodes.split(',').map((c) => c.trim()).filter(Boolean) : null,
+    productionTier: o.productionTier,
+    productionFee: o.productionFee,
+    confirmedProduction: o.confirmedProduction,
     total: o.total,
     status: o.status,
     createdAt: o.createdAt,
@@ -178,6 +181,9 @@ export function toAdminOrder(o: Order & { items: OrderItem[] }) {
       imageUrl: i.imageUrl,
       unitPrice: i.unitPrice,
       qty: i.qty,
+      sizeMode: i.sizeMode,
+      customMeasurements: i.customMeasurements,
+      notes: i.notes,
     })),
   }
 }

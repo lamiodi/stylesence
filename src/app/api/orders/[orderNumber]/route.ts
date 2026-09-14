@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
+import { parseMeasurements } from '@/lib/cart'
 
 /** GET /api/orders/[orderNumber] — public order lookup by order number. */
 export async function GET(_req: Request, { params }: { params: Promise<{ orderNumber: string }> }) {
@@ -22,6 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orderNu
       state: order.state,
       country: order.country,
       phone: order.phone,
+      notes: order.notes,
       shippingMethod: order.shippingMethod,
       shipping: order.shipping,
       subtotal: order.subtotal,
@@ -30,6 +32,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orderNu
       promoCodes: order.promoCodes
         ? order.promoCodes.split(',').map((c) => c.trim()).filter(Boolean)
         : null,
+      productionTier: order.productionTier === 'express' ? 'express' : 'standard',
+      productionFee: order.productionFee,
       total: order.total,
       createdAt: order.createdAt,
       items: order.items.map((i) => ({
@@ -40,6 +44,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orderNu
         imageUrl: i.imageUrl,
         unitPrice: i.unitPrice,
         qty: i.qty,
+        sizeMode: i.sizeMode === 'custom' ? 'custom' : 'standard',
+        customMeasurements: parseMeasurements(i.customMeasurements),
+        notes: i.notes,
       })),
     },
   })

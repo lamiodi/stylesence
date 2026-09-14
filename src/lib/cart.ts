@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { cookies } from 'next/headers'
 import type { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import type { CustomMeasurements } from '@/lib/types'
 
 /**
  * Cart identity = httpOnly cookie `ss_cart` (uuid) -> Cart row (lazy-created).
@@ -18,9 +19,29 @@ export type CartPayload = {
     qty: number
     variant: { id: string; size: string; color: string; colorHex: string; stock: number }
     product: { slug: string; name: string; price: number; primaryImage: string | null }
+    sizeMode: 'standard' | 'custom'
+    customMeasurements: CustomMeasurements | null
+    notes: string | null
   }>
   subtotal: number
   itemCount: number
+}
+
+/** Parse a stored measurements JSON column defensively — bad rows read as null, never crash a cart. */
+export function parseMeasurements(raw: string | null | undefined): CustomMeasurements | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const out: CustomMeasurements = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        out[key as keyof CustomMeasurements] = value
+      }
+    }
+    return Object.keys(out).length > 0 ? out : null
+  } catch {
+    return null
+  }
 }
 
 /** Read the cart cookie + look up the Cart row without creating anything. */
@@ -82,6 +103,9 @@ export async function buildCartPayload(cartId: string): Promise<CartPayload | nu
       price: item.variant.product.price,
       primaryImage: item.variant.product.images[0]?.url ?? null,
     },
+    sizeMode: (item.sizeMode === 'custom' ? 'custom' : 'standard') as 'standard' | 'custom',
+    customMeasurements: parseMeasurements(item.customMeasurements),
+    notes: item.notes,
   }))
 
   const subtotal = cart.items.reduce((sum, i) => sum + i.variant.product.price * i.qty, 0)

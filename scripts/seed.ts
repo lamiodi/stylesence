@@ -36,7 +36,7 @@ const ESPRESSO: ColorDef = { name: 'Espresso', hex: '#4B3A32' }
 const OAT: ColorDef = { name: 'Oat', hex: '#D9D2C4' }
 const CHAMPAGNE: ColorDef = { name: 'Champagne', hex: '#D8CBB2' }
 const TAUPE: ColorDef = { name: 'Taupe', hex: '#8A7B6C' }
-const APPAREL_SIZES = ['XS', 'S', 'M', 'L', 'XL']
+const APPAREL_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const ONE_SIZE = ['One Size']
 
 type SeedProduct = {
@@ -123,6 +123,69 @@ const PRODUCTS: SeedProduct[] = [
     colors: [CHAMPAGNE, IVORY],
     sizes: APPAREL_SIZES,
     ageDays: 12,
+  },
+  {
+    slug: 'sandwashed-silk-set',
+    name: 'The Sandwashed Silk Set',
+    subtitle: 'Bias shell & skirt, two pieces',
+    description:
+      'The slip dress, halved and doubled. A bias-cut shell camisole and its matching fluid midi skirt in the same sandwashed ivory silk — worn together they move as one line, apart they anchor everything else you own.\n\nThe set is cut generously and finished with French seams throughout; the skirt sits high on the waist with a covered elastic interior so the bias never pulls.',
+    details: [
+      'Two-piece set: bias shell + matching midi skirt',
+      'Sandwashed silk, 19mm — same cloth as the slip dress',
+      'French seams throughout',
+      'Covered elastic interior waistband',
+      'Made in small batches at our Lagos atelier partner',
+    ],
+    material: '100% mulberry silk, sandwashed finish',
+    care: 'Dry clean recommended. Alternatively: hand wash cold, roll in a towel, dry flat away from direct sun.',
+    price: 156000,
+    category: 'two-piece-sets',
+    colors: [IVORY, CHARCOAL],
+    sizes: APPAREL_SIZES,
+    featured: true,
+    ageDays: 3,
+  },
+  {
+    slug: 'tailored-wool-set',
+    name: 'The Tailored Wool Set',
+    subtitle: 'Soft-shoulder blazer & trouser',
+    description:
+      'A suit with nothing corporate about it. The soft-shoulder blazer and its straight wide-leg trouser are cut from the same double-face charcoal wool, hand-padded through the chest and pressed into one long, quiet column.\n\nWorn together it is ceremony; the pieces separate effortlessly — the blazer over silk, the trouser with knitwear.',
+    details: [
+      'Two-piece set: soft-shoulder blazer + wide-leg trouser',
+      'Hand-padded chest and lapel, horn button',
+      'Concealed closures on both pieces',
+      'Trouser drafted with a long rise, single break',
+      'Made in small batches',
+    ],
+    material: '96% virgin wool, 4% elastane; cupro lining',
+    care: 'Dry clean only. Brush after wear; rest 24h between rotations.',
+    price: 178000,
+    category: 'two-piece-sets',
+    colors: [CHARCOAL, IVORY],
+    sizes: APPAREL_SIZES,
+    ageDays: 7,
+  },
+  {
+    slug: 'satin-evening-set',
+    name: 'Satin Evening Set',
+    subtitle: 'Cowl camisole & floor-sweeping trouser',
+    description:
+      'Evening, reconsidered as two pieces. A draped cowl-neck camisole in heavyweight champagne satin over floor-sweeping wide-leg trousers of the same liquid cloth — the gown’s drama, the separates’ ease.\n\nThe camisole is weighted at the drape so it falls correctly from the shoulder; the trouser is cut high and long to be worn with a heel.',
+    details: [
+      'Two-piece set: cowl camisole + wide-leg trouser',
+      'Heavyweight liquid satin, weighted cowl drape',
+      'Trouser cut high-waist, floor length',
+      'Camisole adjustable at the shoulder',
+    ],
+    material: '82% triacetate, 18% polyester satin',
+    care: 'Dry clean only. Store the camisole flat to preserve the drape.',
+    price: 168000,
+    category: 'two-piece-sets',
+    colors: [CHAMPAGNE, IVORY],
+    sizes: APPAREL_SIZES,
+    ageDays: 14,
   },
   {
     slug: 'cashmere-crewneck',
@@ -527,6 +590,7 @@ async function main() {
   const catData = [
     { slug: 'ready-to-wear', name: 'Ready-to-Wear', tagline: 'Tailoring and everyday structure', imageUrl: '/images/products/atelier-blazer.png' },
     { slug: 'dresses', name: 'Dresses', tagline: 'Columns, slips and gowns', imageUrl: '/images/products/silk-slip-dress.png' },
+    { slug: 'two-piece-sets', name: 'Two-Piece Sets', tagline: 'Coordinated, in one motion', imageUrl: '/images/products/sandwashed-silk-set.png' },
     { slug: 'knitwear', name: 'Knitwear', tagline: 'Cashmere and merino, quietly', imageUrl: '/images/products/cashmere-crewneck.png' },
     { slug: 'outerwear', name: 'Outerwear', tagline: 'Coats with a long line', imageUrl: '/images/products/longline-wool-coat.png' },
     { slug: 'accessories', name: 'Accessories', tagline: 'Leather, cashmere, brass', imageUrl: '/images/products/leather-mini-tote.png' },
@@ -536,7 +600,7 @@ async function main() {
     const c = await db.category.create({ data: { ...catData[i], position: i } })
     cats[c.slug] = c.id
   }
-  console.log('✓ 5 categories')
+  console.log('✓ 6 categories')
 
   // products
   const productIds: Record<string, string> = {}
@@ -623,14 +687,33 @@ async function main() {
   console.log('✓ 6 subscribers')
 
   // orders — 48 across last 30 days
+  // Round 13: delivery tiers (local Lagos / nationwide / international),
+  // production tiers (standard 7–10d · express 2–3d + fee — dev placeholder),
+  // custom-measurement items with tailoring notes, and the pre-production confirmation.
+  const TAILORING_NOTES = [
+    'Make it a touch tighter around the waist',
+    'Add two extra inches of length — I am tall',
+    'Slightly longer sleeves please',
+    'Adjust the neckline a little lower',
+    'Closer fit through the hips',
+    null, null, null,
+  ]
   let orderSeq = 1
   for (let i = 0; i < 48; i++) {
     const ageDays = Math.floor(rng() * 30)
     const [fullName, email] = pick(ORDER_NAMES)
     const [city, state] = pick(ORDER_CITIES)
     const address = `${between(2, 78)} ${pick(STREETS)}`
-    const shippingMethod = rng() < 0.78 ? 'standard' : 'express'
-    const shipping = shippingMethod === 'standard' ? 3500 : 7500
+    const isInternational = rng() < 0.08
+    const country = isInternational ? pick(['United Kingdom', 'United States', 'Ghana', 'South Africa']) : 'Nigeria'
+    const shippingMethod = isInternational
+      ? 'international'
+      : rng() < 0.22
+        ? 'local'
+        : 'nationwide'
+    const shipping = shippingMethod === 'local' ? 2500 : shippingMethod === 'international' ? 25000 : 3500
+    const productionTier = rng() < 0.2 ? 'express' : 'standard'
+    const productionFee = productionTier === 'express' ? 15000 : 0
 
     let status: string
     if (ageDays > 8) status = rng() < 0.9 ? 'DELIVERED' : 'CANCELLED'
@@ -644,7 +727,7 @@ async function main() {
     const chosen = [...variantIds].sort(() => rng() - 0.5).slice(0, itemCount)
     const items = chosen.map((v) => ({ v, qty: rng() < 0.82 ? 1 : 2 }))
     const subtotal = items.reduce((s, it) => s + it.v.price * it.qty, 0)
-    const total = status === 'CANCELLED' ? subtotal : subtotal + shipping
+    const total = status === 'CANCELLED' ? subtotal : subtotal + shipping + productionFee
 
     const order = await db.order.create({
       data: {
@@ -655,27 +738,44 @@ async function main() {
         address,
         city,
         state,
-        country: 'Nigeria',
+        country,
         shippingMethod,
         shipping,
         subtotal,
+        productionTier,
+        productionFee,
+        confirmedProduction: true,
         total,
         status,
         createdAt: daysAgo(ageDays),
       },
     })
     for (const it of items) {
+      const isCustom = it.v.size !== 'One Size' && rng() < 0.25
+      const notes = isCustom ? pick(TAILORING_NOTES) : null
+      const measurements = isCustom
+        ? JSON.stringify({
+            bust: between(78, 112),
+            waist: between(60, 96),
+            hips: between(86, 120),
+            height: between(155, 182),
+            ...(rng() < 0.5 ? { length: between(90, 145) } : {}),
+          })
+        : null
       await db.orderItem.create({
         data: {
           orderId: order.id,
           variantId: it.v.id,
           productName: it.v.name,
           productSlug: it.v.slug,
-          size: it.v.size,
+          size: isCustom ? `${it.v.size} (custom)` : it.v.size,
           color: it.v.color,
           imageUrl: it.v.image,
           unitPrice: it.v.price,
           qty: it.qty,
+          sizeMode: isCustom ? 'custom' : 'standard',
+          customMeasurements: measurements,
+          notes,
         },
       })
     }
