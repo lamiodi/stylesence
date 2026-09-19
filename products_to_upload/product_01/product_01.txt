@@ -1,55 +1,55 @@
-﻿================================================================================
+================================================================================
 PRODUCT INFORMATION SHEET — PRODUCT #01
 ================================================================================
 
 PRODUCT NAME: 
-
+The Camille Skirt Set — polka-dot top + skirt
 
 PRICE: 
-
+150,000 NGN
 
 COMPARE AT / ORIGINAL PRICE (Optional):
+180,000 NGN
 
+CATEGORY:
+Two-Piece Sets
 
-CATEGORY (Optional, e.g. Dresses, Two-Piece Sets, Tops, Skirts, Accessories):
-
-
-SUBTITLE / SHORT SUMMARY (Optional):
-
-
---------------------------------------------------------------------------------
-DESCRIPTION & HIGHLIGHTS (Optional)
---------------------------------------------------------------------------------
-[Paste product description here]
-
-
+SUBTITLE / SHORT SUMMARY:
+Polka-dot top + flowing skirt coordinated set
 
 --------------------------------------------------------------------------------
-PRODUCT OPTIONS (Optional)
+DESCRIPTION & HIGHLIGHTS
+--------------------------------------------------------------------------------
+Polka-dot coordinated set featuring an elegant, softly draped polka-dot top paired with a matching flowing skirt. Designed to move seamlessly from refined daytime gatherings to evening occasions. Wear as an unbroken coordinated silhouette or style as distinct statement separates.
+
+--------------------------------------------------------------------------------
+PRODUCT OPTIONS
 --------------------------------------------------------------------------------
 COLOUR OPTIONS:
-- 
+- Monochrome Polka Dot (#1A1A1A / #EDE7DC)
 
 SIZE OPTIONS:
 - Standard Sizes: XS, S, M, L, XL, XXL
-- Custom Measurements Supported: Yes / No
+- Custom Measurements Supported: Yes (Bust, Waist, Hips, Shoulder, Sleeve Length, Skirt Length, Height)
 
 MATERIAL & CARE:
-- Material: 
-- Care: 
+- Material: Premium Lightweight Crepe / Silk Blend
+- Care: Gentle hand wash cold or dry clean. Hang to dry away from direct sunlight. Warm steam as needed.
 
 --------------------------------------------------------------------------------
-MEDIA FILES (Store photos/videos in the 'media/' folder in this directory)
+MEDIA FILES (Stored in media/ folder)
 --------------------------------------------------------------------------------
-IMAGES (in media/images/ or media/):
-- 
+IMAGES (in media/images/):
+- IMG_2418.jpg
 
-VIDEOS (in media/videos/ or media/):
-- 
+VIDEOS (in media/videos/):
+- IMG_6845.mp4
 
 --------------------------------------------------------------------------------
-ADDITIONAL NOTES / TAILORING PREFERENCES (Optional)
+ADDITIONAL NOTES / TAILORING PREFERENCES
 --------------------------------------------------------------------------------
-[Any notes, production timeline, or custom instructions]
+- Standard Production: 7–10 working days
+- Express Production: 2–3 working days available on request
+- Tailoring customizations supported (skirt length, waistband fit, neckline adjustment)
 
 ================================================================================

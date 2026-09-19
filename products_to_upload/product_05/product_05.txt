@@ -1,55 +1,55 @@
-﻿================================================================================
+================================================================================
 PRODUCT INFORMATION SHEET — PRODUCT #05
 ================================================================================
 
 PRODUCT NAME: 
-
+The Àrẹ̀wà Set
 
 PRICE: 
-
+[Set price here, e.g. 165,000 NGN or Price on Request]
 
 COMPARE AT / ORIGINAL PRICE (Optional):
+[Optional compare-at price]
 
+CATEGORY:
+Two-Piece Sets / Heritage Couture
 
-CATEGORY (Optional, e.g. Dresses, Two-Piece Sets, Tops, Skirts, Accessories):
-
-
-SUBTITLE / SHORT SUMMARY (Optional):
-
-
---------------------------------------------------------------------------------
-DESCRIPTION & HIGHLIGHTS (Optional)
---------------------------------------------------------------------------------
-[Paste product description here]
-
-
+SUBTITLE / SHORT SUMMARY:
+Hand-woven Aso Oke structured set
 
 --------------------------------------------------------------------------------
-PRODUCT OPTIONS (Optional)
+DESCRIPTION & HIGHLIGHTS
+--------------------------------------------------------------------------------
+A celebration of Yoruba weaving heritage rendered in a striking contemporary cut. Features authentic hand-loomed Aso Oke cloth with distinct artisanal texture, sculpted into a statement skirt set that honors ancestral craftsmanship with modern atelier poise.
+
+--------------------------------------------------------------------------------
+PRODUCT OPTIONS
 --------------------------------------------------------------------------------
 COLOUR OPTIONS:
-- 
+- Heritage Aso Oke Weave (Custom colorways available upon consultation)
 
 SIZE OPTIONS:
 - Standard Sizes: XS, S, M, L, XL, XXL
-- Custom Measurements Supported: Yes / No
+- Custom Measurements Supported: Yes (Bust, Waist, High Hip, Full Hip, Skirt Length)
 
 MATERIAL & CARE:
-- Material: 
-- Care: 
+- Material: 100% Hand-woven Aso Oke Cotton / Metallic Thread
+- Care: Specialist dry clean only. Do not machine wash. Store flat or on structured wooden hanger.
 
 --------------------------------------------------------------------------------
-MEDIA FILES (Store photos/videos in the 'media/' folder in this directory)
+MEDIA FILES (Stored in media/ folder)
 --------------------------------------------------------------------------------
-IMAGES (in media/images/ or media/):
-- 
+IMAGES (in media/images/):
+- PHOTO-2026-09-08-10-19-56.jpg
 
-VIDEOS (in media/videos/ or media/):
-- 
+VIDEOS (in media/videos/):
+- IMG_7612.mp4
 
 --------------------------------------------------------------------------------
-ADDITIONAL NOTES / TAILORING PREFERENCES (Optional)
+ADDITIONAL NOTES / TAILORING PREFERENCES
 --------------------------------------------------------------------------------
-[Any notes, production timeline, or custom instructions]
+- Standard Production: 10–14 working days (hand-loomed)
+- Express Production: Inquire with concierge
+- Handcrafted individually by master weavers
 
 ================================================================================
