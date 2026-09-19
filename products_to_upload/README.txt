@@ -1,19 +1,25 @@
+﻿================================================================================
+  PRODUCTS TO BE UPLOADED — INSTRUCTIONS
 ================================================================================
-  PRODUCTS TO BE UPLOADED — INSTRUCTIONS & QUICK GUIDE
-================================================================================
 
-1. PRODUCT TEXT FILES:
-   - Use 'product_01.txt', 'product_02.txt', etc., or duplicate 'PRODUCT_TEMPLATE.txt'.
-   - Simply paste your Product Name and Price in the designated lines.
-   - Optional fields (Category, Description, Colors, Sizes, Materials) are available if you want to include them.
+Each product has its own self-contained folder:
+  products_to_upload/
+    ├── _PRODUCT_TEMPLATE/       <- Duplicate this folder to add more products
+    ├── product_01/
+    │   ├── media/
+    │   │   ├── images/          <- Place all photos/images for product 01 here
+    │   │   └── videos/          <- Place all videos for product 01 here
+    │   └── product_01.txt       <- Paste Name, Price, and details here
+    ├── product_02/
+    │   ├── media/
+    │   │   ├── images/
+    │   │   └── videos/
+    │   └── product_02.txt
+    ...
 
-2. MEDIA FILES:
-   - Store all product photos/pictures in:
-     products_to_upload/media/images/
-   - Store all product videos/clips in:
-     products_to_upload/media/videos/
-   - You can reference the file name (e.g. dress-front.jpg) in the product's txt file.
-
-3. NEED MORE PRODUCTS?
-   - Just duplicate 'PRODUCT_TEMPLATE.txt' and name it 'product_11.txt', 'product_12.txt', etc.
+HOW TO USE:
+1. Open any product folder (e.g. product_01/).
+2. Open the text file (product_01.txt) and paste the PRODUCT NAME and PRICE.
+3. Drop the product's photos into 'media/images/' and videos into 'media/videos/' (or directly into 'media/').
+4. To add more products, simply duplicate the '_PRODUCT_TEMPLATE' folder.
 ================================================================================

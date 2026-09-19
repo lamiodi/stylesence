@@ -55,7 +55,5 @@ server.log
 /skills/
 
 # Upload staging media
-products_to_upload/media/images/*
-!products_to_upload/media/images/.gitkeep
-products_to_upload/media/videos/*
-!products_to_upload/media/videos/.gitkeep
+products_to_upload/**/media/**
+!products_to_upload/**/media/**/.gitkeep

@@ -1,5 +1,5 @@
 ﻿================================================================================
-PRODUCT INFORMATION SHEET — PRODUCT #07
+PRODUCT INFORMATION SHEET — PRODUCT #08
 ================================================================================
 
 PRODUCT NAME: 
@@ -39,12 +39,12 @@ MATERIAL & CARE:
 - Care: 
 
 --------------------------------------------------------------------------------
-MEDIA FILES (Placed in media/ folder)
+MEDIA FILES (Store photos/videos in the 'media/' folder in this directory)
 --------------------------------------------------------------------------------
-IMAGE FILES (placed in media/images/):
+IMAGES (in media/images/ or media/):
 - 
 
-VIDEO FILES (placed in media/videos/):
+VIDEOS (in media/videos/ or media/):
 - 
 
 --------------------------------------------------------------------------------
@@ -53,4 +53,3 @@ ADDITIONAL NOTES / TAILORING PREFERENCES (Optional)
 [Any notes, production timeline, or custom instructions]
 
 ================================================================================
-
