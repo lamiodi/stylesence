@@ -53,3 +53,9 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Upload staging media
+products_to_upload/media/images/*
+!products_to_upload/media/images/.gitkeep
+products_to_upload/media/videos/*
+!products_to_upload/media/videos/.gitkeep

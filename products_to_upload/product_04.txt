@@ -1,0 +1,56 @@
+﻿================================================================================
+PRODUCT INFORMATION SHEET — PRODUCT #04
+================================================================================
+
+PRODUCT NAME: 
+
+
+PRICE: 
+
+
+COMPARE AT / ORIGINAL PRICE (Optional):
+
+
+CATEGORY (Optional, e.g. Dresses, Two-Piece Sets, Tops, Skirts, Accessories):
+
+
+SUBTITLE / SHORT SUMMARY (Optional):
+
+
+--------------------------------------------------------------------------------
+DESCRIPTION & HIGHLIGHTS (Optional)
+--------------------------------------------------------------------------------
+[Paste product description here]
+
+
+
+--------------------------------------------------------------------------------
+PRODUCT OPTIONS (Optional)
+--------------------------------------------------------------------------------
+COLOUR OPTIONS:
+- 
+
+SIZE OPTIONS:
+- Standard Sizes: XS, S, M, L, XL, XXL
+- Custom Measurements Supported: Yes / No
+
+MATERIAL & CARE:
+- Material: 
+- Care: 
+
+--------------------------------------------------------------------------------
+MEDIA FILES (Placed in media/ folder)
+--------------------------------------------------------------------------------
+IMAGE FILES (placed in media/images/):
+- 
+
+VIDEO FILES (placed in media/videos/):
+- 
+
+--------------------------------------------------------------------------------
+ADDITIONAL NOTES / TAILORING PREFERENCES (Optional)
+--------------------------------------------------------------------------------
+[Any notes, production timeline, or custom instructions]
+
+================================================================================
+
