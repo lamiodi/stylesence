@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",
+    "cloudinary": "^2.11.0",
     "next": "^16.1.1",
     "prisma": "^6.11.1",
     "react": "^19.0.0",

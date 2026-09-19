@@ -53,6 +53,8 @@ prompt
 server.log
 # Skills directory
 /skills/
+agent/
+skills-lock.json
 
 # Upload staging media
 products_to_upload/**/media/**
