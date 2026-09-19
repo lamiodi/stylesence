@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { checkCustomerLoginRateLimit, generateResetToken, recordCustomerLoginFailure } from '@/lib/auth'
 import { passwordResetRequestInput } from '@/lib/validators'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 /**
  * POST /api/customer/password-reset/request — ask for a reset link by email.
@@ -41,9 +42,12 @@ export async function POST(req: Request) {
     data: { resetTokenHash: hash, resetTokenAt: new Date() },
   })
 
-  // Dev-placeholder email delivery (no real email sending exists in this project).
-  console.log(
-    `[api/customer/password-reset] simulated email to ${email}: reset link http://localhost:3000/#/account?mode=reset&token=${plain}`,
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+  const resetUrl = `${frontendUrl}/#/account?mode=reset&token=${plain}`
+
+  // Non-blocking password reset email dispatch via Resend
+  sendPasswordResetEmail(email, resetUrl).catch((err) =>
+    console.error('[api/customer/password-reset] Failed to dispatch password reset email:', err)
   )
 
   return ok({ ok: true, devResetUrl: `/#/account?mode=reset&token=${plain}` })

@@ -43,7 +43,10 @@ Under the service's **Environment** tab, set:
 | `DATABASE_URL` | `postgresql://postgres.cqdksblxkdznugfczgem:Ri8eObh2dLpijoEN@aws-0-eu-central-1.pooler.supabase.com:5432/postgres` |
 | `CLOUDINARY_URL` | `cloudinary://897313336739949:Ctg4CB3CjD0xoCEj-_lyazaa5Xw@qaruxkhf` |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` |
-| `FRONTEND_URL` | `*` (or your Vercel URL once deployed) |
+| `RESEND_API_KEY` | `re_xxxxxxxx` (Your live Resend API key) |
+| `EMAIL_FROM` | `Style Sence <onboarding@resend.dev>` (or your verified domain sender) |
+| `FRONTEND_URL` | `https://<your-vercel-app>.vercel.app` (or `*` for dev/wildcard) |
+
 
 ### 4. Deploy
 Click **"Save Changes"** / **"Manual Deploy > Deploy latest commit"**.

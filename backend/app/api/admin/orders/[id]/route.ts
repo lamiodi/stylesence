@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { fail, ok, readValidated, toAdminOrder } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 import { orderPatchInput } from '@/lib/validators'
+import { sendOrderStatusUpdateEmail } from '@/lib/email'
 
 const ORDER_STATUSES = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
 
@@ -26,5 +27,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     data: { status: parsed.data.status },
     include: { items: { orderBy: { id: 'asc' } } },
   })
+
+  // Non-blocking status notification dispatch via Resend
+  sendOrderStatusUpdateEmail({
+    orderNumber: order.orderNumber,
+    fullName: order.fullName,
+    email: order.email,
+    status: order.status,
+  }).catch((err) => console.error('[api/admin/orders] Failed to send status update email:', err))
+
   return ok({ order: toAdminOrder(order) })
 }

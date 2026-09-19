@@ -4,6 +4,7 @@ import { getCartFromCookie } from '@/lib/cart'
 import { checkoutInput } from '@/lib/validators'
 import { evaluatePromoStack } from '@/lib/promo'
 import { PRODUCTION_TIERS } from '@/lib/types'
+import { sendOrderConfirmationEmail } from '@/lib/email'
 
 /**
  * POST /api/checkout
@@ -183,6 +184,30 @@ export async function POST(req: Request) {
     console.error('[api/checkout] transaction failed:', err)
     return fail(500, 'Checkout failed. Please try again.')
   }
+
+  // Non-blocking order confirmation email dispatch via Resend
+  sendOrderConfirmationEmail({
+    orderNumber,
+    fullName: input.fullName,
+    email: input.email,
+    phone: input.phone,
+    address: input.address,
+    city: input.city,
+    state: input.state,
+    shippingMethod: input.shippingMethod,
+    shipping,
+    subtotal,
+    discount,
+    total,
+    items: items.map((item) => ({
+      productName: item.variant.product.name,
+      size: item.sizeMode === 'custom' ? `${item.variant.size} (custom)` : item.variant.size,
+      color: item.variant.color,
+      qty: item.qty,
+      unitPrice: item.variant.product.price,
+      imageUrl: item.variant.product.images[0]?.url ?? null,
+    })),
+  }).catch((err) => console.error('[api/checkout] Failed to dispatch order confirmation email:', err))
 
   return ok({ order: { orderNumber, total, discount } }, { status: 201 })
 }
