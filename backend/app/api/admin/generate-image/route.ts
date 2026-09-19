@@ -4,12 +4,13 @@ import path from 'path'
 import ZAI from 'z-ai-web-dev-sdk'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
+import { uploadToCloudinary } from '@/lib/cloudinary'
 import { z } from 'zod'
 
 /**
  * POST /api/admin/generate-image — atelier image studio.
  * Admin-only. Generates one editorial image via the z-ai SDK, writes it to
- * `public/images/generated/`, and returns `{ url }` for the product form.
+ * Cloudinary (or fallback `public/images/generated/`), and returns `{ url }` for the product form.
  * The house style is prepended server-side so every result stays on-brand.
  */
 
@@ -51,7 +52,17 @@ export async function POST(req: Request) {
   }
   if (!base64) return fail(502, 'Image generation returned an empty result — please retry.')
 
-  // Persist under public/images/generated/ so the URL is servable statically.
+  // If Cloudinary is configured (recommended in production/serverless), upload directly
+  if (process.env.CLOUDINARY_URL) {
+    try {
+      const upload = await uploadToCloudinary(`data:image/png;base64,${base64}`, 'stylesence/generated', 'image')
+      return ok({ url: upload.secure_url, size })
+    } catch (uploadErr) {
+      console.warn('Cloudinary upload fallback to local storage:', uploadErr)
+    }
+  }
+
+  // Fallback: persist under public/images/generated/ for local development
   const fileName = `atelier-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}.png`
   const dir = path.join(process.cwd(), 'public', 'images', 'generated')
   try {

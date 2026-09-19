@@ -18,6 +18,7 @@ export function adminCookieOptions() {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: SESSION_MAX_AGE_SECONDS,
   }
@@ -129,6 +130,7 @@ export function customerCookieOptions() {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: CUSTOMER_SESSION_MAX_AGE_SECONDS,
   }

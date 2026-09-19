@@ -117,7 +117,17 @@ export function GalleryLightbox({
                 if (e.target === e.currentTarget) onOpenChange(false)
               }}
             >
-              {reduced ? (
+              {current.url.endsWith('.mp4') || current.url.endsWith('.webm') ? (
+                <video
+                  key={safeIndex}
+                  src={current.url}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  className="absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
+                />
+              ) : reduced ? (
                 <img
                   key={safeIndex}
                   src={current.url}

@@ -655,14 +655,19 @@ function ProductInner({ product }: { product: ProductDetail }) {
                   key={img.url}
                   type="button"
                   onClick={() => setImgIndex(i)}
-                  aria-label={`View image ${i + 1} of ${product.images.length}`}
+                  aria-label={`View ${img.url.endsWith('.mp4') ? 'video' : 'image'} ${i + 1} of ${product.images.length}`}
                   aria-pressed={imgIndex === i}
                   className={cn(
-                    'w-20 border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                    'relative w-20 border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
                     imgIndex === i ? 'border-foreground' : 'border-transparent hover:border-line-strong',
                   )}
                 >
                   <ProductImage src={img.url} alt={img.alt ?? product.name} label="" ratio="aspect-[3/4]" />
+                  {img.url.endsWith('.mp4') || img.url.endsWith('.webm') ? (
+                    <span className="absolute bottom-1 right-1 border border-line bg-background/90 px-1 py-0.5 font-mono text-[0.52rem] uppercase tracking-wider text-foreground backdrop-blur-xs">
+                      Video
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
