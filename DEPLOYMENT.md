@@ -1,113 +1,130 @@
 # Style Sence Deployment Guide
 
-This guide details how to deploy the **Style Sence** monorepo to production.
+This guide details how to manually deploy **Backend on Render** and **Frontend on Vercel**.
 
 ---
 
-## Architecture Overview
+## Architecture
 
-The repository is structured as a modern monorepo:
-- **`frontend/`**: Next.js 16 storefront application (App Router, Tailwind CSS, Lucide, Framer Motion, WhatsApp Concierge).
-- **`backend/`**: Next.js 16 API service with Prisma ORM, Supabase PostgreSQL, and Cloudinary media processing.
+- **Backend (Render)**: Next.js 16 API service with Prisma ORM connecting to Supabase PostgreSQL and Cloudinary.
+- **Frontend (Vercel)**: Next.js 16 luxury storefront. Automatically proxies `/api/*` requests to the Render backend via Next.js rewrites.
 - **Database**: Supabase PostgreSQL.
-- **Media CDN**: Cloudinary (`qaruxkhf`).
-
-All client-side API requests from the frontend use `/api/*`, which are transparently reverse-proxied to `BACKEND_URL` by Next.js rewrites.
+- **Media**: Cloudinary (`qaruxkhf`).
 
 ---
 
-## Option 1: Deploy Both to Vercel (Recommended)
+## Part 1: Deploy Backend on Render (Manual Setup)
 
-Because both the frontend and backend are Next.js applications, deploying both to Vercel provides zero-config serverless scaling, global edge caching, and automated Git deployments.
+Follow these steps in your [Render Dashboard](https://dashboard.render.com/):
 
-### Step 1: Deploy the Backend Project
+### 1. Create a New Web Service
+1. In the top right, click **"New +"** and select **"Web Service"**.
+2. Select **"Build and deploy from a Git repository"** and choose your repository: `lamiodi/stylesence`.
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New... > Project"**.
+### 2. Configure Service Settings
+Enter the following exact settings:
+
+| Setting | Value | Notes |
+| :--- | :--- | :--- |
+| **Name** | `stylessence-backend` | Or any name you prefer |
+| **Language** | `Node` | Native Node.js environment |
+| **Branch** | `main` | Production branch |
+| **Root Directory** | `backend` | **Crucial:** sets build context to the backend folder |
+| **Build Command** | `npm install && npm run build` | Installs dependencies and generates Prisma client |
+| **Start Command** | `npm run start` | Binds to `0.0.0.0` and listens on Render's `$PORT` |
+| **Instance Type** | `Free` (or Starter) | Free tier spins down after inactivity |
+
+### 3. Configure Health Check
+Under **Advanced**:
+- **Health Check Path**: `/api/health`
+
+### 4. Add Environment Variables
+Under **Environment Variables**, add the following keys:
+
+| Key | Value | Description |
+| :--- | :--- | :--- |
+| `NODE_ENV` | `production` | Production mode |
+| `DATABASE_URL` | `postgresql://postgres:[PASSWORD]@db.cqdksblxkdznugfczgem.supabase.co:5432/postgres` | Your Supabase PostgreSQL connection string |
+| `CLOUDINARY_URL` | `cloudinary://<api_key>:<api_secret>@qaruxkhf` | Cloudinary credentials |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` | Cloudinary cloud identifier |
+| `FRONTEND_URL` | `*` (or your Vercel URL once deployed) | Allowed origin for CORS |
+
+### 5. Deploy & Obtain Backend URL
+1. Click **"Create Web Service"**.
+2. Wait for the build and health check to complete.
+3. Once live, copy your Render service URL (e.g. `https://stylessence-backend.onrender.com`).
+4. Verify by visiting `https://stylessence-backend.onrender.com/api/health` in your browser. You will see:
+   ```json
+   { "status": "ok", "service": "stylessence-backend" }
+   ```
+
+---
+
+## Part 2: Deploy Frontend on Vercel (Manual Setup)
+
+Follow these steps in your [Vercel Dashboard](https://vercel.com/dashboard):
+
+### 1. Import the Project
+1. In Vercel, click **"Add New... > Project"**.
 2. Select your repository: `lamiodi/stylesence`.
-3. In the project configuration:
-   - **Project Name**: `stylesence-backend` (or your choice).
-   - **Framework Preset**: Next.js.
-   - **Root Directory**: Click *Edit* and select **`backend`**.
-4. Configure **Environment Variables**:
-   | Variable | Value | Description |
-   | :--- | :--- | :--- |
-   | `DATABASE_URL` | `postgresql://postgres:[PASSWORD]@db.cqdksblxkdznugfczgem.supabase.co:5432/postgres` | Your Supabase PostgreSQL connection string |
-   | `CLOUDINARY_URL` | `cloudinary://<api_key>:<api_secret>@qaruxkhf` | Your Cloudinary credentials |
-   | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` | Cloudinary cloud identifier |
-   | `FRONTEND_URL` | `https://your-frontend.vercel.app` (or `*`) | Allowed origin for CORS |
-5. Click **Deploy**.
-6. Copy the assigned backend URL (e.g., `https://stylesence-backend.vercel.app`).
+
+### 2. Configure Project Settings
+Enter the following settings:
+
+| Setting | Value | Notes |
+| :--- | :--- | :--- |
+| **Project Name** | `stylesence` (or `stylesence-frontend`) | Your storefront project name |
+| **Framework Preset** | `Next.js` | Automatically detected |
+| **Root Directory** | Click **Edit** and choose **`frontend`** | **Crucial:** isolates frontend build |
+| **Build Command** | Leave default (`npm run build`) | Executes Next.js production build |
+| **Output Directory** | Leave default (`.next`) | Default |
+
+### 3. Add Environment Variables
+Expand the **Environment Variables** section and add:
+
+| Key | Value | Description |
+| :--- | :--- | :--- |
+| `BACKEND_URL` | `https://stylessence-backend.onrender.com` | **Paste your actual Render backend URL from Part 1** |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` | Cloudinary public identifier |
+
+### 4. Deploy
+1. Click **"Deploy"**.
+2. Vercel will build the frontend and assign a live URL (e.g. `https://stylesence.vercel.app`).
+3. Because `frontend/next.config.ts` includes server rewrites, any browser request to `/api/*` is automatically reverse-proxied to your Render backend with zero CORS issues!
 
 ---
 
-### Step 2: Deploy the Frontend Project
+## Part 3: Database Migration & Initial Catalog (Supabase)
 
-1. In Vercel Dashboard, click **"Add New... > Project"** again.
-2. Select the same repository: `lamiodi/stylesence`.
-3. In the project configuration:
-   - **Project Name**: `stylesence-frontend` (or `stylesence`).
-   - **Framework Preset**: Next.js.
-   - **Root Directory**: Click *Edit* and select **`frontend`**.
-4. Configure **Environment Variables**:
-   | Variable | Value | Description |
-   | :--- | :--- | :--- |
-   | `BACKEND_URL` | `https://stylesence-backend.vercel.app` | URL of the deployed backend from Step 1 |
-   | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` | Cloudinary cloud identifier |
-5. Click **Deploy**.
-
-The frontend will now seamlessly proxy all `/api/*` calls to the backend with zero CORS issues!
-
----
-
-## Option 2: Deploy Frontend on Vercel + Backend on Docker / Railway / Render
-
-If you prefer running the backend on a dedicated container platform:
-
-### Deploy Backend with Docker or Railway
-1. A multi-stage production [`backend/Dockerfile`](backend/Dockerfile) is included.
-2. Port: `3001` (or `$PORT` supplied by your host).
-3. Set the environment variables in Railway/Render (`DATABASE_URL`, `CLOUDINARY_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `FRONTEND_URL`).
-4. Set `BACKEND_URL` in the Vercel frontend project to the public URL of your container.
-
-### Deploy Backend with Render
-A [`render.yaml`](render.yaml) blueprint is pre-configured. Connect the repository to Render and create a Web Service pointing to `backend`.
-
----
-
-## Database Migration & Seeding (Supabase)
-
-Before launching, apply your schema and seed the initial data:
-
-1. Update `backend/.env` with your real Supabase password:
-   ```env
-   DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.cqdksblxkdznugfczgem.supabase.co:5432/postgres"
-   ```
-2. Push the Prisma schema to Supabase:
-   ```bash
-   npm run db:push
-   ```
-3. Seed default data (categories, initial collections, admin user):
-   ```bash
-   npm run db:seed
-   ```
-4. Import staged catalog products:
-   ```bash
-   npm run products:import
-   ```
-
----
-
-## Local Verification Commands
-
-To test both builds locally before pushing:
+From your local machine, run the following commands to apply your database tables and seed products into Supabase:
 
 ```bash
-# Verify backend build (includes Prisma generation)
-npm run build:backend
+# 1. Push Prisma schema to Supabase PostgreSQL
+npm run db:push
 
-# Verify frontend build
-npm run build:frontend
+# 2. Seed system data (categories, initial collections, default admin account)
+npm run db:seed
 
-# Verify entire monorepo build
-npm run build
+# 3. Import staged catalog products and media
+npm run products:import
 ```
+
+---
+
+## Summary of Two Local Environment Files
+
+Your workspace uses strictly **two** environment files for local development:
+
+1. **[`backend/.env`](backend/.env)**:
+   ```env
+   PORT=3001
+   DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.cqdksblxkdznugfczgem.supabase.co:5432/postgres"
+   CLOUDINARY_URL="cloudinary://<your_api_key>:<your_api_secret>@qaruxkhf"
+   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="qaruxkhf"
+   ```
+
+2. **[`frontend/.env`](frontend/.env)**:
+   ```env
+   BACKEND_URL="http://127.0.0.1:3001"
+   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="qaruxkhf"
+   ```
