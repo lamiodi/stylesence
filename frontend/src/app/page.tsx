@@ -14,6 +14,7 @@ import { Header } from '@/components/site/header'
 import { Footer } from '@/components/site/footer'
 import { CartSheet } from '@/components/site/cart-sheet'
 import { ScrollToTop } from '@/components/site/scroll-to-top'
+import { WhatsAppWidget } from '@/components/site/whatsapp-widget'
 import { PageFade } from '@/components/site/reveal'
 import { HomePage } from '@/components/pages/home'
 import { ShopPage } from '@/components/pages/shop'
@@ -136,6 +137,7 @@ export default function Home() {
           <Footer />
           <CartSheet />
           <ScrollToTop />
+          <WhatsAppWidget />
           <WishlistSync />
         </div>
       </QueryClientProvider>

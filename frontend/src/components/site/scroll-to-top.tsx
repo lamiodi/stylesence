@@ -38,7 +38,7 @@ export function ScrollToTop() {
       aria-label="Return to the top of the page"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       className={cn(
-        'no-print fixed bottom-24 right-4 z-40 flex h-11 w-11 items-center justify-center border border-line-strong bg-background/95 text-muted-foreground shadow-[0_2px_12px_oklch(0.235_0.008_70_/_0.08)] backdrop-blur-sm transition-all duration-300 motion-reduce:transition-none lg:bottom-8 lg:right-8',
+        'no-print fixed bottom-24 right-4 z-40 flex h-11 w-11 items-center justify-center border border-line-strong bg-background/95 text-muted-foreground shadow-[0_2px_12px_oklch(0.235_0.008_70_/_0.08)] backdrop-blur-sm transition-all duration-300 motion-reduce:transition-none lg:bottom-24 lg:right-8',
         'hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring',
         visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0',
       )}
