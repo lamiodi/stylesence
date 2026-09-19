@@ -6,10 +6,10 @@
  * search + category filters, and create/edit dialogs incl. a repeatable
  * variant editor (create) and per-variant stock editing (edit).
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronUp, Loader2, Package, Pencil, Plus, Search, Sparkles, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Package, Pencil, Plus, Search, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNaira, formatDateShort } from '@/lib/money'
 import { Button } from '@/components/ui/button'
@@ -581,6 +581,32 @@ function ImagesEditor({
   nameHint: string
 }) {
   const [addUrl, setAddUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      add(data.url)
+      toast.success('Uploaded to Cloudinary successfully')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed'
+      toast.error(msg)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
   const atLimit = images.length >= 12
 
   const move = (index: number, delta: -1 | 1) => {
@@ -705,6 +731,27 @@ function ImagesEditor({
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 shrink-0 border-line-strong uppercase tracking-[0.16em] text-[0.62rem]"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={atLimit || uploading}
+        >
+          {uploading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Upload className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+          )}
+          {uploading ? 'Uploading to Cloudinary...' : 'Upload Media to Cloudinary'}
+        </Button>
         <Input
           value={addUrl}
           onChange={(e) => setAddUrl(e.target.value)}
@@ -714,17 +761,17 @@ function ImagesEditor({
               add(addUrl)
             }
           }}
-          placeholder="/images/products/your-piece-detail.png"
+          placeholder="Or paste media URL (https://res.cloudinary.com/...)"
           className="h-10 border-line-strong font-mono text-xs"
           aria-label="Add an image URL to the gallery"
-          disabled={atLimit}
+          disabled={atLimit || uploading}
         />
         <Button
           type="button"
           variant="outline"
           className="h-10 shrink-0 border-line-strong uppercase tracking-[0.16em] text-[0.62rem]"
           onClick={() => add(addUrl)}
-          disabled={atLimit || !addUrl.trim()}
+          disabled={atLimit || !addUrl.trim() || uploading}
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
           Add

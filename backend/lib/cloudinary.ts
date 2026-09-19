@@ -1,11 +1,17 @@
 import { v2 as cloudinary } from 'cloudinary'
 
-// Cloudinary automatically parses CLOUDINARY_URL from environment variables if present.
-// We also ensure cloud_name fallback if set separately.
 if (process.env.CLOUDINARY_URL) {
-  cloudinary.config({
-    secure: true,
-  })
+  try {
+    const parsed = new URL(process.env.CLOUDINARY_URL)
+    cloudinary.config({
+      cloud_name: parsed.hostname,
+      api_key: parsed.username,
+      api_secret: parsed.password,
+      secure: true,
+    })
+  } catch {
+    cloudinary.config({ secure: true })
+  }
 } else if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
   cloudinary.config({
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,

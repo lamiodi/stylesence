@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { db } from '../lib/db'
+import { uploadToCloudinary } from '../lib/cloudinary'
 
 interface ParsedProduct {
   folder: string
@@ -224,9 +225,12 @@ async function main() {
     console.log(`\nProcessing: ${p.name} (Slug: ${p.slug})`)
     console.log(`  Price: ₦${p.price.toLocaleString()} | Category: ${p.categorySlug}`)
 
-    // 1. Copy media files to frontend/public and root public
-    const copiedImageUrls: string[] = []
-    p.images.forEach((srcPath, idx) => {
+    // 1. Process and upload media (Cloudinary first, local copy as fallback/backup)
+    const productMediaList: { url: string; alt: string; position: number }[] = []
+    const hasCloudinary = Boolean(process.env.CLOUDINARY_URL)
+
+    for (let idx = 0; idx < p.images.length; idx++) {
+      const srcPath = p.images[idx]
       const ext = path.extname(srcPath).toLowerCase()
       const destFileName = `${p.slug}-${idx + 1}${ext}`
       const destPath = path.join(targetImgDir, destFileName)
@@ -234,13 +238,28 @@ async function main() {
       if (fs.existsSync(rootPublicDir)) {
         fs.copyFileSync(srcPath, path.join(rootPublicDir, 'images/products', destFileName))
       }
-      const publicUrl = `/images/products/${destFileName}`
-      copiedImageUrls.push(publicUrl)
-      console.log(`  Copied image: ${path.basename(srcPath)} -> ${publicUrl}`)
-    })
+      let mediaUrl = `/images/products/${destFileName}`
 
-    const copiedVideoUrls: string[] = []
-    p.videos.forEach((srcPath, idx) => {
+      if (hasCloudinary) {
+        try {
+          console.log(`  Uploading image to Cloudinary: ${path.basename(srcPath)}...`)
+          const uploadRes = await uploadToCloudinary(srcPath, 'stylesence/products', 'image')
+          mediaUrl = uploadRes.secure_url
+          console.log(`  ✔ Cloudinary image ready: ${mediaUrl}`)
+        } catch (err) {
+          console.warn(`  ⚠️ Cloudinary upload failed for ${srcPath}, falling back to local URL:`, err)
+        }
+      }
+
+      productMediaList.push({
+        url: mediaUrl,
+        alt: `${p.name} — view ${idx + 1}`,
+        position: idx,
+      })
+    }
+
+    for (let idx = 0; idx < p.videos.length; idx++) {
+      const srcPath = p.videos[idx]
       const ext = path.extname(srcPath).toLowerCase()
       const destFileName = `${p.slug}${idx > 0 ? `-${idx + 1}` : ''}${ext}`
       const destPath = path.join(targetVideoDir, destFileName)
@@ -248,20 +267,27 @@ async function main() {
       if (fs.existsSync(rootPublicDir)) {
         fs.copyFileSync(srcPath, path.join(rootPublicDir, 'videos/products', destFileName))
       }
-      const publicUrl = `/videos/products/${destFileName}`
-      copiedVideoUrls.push(publicUrl)
-      console.log(`  Copied video: ${path.basename(srcPath)} -> ${publicUrl}`)
-    })
+      let mediaUrl = `/videos/products/${destFileName}`
 
-    // Combine images and video into product media list
-    const allMediaUrls = [
-      ...copiedImageUrls.map((url, i) => ({ url, alt: `${p.name} — view ${i + 1}`, position: i })),
-      ...copiedVideoUrls.map((url, i) => ({
-        url,
+      if (hasCloudinary) {
+        try {
+          console.log(`  Uploading video to Cloudinary: ${path.basename(srcPath)}...`)
+          const uploadRes = await uploadToCloudinary(srcPath, 'stylesence/products', 'video')
+          mediaUrl = uploadRes.secure_url
+          console.log(`  ✔ Cloudinary video ready: ${mediaUrl}`)
+        } catch (err) {
+          console.warn(`  ⚠️ Cloudinary upload failed for ${srcPath}, falling back to local URL:`, err)
+        }
+      }
+
+      productMediaList.push({
+        url: mediaUrl,
         alt: `${p.name} — movement & tailoring video`,
-        position: copiedImageUrls.length + i,
-      })),
-    ]
+        position: p.images.length + idx,
+      })
+    }
+
+    const allMediaUrls = productMediaList
 
     // 2. Find or create Category in DB
     const category = await db.category.findUnique({
