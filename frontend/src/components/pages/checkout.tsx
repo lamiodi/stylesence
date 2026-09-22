@@ -308,7 +308,7 @@ export function CheckoutPage() {
                     autoComplete="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+234 801 234 5678"
+                    placeholder={`${dialFor(country)} 801 234 5678`}
                     className={fieldCls('phone')}
                     aria-invalid={!!errors.phone}
                   />

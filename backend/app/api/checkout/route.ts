@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       }
 
       // Unique order number: SS-2026-XXXX (retry on collision).
-      let created: { orderNumber: string } | null = null
+      let created: { orderNumber: string; id: string } | null = null
       for (let attempt = 0; attempt < 20 && !created; attempt++) {
         const digits = attempt < 15 ? 4 : 6
         const candidate = `SS-2026-${String(Math.floor(Math.random() * 10 ** digits)).padStart(digits, '0')}`
