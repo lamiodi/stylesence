@@ -82,6 +82,8 @@ export const checkoutInput = z.object({
   shippingMethod: z.enum(['local', 'nationwide', 'international']),
   /** Round 13 production timeline — express carries a fee (dev placeholder amount). */
   productionTier: z.enum(['standard', 'express']).default('standard'),
+  /** Payment rails — 'paystack' (African markets) | 'stripe' (international) | 'confirmed' (studio-confirmed). */
+  paymentMethod: z.enum(['paystack', 'stripe', 'confirmed']).default('confirmed'),
   /** Round 13 pre-production confirmation — the checkbox before payment. */
   confirmedProduction: z.boolean().refine((v) => v === true, {
     message: 'Please confirm your measurements and details before production begins',
@@ -303,7 +305,7 @@ export const loginInput = z.object({
 })
 
 export const orderPatchInput = z.object({
-  status: z.enum(['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
+  status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
 })
 
 export const reviewPatchInput = z.object({

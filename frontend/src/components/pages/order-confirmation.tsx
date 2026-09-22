@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Package, Truck, Home, ArrowRight, Printer, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { navigate, Link } from '@/lib/router'
@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 import { formatDate, formatNaira } from '@/lib/money'
 import { Button } from '@/components/ui/button'
 import { ProductImage } from '@/components/site/price'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
 import { PRODUCTION_TIERS, formatMeasurements, shippingLabel, type OrderView } from '@/lib/types'
 
@@ -63,9 +62,40 @@ function CopyOrderNumber({ orderNumber }: { orderNumber: string }) {
 }
 
 export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) {
+  const qc = useQueryClient()
+
   useEffect(() => {
     document.title = `Order ${orderNumber} — Style Sence`
   }, [orderNumber])
+
+  // Gateway return (Paystack callback / Stripe success redirect): verify the
+  // payment server-side before believing anything, then refresh the order.
+  useEffect(() => {
+    const hash = window.location.hash
+    const queryIdx = hash.indexOf('?')
+    if (queryIdx === -1) return
+    const params = new URLSearchParams(hash.slice(queryIdx + 1))
+    const reference = params.get('reference') ?? params.get('trxref') ?? params.get('session_id')
+    if (!reference) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/checkout/verify?order=${encodeURIComponent(orderNumber)}&reference=${encodeURIComponent(reference)}`)
+        const body = await res.json()
+        if (cancelled) return
+        if (res.ok && body.verified) toast.success('Payment confirmed — thank you.')
+        else if (res.ok) toast('Payment is still pending — if you completed it, WhatsApp the studio on +234 816 302 2233.')
+        else toast.error(body.error ?? 'Payment verification failed.')
+      } catch {
+        if (!cancelled) toast.error('Payment verification failed — refresh in a moment.')
+      } finally {
+        if (!cancelled) qc.invalidateQueries({ queryKey: ['order', orderNumber] })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [orderNumber, qc])
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['order', orderNumber],
@@ -118,8 +148,8 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
             {cancelled
-              ? 'The pieces have been released back to the rail. Nothing was charged — this is a development preview.'
-              : 'Your pieces are being prepared. A confirmation email would arrive shortly — dev placeholder.'}
+              ? 'The pieces have been released back to the rail. Nothing further is owed on this order.'
+              : 'Your pieces are being prepared. A confirmation email is on its way, and we will write again when your order leaves the studio.'}
           </p>
           <div className="no-print mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             <button
@@ -297,10 +327,11 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
         </Reveal>
 
         <Reveal delay={0.16} className="no-print mt-6">
-          <DevPlaceholder title="Transactional email & tracking">
-            Confirmation email and courier tracking links are simulated in this environment.
-            Order status can be advanced from the admin console.
-          </DevPlaceholder>
+          <p className="border border-line bg-secondary/50 px-4 py-3.5 text-sm leading-relaxed text-muted-foreground">
+            A confirmation email is on its way. Courier tracking appears on your order page
+            the moment your piece leaves the studio — follow progress any time from{' '}
+            <span className="font-medium text-foreground">Track order</span> below.
+          </p>
         </Reveal>
 
         <Reveal delay={0.2} className="no-print mt-10 flex flex-wrap justify-center gap-3">

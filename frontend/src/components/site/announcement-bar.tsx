@@ -1,9 +1,8 @@
 const ITEMS = [
   'Complimentary shipping over ₦150,000',
-  'Considered womenswear — cut in small batches',
-  'Ivory & charcoal — the house palette',
-  'New: The Atelier Blazer',
-  'Dev preview — no live payments',
+  'Made to order in Lagos — delivered nationwide',
+  'Polka-dot silk sets · fluid gowns · hand-woven Aso Oke',
+  'Cut to your measurements — XS to XXL or bespoke',
 ]
 
 export function AnnouncementBar() {

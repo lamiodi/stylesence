@@ -7,7 +7,6 @@ import { ArrowRight, Check, Lock, Sun, Moon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from '@/lib/router'
 import type { Category } from '@/lib/types'
-import { DevPlaceholder } from './dev-placeholder'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -125,12 +124,11 @@ function ClientCareLinks() {
 
 function PaymentMarks() {
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Accepted payment methods (dev placeholder)">
-      {['VISA', 'MASTERCARD', 'VERVE', 'PAYSTACK'].map((m) => (
+    <div className="flex flex-wrap items-center gap-2" aria-label="Accepted payment methods">
+      {['BANK TRANSFER', 'VISA', 'MASTERCARD', 'VERVE'].map((m) => (
         <span
           key={m}
-          className="border border-dashed border-line-strong px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground/70"
-          title="Dev placeholder — payment integration pending"
+          className="border border-line-strong px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground/70"
         >
           {m}
         </span>
@@ -293,18 +291,12 @@ export function Footer() {
               </span>
             </address>
             <div className="mt-4 flex items-center gap-3">
-              {['Instagram', 'Pinterest'].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() =>
-                    toast('Dev placeholder', { description: `${s} is not linked in this preview.` })
-                  }
-                  className="border border-dashed border-line-strong px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground/80"
-                >
-                  {s}
-                </button>
-              ))}
+              <a
+                href="https://wa.me/2348163022233"
+                className="border border-line-strong px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground/80 transition-colors hover:border-espresso hover:text-espresso"
+              >
+                WhatsApp the studio
+              </a>
             </div>
           </div>
         </div>
@@ -321,7 +313,7 @@ export function Footer() {
             <span className="hidden h-3 w-px bg-line-strong sm:block" aria-hidden />
             <p className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground/80">
               <Check className="h-3 w-3 text-espresso" aria-hidden />
-              Development preview — no live commerce
+              Made to order in Lagos · Delivered nationwide
             </p>
           </div>
           <div className="flex items-center gap-5">

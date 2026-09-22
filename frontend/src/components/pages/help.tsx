@@ -16,7 +16,6 @@ import { Link, navigate, useRoute } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
 import { Reveal } from '@/components/site/reveal'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -95,23 +94,23 @@ const MEASURE_STEPS = [
 const CARE_GUIDES = [
   {
     n: '01',
-    title: 'Cashmere',
-    body: 'Hand wash cool with a drop of gentle soap — never wrung. Dry flat in the shade, and when pills rise, as they will, comb them off with a cashmere comb rather than picking. The knit repays the patience by softening.',
+    title: 'Silk charmeuse',
+    body: 'Dry clean, or a delicate hand wash in cold water with silk soap — never wrung. Hang to dry away from direct sun and steam gently on the reverse. Store on a padded hanger and creases fall out overnight on their own.',
   },
   {
     n: '02',
-    title: 'Wool tailoring',
-    body: 'Steam; do not press. Brush downward after wear and hang on a broad wooden hanger overnight so the cloth recovers its line. Dry clean sparingly — twice a season is plenty. Wool remembers everything, including heat.',
+    title: 'Crepe-silk blends',
+    body: 'The Camille sets take a gentle hand wash cold or dry cleaning. Hang to dry in the shade, warm-steam as needed, and the drape returns every time. Avoid the hot iron directly on the print.',
   },
   {
     n: '03',
-    title: 'Silk',
-    body: 'Steam from a hand’s distance and let the iron stay in its drawer. Store on a padded hanger away from direct sun; creases fall out overnight on their own. Sandwashed silk prefers to be left alone.',
+    title: 'Aso Oke',
+    body: 'Specialist dry clean only — the hand-woven cloth is never machine washed. Store flat or on a structured hanger, and let the weave rest between wears. Treated well, it outlives every trend it meets.',
   },
   {
     n: '04',
-    title: 'Cotton poplin',
-    body: 'Machine wash at 30° with like colours, line dry with a good shake, then iron warm while the cloth is still faintly damp. Poplin takes crisply to pressing and holds it through the day.',
+    title: 'Everything made to measure',
+    body: 'Your piece is cut for one body — yours. Wash less, steam more, and bring it back to the studio for repairs; a garment made to order deserves a lifetime, not a season.',
   },
 ] as const
 
@@ -125,13 +124,14 @@ const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
           <Link to="/help?topic=sizing" className="link-underline text-foreground">
             sizing chart
           </Link>{' '}
-          — between sizes, stay true in knitwear, which is cut relaxed, and size down in
-          tailoring, which runs true to the chart.
+          — or skip the chart entirely and order with your own measurements; every piece
+          is cut to order, so exact numbers always win.
         </p>
         <p className="mt-3">
-          Still unsure? Send your bust, waist and hip measurements to{' '}
-          <a href="mailto:hello@stylesence.example" className="link-underline text-foreground">
-            hello@stylesence.example
+          Still unsure? Send your bust, waist and hip measurements to the studio on
+          WhatsApp —{' '}
+          <a href="https://wa.me/2348163022233" className="link-underline text-foreground">
+            +234 816 302 2233
           </a>{' '}
           and we will advise honestly rather than upsell.
         </p>
@@ -185,11 +185,15 @@ const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
     q: 'What payment methods do you accept?',
     a: (
       <div className="space-y-3">
-        <p>In this development preview, checkout places a dev order directly — nothing is charged.</p>
-        <DevPlaceholder compact title="Live payments">
-          Paystack card payments and bank transfer are pending integration; the payment
-          step is a placeholder in dev.
-        </DevPlaceholder>
+        <p>
+          Payment is confirmed with the studio after you place your order — bank transfer
+          or a card link arrives with your confirmation, and production begins the moment
+          payment lands.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Prefer to pay before ordering, or need a quote first? WhatsApp the studio on
+          +234 816 302 2233 and we will sort it in one conversation.
+        </p>
       </div>
     ),
   },
@@ -198,10 +202,10 @@ const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
     a: (
       <div className="space-y-3">
         <p>Today we ship nationwide within Nigeria only — Standard and Express, as above.</p>
-        <DevPlaceholder compact title="International shipping">
-          Cross-border rates, duties and timelines are being worked out; international
-          checkout arrives with them.
-        </DevPlaceholder>
+        <p className="text-sm text-muted-foreground">
+          International delivery is in the works. If you are outside Nigeria, WhatsApp the
+          studio on +234 816 302 2233 and we will arrange shipping and a quote manually.
+        </p>
       </div>
     ),
   },
@@ -391,11 +395,10 @@ export function HelpPage() {
           </div>
 
           <div className="mt-6">
-            <DevPlaceholder title="Courier partner">
-              Our nationwide courier partner is unnamed in this development preview —
-              branded tracking pages and named delivery windows arrive with the commercial
-              launch.
-            </DevPlaceholder>
+            <p className="border border-line bg-secondary/50 px-4 py-3.5 text-sm leading-relaxed text-muted-foreground">
+              Every order is dispatched via insured nationwide courier. Tracking is added
+              to your order page and sent by email the moment your piece leaves the studio.
+            </p>
           </div>
         </Reveal>
       </Section>
@@ -420,11 +423,10 @@ export function HelpPage() {
             ))}
           </dl>
           <div className="mt-6">
-            <DevPlaceholder title="Reverse-logistics partner">
-              Doorstep pickup for returns is pending a logistics partner — until then,
-              begin any return by writing to hello@stylesence.example and we will arrange
-              collection manually.
-            </DevPlaceholder>
+            <p className="border border-line bg-secondary/50 px-4 py-3.5 text-sm leading-relaxed text-muted-foreground">
+              To begin a return, WhatsApp the studio on +234 816 302 2233 with your order
+              number — we will arrange collection and take it from there.
+            </p>
           </div>
         </Reveal>
       </Section>
@@ -545,13 +547,14 @@ export function HelpPage() {
             <div className="h-full p-7">
               <p className="eyebrow">Write</p>
               <a
-                href="mailto:hello@stylesence.example"
+                href="https://wa.me/2348163022233"
                 className="link-underline mt-3 inline-flex min-h-[44px] items-center font-display text-lg font-light tracking-tight"
               >
-                hello@stylesence.example
+                +234 816 302 2233
               </a>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Answered within one business day by the same people who pack the parcels.
+                WhatsApp the studio — answered within one business day by the same people
+                who cut the pieces.
               </p>
             </div>
           </Reveal>
@@ -595,10 +598,10 @@ export function HelpPage() {
                 aria-hidden
               />
             </Link>
-            <DevPlaceholder title="Phone & WhatsApp line">
-              A direct studio number is not yet confirmed for this preview — write to
-              hello@stylesence.example and we will reply the same working day.
-            </DevPlaceholder>
+            <p className="border border-line bg-secondary/50 px-4 py-3.5 text-sm leading-relaxed text-muted-foreground">
+              WhatsApp the studio on <span className="font-medium text-foreground">+234 816 302 2233</span> —
+              we reply within a working day, and faster during collection drops.
+            </p>
           </div>
         </Reveal>
       </Section>

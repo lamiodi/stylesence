@@ -19,7 +19,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProductImage } from '@/components/site/price'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
 import { PRODUCTION_TIERS, SHIPPING_METHODS, formatMeasurements, shippingLabel, type OrderView } from '@/lib/types'
 
@@ -765,10 +764,11 @@ function OrderResult({ order }: { order: OrderView }) {
                     </p>
                   </div>
                 ) : null}
-                <DevPlaceholder title="Courier tracking">
-                  A live courier tracking link will appear here once the dispatch integration is
-                  connected.
-                </DevPlaceholder>
+                <p className="border border-line bg-secondary/50 px-4 py-3.5 text-xs leading-relaxed text-muted-foreground">
+                  A courier tracking link appears here as soon as your piece is dispatched.
+                  Questions before then? WhatsApp the studio on +234 816 302 2233 with your
+                  order number.
+                </p>
               </div>
             </section>
 

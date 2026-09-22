@@ -16,7 +16,6 @@ import { Label } from '@/components/ui/label'
 import { ProductImage, Price } from '@/components/site/price'
 import { RatingStars } from '@/components/site/rating-stars'
 import { QuantityStepper } from '@/components/site/quantity-stepper'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { ProductCard } from '@/components/site/product-card'
 import { GalleryLightbox } from '@/components/site/gallery-lightbox'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
@@ -110,12 +109,11 @@ function SizeGuideDialog() {
           <p className="eyebrow !text-[0.58rem]">How to measure</p>
           <p className="mt-1.5 text-[0.72rem] leading-relaxed text-muted-foreground">
             Measure over light clothing with the tape level — snug, never tight.
-            All values are in centimetres.
+            All values are in centimetres. Need a hand? WhatsApp the studio on
+            +234 816 302 2233 and we will talk you through every measurement
+            before you order.
           </p>
         </div>
-        <DevPlaceholder compact title="Fit consultations">
-          Video fit consultations are simulated in this preview.
-        </DevPlaceholder>
       </DialogContent>
     </Dialog>
   )
@@ -1064,9 +1062,10 @@ function ProductInner({ product }: { product: ProductDetail }) {
                       Complimentary returns within 14 days, tags attached
                     </li>
                   </ul>
-                  <DevPlaceholder compact className="mt-3" title="Courier & returns portal">
-                    Live courier booking and returns portal are simulated in this environment.
-                  </DevPlaceholder>
+                  <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
+                    Returns begin on WhatsApp — +234 816 302 2233 — with your order
+                    number; collection is arranged from there.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

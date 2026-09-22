@@ -98,7 +98,9 @@ export function WhatsAppWidget() {
           aria-modal="true"
           aria-labelledby="concierge-heading"
           className={cn(
-            'absolute bottom-16 right-0 mb-2 w-[calc(100vw-2rem)] max-w-sm overflow-hidden',
+            // responsive height cap — the panel flexes within the viewport and
+            // stops below the sticky navbar (z-50) instead of sliding under it
+            'absolute bottom-16 right-0 mb-2 flex max-h-[calc(100dvh-11.5rem)] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden',
             'border border-line-strong bg-background/95 text-foreground backdrop-blur-xl',
             'shadow-[0_16px_40px_-12px_oklch(0.235_0.008_70_/_0.22)]',
             'animate-in fade-in zoom-in-95 duration-200 ease-out',
@@ -106,7 +108,7 @@ export function WhatsAppWidget() {
           )}
         >
           {/* Header */}
-          <div className="relative border-b border-line bg-secondary/80 px-5 py-4">
+          <div className="relative shrink-0 border-b border-line bg-secondary/80 px-5 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="relative flex h-10 w-10 shrink-0 items-center justify-center border border-line-strong bg-background text-foreground font-display text-sm tracking-wider">
@@ -135,8 +137,8 @@ export function WhatsAppWidget() {
             </div>
           </div>
 
-          {/* Chat Body */}
-          <div className="max-h-[60vh] overflow-y-auto p-5 space-y-4 text-sm">
+          {/* Chat Body — the panel's flex-grow scroll area */}
+          <div className="flex-1 overflow-y-auto scroll-elegant p-5 space-y-4 text-sm">
             {/* Atelier Welcome Note */}
             <div className="rounded-sm border border-line bg-background/80 p-3.5 shadow-xs">
               <p className="font-serif italic text-xs text-muted-foreground mb-1">Style Sence Client Relations</p>
@@ -196,7 +198,7 @@ export function WhatsAppWidget() {
           </div>
 
           {/* Footer Line */}
-          <div className="border-t border-line bg-secondary/50 px-5 py-2.5 text-center text-[0.7rem] text-muted-foreground">
+          <div className="shrink-0 border-t border-line bg-secondary/50 px-5 py-2.5 text-center text-[0.7rem] text-muted-foreground">
             Official House Number: <span className="font-mono text-foreground font-medium">{DISPLAY_PHONE}</span>
           </div>
         </div>

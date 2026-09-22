@@ -27,18 +27,16 @@ import {
   type ProductionTier,
   type ShippingMethod,
 } from '@/lib/types'
-
-const NG_STATES = [
-  'Lagos', 'FCT — Abuja', 'Rivers', 'Oyo', 'Enugu', 'Kano', 'Akwa Ibom', 'Edo',
-  'Kaduna', 'Ogun', 'Anambra', 'Delta', 'Abia', 'Imo', 'Plateau', 'Cross River',
-]
+import {
+  COUNTRY_NAMES,
+  dialFor,
+  isPaystackCountry,
+  provincesFor,
+} from '@/lib/geo'
 
 /** Round 13 delivery destinations. Nigeria unlocks the local + nationwide
- *  couriers; every other country is international-only (server-enforced). */
-const COUNTRIES = [
-  'Nigeria', 'Ghana', 'United Kingdom', 'United States', 'Canada',
-  'South Africa', 'United Arab Emirates', 'France', 'Germany',
-]
+ *  couriers; every other country is international-only (server-enforced).
+ *  Countries + provinces come from @/lib/geo (Paystack Africa / Stripe intl). */
 
 /** Controlled field with a signed-in default that only fills an empty,
  *  untouched input — anything the customer has typed always wins. */
@@ -66,6 +64,19 @@ export function CheckoutPage() {
   const promoCodes = usePromoStore((s) => s.codes)
   const clearPromo = usePromoStore((s) => s.clear)
 
+  // Live payment rails — booleans only; the UI routes by country
+  // (Paystack for African markets, Stripe everywhere else).
+  const { data: payConfig } = useQuery({
+    queryKey: ['pay-config'],
+    queryFn: async () => {
+      const res = await fetch('/api/checkout/pay-config')
+      if (!res.ok) throw new Error('Payment config unavailable')
+      return (await res.json()) as { paystack: boolean; stripe: boolean }
+    },
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+
   // Signed-in customers get their saved details prefilled — but only into
   // fields that are still empty/untouched; guest checkout is untouched.
   const [email, setEmail] = usePrefillField(customer?.email ?? '')
@@ -74,7 +85,9 @@ export function CheckoutPage() {
   const [address, setAddress] = usePrefillField(customer?.defaultAddress ?? '')
   const [city, setCity] = usePrefillField(customer?.defaultCity ?? '')
   const [state, setState] = usePrefillField(
-    customer?.defaultState && NG_STATES.includes(customer.defaultState) ? customer.defaultState : '',
+    customer?.defaultState && (provincesFor('Nigeria') ?? []).includes(customer.defaultState)
+      ? customer.defaultState
+      : '',
   )
   const [country, setCountry] = useState('Nigeria')
   const [notes, setNotes] = useState('')
@@ -84,6 +97,31 @@ export function CheckoutPage() {
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const confirmRef = useRef<HTMLDivElement>(null)
+
+  const provinces = provincesFor(country)
+
+  /** Payment rails for the selected country: Paystack for the African markets
+   *  it serves, Stripe for the rest — only when the gateway is live. Falls
+   *  back to studio-confirmed payment when neither is configured. */
+  const recommendedMethod: 'paystack' | 'stripe' | 'confirmed' = (() => {
+    if (isPaystackCountry(country) && payConfig?.paystack) return 'paystack'
+    if (!isPaystackCountry(country) && payConfig?.stripe) return 'stripe'
+    if (isPaystackCountry(country) && payConfig?.stripe && !payConfig?.paystack) return 'stripe'
+    if (!isPaystackCountry(country) && payConfig?.paystack && !payConfig?.stripe) return 'paystack'
+    return 'confirmed'
+  })()
+  const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'stripe' | 'confirmed'>('confirmed')
+  useEffect(() => {
+    setPaymentMethod(recommendedMethod)
+  }, [recommendedMethod])
+
+  /** Changing country invalidates a picked province — clear it when the new
+   *  country has its own list and the current value is not on it. */
+  const changeCountry = (next: string) => {
+    setCountry(next)
+    const list = provincesFor(next)
+    if (list && state && !list.includes(state)) setState('')
+  }
 
   /** Round 13 geo rules, mirrored client-side (the server rejects mismatches
    *  with a 400): local is Lagos metro only, nationwide is Nigeria-only,
@@ -120,7 +158,7 @@ export function CheckoutPage() {
    *  promo waives EVERY method (including international). */
   const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && shipping === 'nationwide'
   const shippingPrice = stackFreeShipping || thresholdFree ? 0 : SHIPPING_METHODS[shipping].price
-  /** Express production add-on (fee is a clearly-labelled dev placeholder). */
+  /** Express production add-on — 2–3 day production instead of standard 7–10. */
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice + productionFee
 
@@ -176,14 +214,22 @@ export function CheckoutPage() {
           shippingMethod: shipping,
           productionTier,
           confirmedProduction: true,
+          paymentMethod,
           promoCodes: promoCodes.length > 0 ? promoCodes : undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Checkout failed')
-      toast.success(`Order ${data.order.orderNumber} placed.`)
       qc.invalidateQueries({ queryKey: ['cart'] })
       clearPromo()
+      // Live gateway — off to the hosted payment page, back to the order after.
+      if (data.payment?.url) {
+        toast.success(`Order ${data.order.orderNumber} placed — completing payment…`)
+        window.location.href = data.payment.url as string
+        return
+      }
+      if (data.payment?.note) toast(data.payment.note as string)
+      toast.success(`Order ${data.order.orderNumber} placed.`)
       navigate(`/order/${data.order.orderNumber}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed')
@@ -305,11 +351,11 @@ export function CheckoutPage() {
                   <select
                     id="ck-country"
                     value={country}
-                    onChange={(e) => setCountry(e.target.value)}
+                    onChange={(e) => changeCountry(e.target.value)}
                     autoComplete="country-name"
                     className={selectCls('country')}
                   >
-                    {COUNTRIES.map((c) => (
+                    {COUNTRY_NAMES.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
@@ -328,9 +374,9 @@ export function CheckoutPage() {
                   {errors.city ? <p className="text-[0.7rem] text-destructive">{errors.city}</p> : null}
                 </div>
                 <div className="space-y-1.5">
-                  {country === 'Nigeria' ? (
+                  {provinces ? (
                     <>
-                      <Label htmlFor="ck-state" className="eyebrow">State *</Label>
+                      <Label htmlFor="ck-state" className="eyebrow">State / Province *</Label>
                       <select
                         id="ck-state"
                         value={state}
@@ -338,8 +384,8 @@ export function CheckoutPage() {
                         className={selectCls('state')}
                         aria-invalid={!!errors.state}
                       >
-                        <option value="">Select state…</option>
-                        {NG_STATES.map((s) => (
+                        <option value="">Select…</option>
+                        {provinces.map((s) => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
@@ -352,7 +398,7 @@ export function CheckoutPage() {
                         autoComplete="address-level1"
                         value={state}
                         onChange={(e) => setState(e.target.value)}
-                        placeholder="Greater London"
+                        placeholder="Province or region"
                         className={fieldCls('state')}
                         aria-invalid={!!errors.state}
                       />
@@ -420,7 +466,7 @@ export function CheckoutPage() {
                         </p>
                         {key === 'international' ? (
                           <p className="mt-1 text-[0.66rem] text-espresso">
-                            Duties handled at the door — rate is a dev placeholder.
+                            Duties and taxes handled at the door on arrival.
                           </p>
                         ) : null}
                         {note ? (
@@ -529,19 +575,65 @@ export function CheckoutPage() {
                   </p>
                 ) : null}
               </div>
-              <div className="mt-4 border border-espresso/30 bg-[color-mix(in_oklch,var(--espresso)_5%,transparent)] p-5">
-                <div className="flex items-center gap-2.5">
-                  <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
-                  <p className="eyebrow !text-espresso !text-[0.6rem]">Payment — confirmed by the studio</p>
+              {payConfig?.paystack || payConfig?.stripe ? (
+                <div className="mt-4 border border-espresso/30 bg-[color-mix(in_oklch,var(--espresso)_5%,transparent)] p-5">
+                  <div className="flex items-center gap-2.5">
+                    <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
+                    <p className="eyebrow !text-espresso !text-[0.6rem]">
+                      {isPaystackCountry(country) ? 'Paystack — cards, bank transfer & USSD' : 'Card payment — Stripe'}
+                    </p>
+                  </div>
+                  <RadioGroup
+                    value={paymentMethod}
+                    onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}
+                    className="mt-3 gap-2.5"
+                  >
+                    {(payConfig?.paystack && isPaystackCountry(country)
+                      ? [{ value: 'paystack', label: 'Pay now with Paystack', hint: 'Card, bank transfer, USSD — Naira' }]
+                      : []
+                    )
+                      .concat(
+                        payConfig?.stripe
+                          ? [{ value: 'stripe', label: 'Pay now by card (Stripe)', hint: 'International cards' }]
+                          : [],
+                      )
+                      .concat([
+                        { value: 'confirmed', label: 'Pay on confirmation', hint: 'The studio sends payment details' },
+                      ])
+                      .map((opt) => (
+                        <label
+                          key={opt.value}
+                          className="flex cursor-pointer items-center gap-3 border border-line bg-background px-3.5 py-3 transition-colors hover:border-line-strong"
+                        >
+                          <RadioGroupItem value={opt.value} />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium leading-tight">{opt.label}</span>
+                            <span className="mt-0.5 block text-[0.72rem] text-muted-foreground">{opt.hint}</span>
+                          </span>
+                        </label>
+                      ))}
+                  </RadioGroup>
+                  <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
+                    Secure hosted payment — you are redirected to{' '}
+                    {paymentMethod === 'paystack' ? 'Paystack' : 'Stripe'} to complete payment, then returned here.{' '}
+                    <span className="font-medium text-foreground">Production begins the moment payment lands.</span>
+                  </p>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Place your order and the studio sends payment details — bank transfer or
-                  card link — with your confirmation. Nothing is charged automatically, and{' '}
-                  <span className="font-medium text-foreground">production begins the moment
-                  payment lands</span>. Need to talk it through first? WhatsApp{' '}
-                  <span className="font-medium text-foreground">+234 816 302 2233</span>.
-                </p>
-              </div>
+              ) : (
+                <div className="mt-4 border border-espresso/30 bg-[color-mix(in_oklch,var(--espresso)_5%,transparent)] p-5">
+                  <div className="flex items-center gap-2.5">
+                    <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
+                    <p className="eyebrow !text-espresso !text-[0.6rem]">Payment — confirmed by the studio</p>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Place your order and the studio sends payment details — bank transfer or
+                    card link — with your confirmation. Nothing is charged automatically, and{' '}
+                    <span className="font-medium text-foreground">production begins the moment
+                    payment lands</span>. Need to talk it through first? WhatsApp{' '}
+                    <span className="font-medium text-foreground">+234 816 302 2233</span>.
+                  </p>
+                </div>
+              )}
             </section>
           </div>
 
@@ -648,8 +740,9 @@ export function CheckoutPage() {
                   <ArrowRight className="ml-2 h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                 </Button>
                 <p className="mt-3 text-center text-[0.64rem] leading-relaxed text-muted-foreground/80">
-                  By placing this order you agree to the terms — a dev placeholder, like
-                  everything commercial here.
+                  By placing this order you agree to our made-to-order terms — production
+                  begins once payment is confirmed, and custom-measured pieces are yours
+                  alone.
                 </p>
               </div>
               <div className="px-6 pb-6">

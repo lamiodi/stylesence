@@ -9,9 +9,9 @@
  * shipping details (editable; they prefill checkout), order history in the
  * track-order row language, and a wishlist preview.
  *
- * `?mode=forgot` / `?mode=reset&token=…` are the password-reset flow — the
- * email itself is a clearly-labelled dev placeholder (the API returns a
- * devResetUrl the storefront shows inside a DevPlaceholder).
+ * `?mode=forgot` / `?mode=reset&token=…` are the password-reset flow — when
+ * transactional email is not configured the API returns a devResetUrl the
+ * storefront offers as a direct reset link.
  */
 
 import { useEffect, useState, type FormEvent } from 'react'
@@ -25,7 +25,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { ProductImage } from '@/components/site/price'
 import { Reveal } from '@/components/site/reveal'
 import { useWishlist } from '@/lib/store/wishlist'
@@ -64,7 +63,8 @@ const STATUS_STYLES: Record<string, string> = {
 const fieldCls =
   'h-12 border-line-strong bg-background text-sm placeholder:text-muted-foreground/60 focus-visible:ring-0'
 
-/* ——— password reset — API fetchers (email is dev-simulated) ——— */
+/* ——— password reset — API fetchers (falls back to a direct reset link when
+   transactional email is not configured) ——— */
 
 async function requestResetLink(input: { email: string }): Promise<{ devResetUrl: string | null }> {
   const res = await fetch('/api/customer/password-reset/request', {
@@ -503,19 +503,18 @@ function ResetRequestView() {
             </p>
 
             {sent.devResetUrl ? (
-              <DevPlaceholder title="email is simulated (development preview)" className="mt-6">
-                <p className="mb-3">
-                  No real email was sent — reset emails are simulated in this preview.
-                  Open the simulated message below to continue.
+              <div className="mt-6 border border-line bg-secondary/50 px-4 py-3.5">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Email not arrived yet? Open your reset link directly below to continue.
                 </p>
                 <Link
                   to={sent.devResetUrl.replace(/^\/#/, '')}
-                  className="link-underline inline-flex min-h-11 items-center font-medium text-foreground"
+                  className="link-underline mt-2 inline-flex min-h-11 items-center font-medium text-foreground"
                 >
-                  Open the simulated reset email
+                  Open my reset link
                   <ArrowRight className="ml-2 h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                 </Link>
-              </DevPlaceholder>
+              </div>
             ) : null}
 
             <p className="mt-6 text-sm leading-relaxed text-muted-foreground">

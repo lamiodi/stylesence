@@ -169,15 +169,10 @@ export function HomePage() {
               </div>
               {/* house meta line — quiet mono sign-off under the hero actions */}
               <p className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.6rem] uppercase tracking-[0.26em] text-primary-foreground/65">
-                <span>Lagos</span>
-                <span className="text-primary-foreground/40" aria-hidden>
-                  ·
-                </span>
                 <span>Est. 2026</span>
                 <span className="text-primary-foreground/40" aria-hidden>
                   ·
                 </span>
-                <span>Ships nationwide</span>
               </p>
             </Reveal>
           </div>

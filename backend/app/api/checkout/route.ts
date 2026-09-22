@@ -5,6 +5,7 @@ import { checkoutInput } from '@/lib/validators'
 import { evaluatePromoStack } from '@/lib/promo'
 import { PRODUCTION_TIERS } from '@/lib/types'
 import { sendOrderConfirmationEmail } from '@/lib/email'
+import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured } from '@/lib/payments'
 
 /**
  * POST /api/checkout
@@ -102,7 +103,16 @@ export async function POST(req: Request) {
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal - discount + shipping + productionFee
 
+  // Payment rails: a configured gateway holds the order at PENDING_PAYMENT
+  // until the gateway verifies (see /api/checkout/verify); anything else
+  // settles through studio confirmation exactly as before.
+  const gatewayLive =
+    (input.paymentMethod === 'paystack' && paystackConfigured()) ||
+    (input.paymentMethod === 'stripe' && stripeConfigured())
+  const initialStatus = gatewayLive ? 'PENDING_PAYMENT' : 'PAID'
+
   let orderNumber: string
+  let orderId = ''
   try {
     orderNumber = await db.$transaction(async (tx) => {
       // Atomically decrement stock — guarded by `stock >= qty`.
@@ -146,7 +156,8 @@ export async function POST(req: Request) {
             productionFee,
             confirmedProduction: true,
             total,
-            status: 'PAID',
+            status: initialStatus,
+            paymentMethod: input.paymentMethod,
           },
           select: { orderNumber: true, id: true },
         })
@@ -175,7 +186,7 @@ export async function POST(req: Request) {
         created = order
       }
       if (!created) throw new Error('Could not allocate a unique order number')
-
+      orderId = created.id
       await tx.cartItem.deleteMany({ where: { cartId: cart.cartId } })
       return created.orderNumber
     })
@@ -183,6 +194,47 @@ export async function POST(req: Request) {
     if (err instanceof StockError) return fail(400, err.message)
     console.error('[api/checkout] transaction failed:', err)
     return fail(500, 'Checkout failed. Please try again.')
+  }
+
+  // Gateway payment — initialize and hand back the hosted payment URL. A
+  // failed initialization leaves the order placed (PENDING_PAYMENT) and the
+  // studio settles it manually, so the customer never loses the order.
+  if (gatewayLive) {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
+    try {
+      const payment =
+        input.paymentMethod === 'paystack'
+          ? await initiatePaystack({
+              orderNumber,
+              email: input.email,
+              amountNaira: total,
+              callbackUrl: `${frontendUrl}/#/order/${orderNumber}`,
+            })
+          : await initiateStripe({
+              orderNumber,
+              email: input.email,
+              amountNaira: total,
+              successUrl: `${frontendUrl}/#/order/${orderNumber}?session_id={CHECKOUT_SESSION_ID}`,
+              cancelUrl: `${frontendUrl}/#/order/${orderNumber}`,
+            })
+      await db.order.update({
+        where: { id: orderId },
+        data: { paymentReference: payment.reference },
+      })
+      return ok(
+        { order: { orderNumber, total, discount }, payment: { url: payment.authorizationUrl } },
+        { status: 201 },
+      )
+    } catch (err) {
+      console.error(`[api/checkout] payment initialization failed for ${orderNumber}:`, err)
+      return ok(
+        {
+          order: { orderNumber, total, discount },
+          payment: { url: null, note: 'The payment gateway could not be reached — your order is saved and the studio will send payment details.' },
+        },
+        { status: 201 },
+      )
+    }
   }
 
   // Non-blocking order confirmation email dispatch via Resend

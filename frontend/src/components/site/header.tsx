@@ -311,7 +311,7 @@ export function Header() {
                 type="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search silk, cashmere, tailoring…"
+                placeholder="Search polka dot, gowns, Aso Oke…"
                 aria-label="Search products"
                 className="w-full border-0 bg-transparent font-display text-xl italic tracking-tight placeholder:text-muted-foreground/50 focus:outline-none focus-visible:outline-none"
               />
@@ -324,7 +324,7 @@ export function Header() {
             </form>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="eyebrow !text-[0.55rem]">Try</span>
-              {['silk', 'cashmere', 'blazer', 'coat', 'tote'].map((t) => (
+              {['polka dot', 'silk', 'gown', 'aso oke', 'two-piece'].map((t) => (
                 <button
                   key={t}
                   type="button"

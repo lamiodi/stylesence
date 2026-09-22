@@ -42,9 +42,9 @@ import {
 /* ------------------------------------------------------------------ *
  * Types (API contract)
  * ------------------------------------------------------------------ */
-type OrderStatus = 'PAID' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
-const ORDER_STATUSES: OrderStatus[] = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+const ORDER_STATUSES: OrderStatus[] = ['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
 
 interface AdminOrderItem {
   productName: string
@@ -98,6 +98,7 @@ async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
  * Shared bits
  * ------------------------------------------------------------------ */
 const STATUS_STYLES: Record<string, string> = {
+  PENDING_PAYMENT: 'border-amber-600/45 bg-amber-500/10 text-amber-700',
   PAID: 'border-line-strong bg-secondary text-secondary-foreground',
   PROCESSING: 'border-espresso/35 bg-espresso/10 text-espresso',
   SHIPPED: 'border-[color:var(--chart-2)]/45 bg-[color:var(--chart-2)]/10 text-[color:var(--chart-2)]',

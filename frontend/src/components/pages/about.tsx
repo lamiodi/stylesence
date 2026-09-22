@@ -150,7 +150,7 @@ export function AboutPage() {
         <Reveal>
           <p className="eyebrow">Begin</p>
           <h2 className="mx-auto mt-3 max-w-2xl font-display text-3xl font-light leading-tight tracking-tight text-balance sm:text-4xl">
-            Start with one ivory piece and build outward.
+            Start with the piece you cannot stop thinking about.
           </h2>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <button

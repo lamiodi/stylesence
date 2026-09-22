@@ -392,7 +392,7 @@ export function ShopPage() {
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               {categoryMeta?.tagline ??
-                'Ivory and charcoal, cut in small batches — every piece meant to speak to every other.'}
+                'Made to order in Lagos — polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke, cut to your measure.'}
             </p>
           </div>
           <p className="font-mono text-[0.72rem] text-muted-foreground tabular-nums">

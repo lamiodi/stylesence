@@ -160,6 +160,10 @@ model Order {
   confirmedProduction Boolean @default(false)
   total         Int
   status        String      @default("PAID")
+  /** Payment rails: 'paystack' (African markets) | 'stripe' (international) | 'confirmed' (studio-confirmed). */
+  paymentMethod String      @default("confirmed")
+  /** Gateway transaction reference (Paystack reference / Stripe session id) for verification. */
+  paymentReference String?
   items         OrderItem[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
