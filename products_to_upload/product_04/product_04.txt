@@ -47,7 +47,7 @@ IMAGES (in media/images/):
 - IMG_2426.png
 
 VIDEOS (in media/videos/):
-- IMG_6839.mp4
+- [IMG_6839.mp4 was not found — listing removed; add the file back and re-run the import to attach it]
 
 --------------------------------------------------------------------------------
 ADDITIONAL NOTES / TAILORING PREFERENCES

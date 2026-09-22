@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ProductImage } from '@/components/site/price'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
 import { Reveal } from '@/components/site/reveal'
 import { useCart } from '@/lib/cart-client'
 import { useCustomer } from '@/hooks/use-customer'
@@ -439,9 +438,10 @@ export function CheckoutPage() {
                   )
                 })}
               </RadioGroup>
-              <DevPlaceholder compact className="mt-3" title="Live rates">
-                Courier rates are fixed dev values — live rate lookup pending.
-              </DevPlaceholder>
+              <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
+                Rates shown cover insured nationwide courier delivery, and are confirmed
+                with your order summary before dispatch.
+              </p>
             </section>
 
             <section aria-label="Production timeline">
@@ -482,9 +482,10 @@ export function CheckoutPage() {
                   )
                 })}
               </RadioGroup>
-              <DevPlaceholder compact className="mt-3" title="Express fee">
-                The ₦15,000 express production fee is a dev placeholder — production pricing pending.
-              </DevPlaceholder>
+              <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
+                Express moves your piece to the front of the cutting queue — production
+                within 2–3 working days instead of the standard 7–10.
+              </p>
             </section>
 
             <section aria-label="Payment">
@@ -528,15 +529,17 @@ export function CheckoutPage() {
                   </p>
                 ) : null}
               </div>
-              <div className="mt-4 border border-dashed border-espresso/45 bg-[color-mix(in_oklch,var(--espresso)_7%,transparent)] p-5">
+              <div className="mt-4 border border-espresso/30 bg-[color-mix(in_oklch,var(--espresso)_5%,transparent)] p-5">
                 <div className="flex items-center gap-2.5">
                   <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
-                  <p className="eyebrow !text-espresso !text-[0.6rem]">Dev placeholder — payment gateway</p>
+                  <p className="eyebrow !text-espresso !text-[0.6rem]">Payment — confirmed by the studio</p>
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Paystack / card capture is not connected in this environment. Placing the order
-                  records it in the admin console <span className="font-medium text-foreground">without charging</span> —
-                  exactly as a paid order would flow.
+                  Place your order and the studio sends payment details — bank transfer or
+                  card link — with your confirmation. Nothing is charged automatically, and{' '}
+                  <span className="font-medium text-foreground">production begins the moment
+                  payment lands</span>. Need to talk it through first? WhatsApp{' '}
+                  <span className="font-medium text-foreground">+234 816 302 2233</span>.
                 </p>
               </div>
             </section>

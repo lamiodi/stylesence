@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useReducedMotion } from 'framer-motion'
 import { ArrowRight, ArrowUpRight, Clock3 } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { Reveal } from '@/components/site/reveal'
@@ -10,6 +11,17 @@ import { ProductImage } from '@/components/site/price'
 import { formatDate, formatNaira } from '@/lib/money'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import type { ProductsResponse, Category, JournalCard, LookView } from '@/lib/types'
+
+/**
+ * Hero film — the Àrẹ̀wà Set in motion. The video is trimmed to start at 1s
+ * (so_1) and the poster is that exact frame, so the still paints instantly
+ * while the video streams and the hand-off is seamless. Reduced-motion
+ * visitors get the still, never the motion.
+ */
+const HERO_VIDEO =
+  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,q_auto/v1790053166/stylesence/products/IMG_7612_yc1iae.mp4'
+const HERO_POSTER =
+  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -64,6 +76,8 @@ function SectionHead({
 }
 
 export function HomePage() {
+  const prefersReducedMotion = useReducedMotion()
+
   useEffect(() => {
     document.title = 'Style Sence by SKR — Modern Womenswear'
   }, [])
@@ -92,7 +106,8 @@ export function HomePage() {
     staleTime: 5 * 60_000,
   })
 
-  const categories = catsData?.categories ?? []
+  // only categories with live pieces belong on the storefront
+  const categories = (catsData?.categories ?? []).filter((c) => c.productCount > 0)
   const posts = journalData?.posts ?? []
   const looks = looksData?.looks ?? []
 
@@ -101,27 +116,40 @@ export function HomePage() {
       {/* ————— HERO ————— */}
       <section className="relative" aria-label="Featured collection">
         <div className="relative h-[78vh] min-h-[30rem] overflow-hidden bg-primary">
-          <ProductImage
-            src="/images/editorial/hero-main.png"
-            alt="Two models in the Autumn 2026 collection — ivory silk and charcoal tailoring"
-            label="The Ivory Edit"
-            ratio="h-full"
-            eager
-            className="animate-kenburns h-full w-full"
-          />
+          {prefersReducedMotion ? (
+            <ProductImage
+              src={HERO_POSTER}
+              alt="The Àrẹ̀wà Set — hand-woven Aso Oke, worn in motion"
+              label="The Signature Collection"
+              ratio="h-full"
+              eager
+              className="h-full w-full"
+            />
+          ) : (
+            <video
+              src={HERO_VIDEO}
+              poster={HERO_POSTER}
+              autoPlay
+              loop
+              muted
+              playsInline
+              aria-label="The Àrẹ̀wà Set — hand-woven Aso Oke, worn in motion"
+              className="h-full w-full object-cover"
+            />
+          )}
           <div
             aria-hidden
             className="absolute inset-0 bg-gradient-to-t from-primary/85 via-primary/35 to-primary/10"
           />
           <div className="container-site absolute inset-0 flex items-end pb-16 sm:items-center sm:pb-0">
             <Reveal className="max-w-xl">
-              <p className="eyebrow !text-primary-foreground/85">Autumn — 2026 Collection</p>
+              <p className="eyebrow !text-primary-foreground/85">Made to order — Lagos, Nigeria</p>
               <h1 className="mt-4 font-display text-5xl font-light leading-[1.05] tracking-tight text-primary-foreground sm:text-6xl lg:text-7xl">
-                The Ivory Edit
+                The Signature Collection
               </h1>
               <p className="mt-5 max-w-md text-[0.95rem] leading-relaxed text-primary-foreground/85">
-                Sandwashed silk, double-faced wool and cashmere that keeps its nerve —
-                fifteen pieces in the house palette, cut in small batches.
+                Polka-dot silk coordinates, fluid Ariella gowns and hand-woven Aso Oke —
+                every piece cut to your measurements and delivered nationwide.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <button
@@ -133,7 +161,7 @@ export function HomePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/journal/the-ivory-edit')}
+                  onClick={() => navigate('/journal/the-camille-edit')}
                   className="h-12 border border-primary-foreground/50 px-8 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-primary-foreground transition-colors hover:border-primary-foreground hover:bg-primary-foreground/10"
                 >
                   Read the edit
@@ -239,32 +267,32 @@ export function HomePage() {
         <Reveal>
           <div className="relative">
             <ProductImage
-              src="/images/editorial/look-1.png"
-              alt="Ivory cashmere crewneck tucked into charcoal wide-leg trousers"
-              label="Considered Essentials"
+              src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056413/stylesence/products/camille-skirt-slate.jpg"
+              alt="The Camille Skirt Set in slate-blue polka dot, worn on the staircase"
+              label="The Camille Skirt Set"
               ratio="aspect-[4/5]"
             />
             <div className="absolute -bottom-5 -right-3 hidden bg-background px-6 py-5 sm:block lg:-right-6">
-              <p className="font-display text-3xl font-light">01<span className="text-espresso">—</span>15</p>
-              <p className="eyebrow mt-1 !text-[0.55rem]">The Ivory Edit</p>
+              <p className="font-display text-3xl font-light">05<span className="text-espresso">—</span>made to order</p>
+              <p className="eyebrow mt-1 !text-[0.55rem]">The Signature Collection</p>
             </div>
           </div>
         </Reveal>
         <Reveal delay={0.12}>
           <p className="eyebrow">The philosophy</p>
           <h2 className="mt-3 font-display text-3xl font-light leading-tight tracking-tight text-balance sm:text-4xl">
-            Considered essentials, nothing orphaned.
+            Coordinates that speak to each other.
           </h2>
           <p className="mt-5 text-[0.95rem] leading-relaxed text-muted-foreground">
-            Every piece in the house speaks to every other. The column skirt pulls under the
-            blazer; the slip dress layers over the turtleneck in December and stands alone in
-            March. Buy once, at the right weight.
+            The Camille top moves between its matching skirt and trousers; the Ariella
+            silhouette drapes from mini to floor. Buy the set, wear it apart — every
+            piece is cut to your measure, in cloth chosen to live together.
           </p>
           <ul className="mt-8 divide-y divide-line border-y border-line">
             {[
-              ['01', 'Cloth', 'Mills we can name, batches we can count.'],
-              ['02', 'Cut', 'Hand-padded shoulders, French seams, honest drape.'],
-              ['03', 'Conscience', 'Small runs, re-cut only when the cloth still qualifies.'],
+              ['01', 'Cloth', 'Silk charmeuse, fluid crepe, hand-loomed Aso Oke.'],
+              ['02', 'Cut', 'Made to your measurements — standard XS–XXL or bespoke.'],
+              ['03', 'Conscience', 'Made to order in Lagos, never over-produced.'],
             ].map(([n, t, d]) => (
               <li key={n} className="flex items-baseline gap-5 py-4">
                 <span className="font-mono text-[0.7rem] text-espresso">{n}</span>
@@ -378,8 +406,8 @@ export function HomePage() {
         <div className="container-site grid items-center gap-10 lg:grid-cols-5 lg:gap-14">
           <Reveal className="lg:col-span-3">
             <ProductImage
-              src="/images/editorial/atelier.png"
-              alt="A tailor hand-padding a charcoal wool lapel in the atelier"
+              src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056405/stylesence/products/camille-duo-seated.jpg"
+              alt="Two models in the Camille polka-dot sets — the skirt set and the trouser set"
               label="The Atelier"
               ratio="aspect-[7/5]"
               className="w-full"
@@ -388,18 +416,18 @@ export function HomePage() {
           <Reveal delay={0.12} className="lg:col-span-2">
             <p className="eyebrow !text-primary-foreground/70">The atelier</p>
             <blockquote className="mt-4 font-display text-2xl font-light italic leading-snug tracking-tight text-primary-foreground sm:text-3xl">
-              “A shoulder must do one impossible thing — be soft enough to move, firm enough
-              to mean it.”
+              “A loom keeps a rhythm no machine can hold — the Àrẹ̀wà Set takes ten
+              days of it, thread by thread.”
             </blockquote>
             <p className="mt-4 text-sm leading-relaxed text-primary-foreground/75">
-              Two years of muslins sit behind the Atelier Blazer. Machines could pad the
-              chest faster; we do not let them.
+              Hand-woven Aso Oke by master weavers, finished in our Lagos studio and cut to
+              your measure. Standard pieces ship in 7–10 working days; express in 2–3.
             </p>
             <Link
-              to="/journal/atelier-notes-volume-02"
+              to="/journal/aso-oke-loom-to-body"
               className="mt-7 inline-flex items-center gap-1.5 border-b border-primary-foreground/60 pb-1 text-[0.66rem] font-medium uppercase tracking-[0.22em] text-primary-foreground transition-colors hover:border-primary-foreground"
             >
-              Atelier notes — vol. 02
+              Read the loom story
               <ArrowRight className="h-3 w-3" strokeWidth={1.5} aria-hidden />
             </Link>
           </Reveal>

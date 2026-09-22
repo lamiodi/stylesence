@@ -6,10 +6,10 @@ PRODUCT NAME:
 The Àrẹ̀wà Set
 
 PRICE: 
-[Set price here, e.g. 165,000 NGN or Price on Request]
+165,000 NGN
 
 COMPARE AT / ORIGINAL PRICE (Optional):
-[Optional compare-at price]
+195,000 NGN
 
 CATEGORY:
 Two-Piece Sets / Heritage Couture
@@ -40,7 +40,7 @@ MATERIAL & CARE:
 MEDIA FILES (Stored in media/ folder)
 --------------------------------------------------------------------------------
 IMAGES (in media/images/):
-- PHOTO-2026-09-08-10-19-56.jpg
+- [None yet — a poster frame is auto-generated from the video on import]
 
 VIDEOS (in media/videos/):
 - IMG_7612.mp4

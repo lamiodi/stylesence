@@ -343,7 +343,8 @@ export function ShopPage() {
     queryFn: () => fetchJson<{ categories: Category[] }>('/api/categories'),
     staleTime: 5 * 60_000,
   })
-  const categories = catsData?.categories ?? []
+  // filter chips only for categories that have live pieces
+  const categories = (catsData?.categories ?? []).filter((c) => c.productCount > 0)
 
   const [mobileFilters, setMobileFilters] = useState(false)
   const categoryMeta = categories.find((c) => c.slug === params.category)

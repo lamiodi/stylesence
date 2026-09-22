@@ -254,7 +254,7 @@ async function main() {
       productMediaList.push({
         url: mediaUrl,
         alt: `${p.name} — view ${idx + 1}`,
-        position: idx,
+        position: productMediaList.length,
       })
     }
 
@@ -268,22 +268,39 @@ async function main() {
         fs.copyFileSync(srcPath, path.join(rootPublicDir, 'videos/products', destFileName))
       }
       let mediaUrl = `/videos/products/${destFileName}`
+      let cloudinaryVideoUrl: string | null = null
 
       if (hasCloudinary) {
         try {
           console.log(`  Uploading video to Cloudinary: ${path.basename(srcPath)}...`)
           const uploadRes = await uploadToCloudinary(srcPath, 'stylesence/products', 'video')
           mediaUrl = uploadRes.secure_url
+          cloudinaryVideoUrl = uploadRes.secure_url
           console.log(`  ✔ Cloudinary video ready: ${mediaUrl}`)
         } catch (err) {
           console.warn(`  ⚠️ Cloudinary upload failed for ${srcPath}, falling back to local URL:`, err)
         }
       }
 
+      // Video-only piece: Cloudinary can serve a still frame of the video as a
+      // JPEG (so_1 = frame at 1s, f_jpg = JPEG output) — use it as the primary
+      // shop-card image so the grid tile is never blank.
+      if (cloudinaryVideoUrl && productMediaList.length === 0) {
+        const posterUrl = cloudinaryVideoUrl
+          .replace('/video/upload/', '/video/upload/so_1,q_auto,f_jpg/')
+          .replace(/\.[a-zA-Z0-9]+$/, '.jpg')
+        productMediaList.push({
+          url: posterUrl,
+          alt: `${p.name} — poster frame`,
+          position: productMediaList.length,
+        })
+        console.log(`  ✔ Poster frame derived from video: ${posterUrl}`)
+      }
+
       productMediaList.push({
         url: mediaUrl,
         alt: `${p.name} — movement & tailoring video`,
-        position: p.images.length + idx,
+        position: productMediaList.length,
       })
     }
 

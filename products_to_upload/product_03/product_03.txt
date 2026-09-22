@@ -43,7 +43,7 @@ MATERIAL & CARE:
 MEDIA FILES (Stored in media/ folder)
 --------------------------------------------------------------------------------
 IMAGES (in media/images/):
-- [Add short variant stills / images when available]
+- [None yet — a poster frame is auto-generated from the video on import]
 
 VIDEOS (in media/videos/):
 - IMG_6842.mp4

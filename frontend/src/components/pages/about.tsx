@@ -5,23 +5,22 @@ import { ArrowRight } from 'lucide-react'
 import { navigate, Link } from '@/lib/router'
 import { ProductImage } from '@/components/site/price'
 import { Reveal } from '@/components/site/reveal'
-import { DevPlaceholder } from '@/components/site/dev-placeholder'
 
 const VALUES = [
   {
     n: '01',
     title: 'Cloth we can name',
-    body: 'Grade-A cashmere from named herds, extrafine merino, GOTS poplin, double-face wool from mills we visit. If the mill changes the specification, the colour is retired rather than compromised.',
+    body: 'Silk charmeuse that drinks the light, fluid crepe-silk blends, and Aso Oke hand-woven by master weavers. If the cloth is not right, the piece is not made.',
   },
   {
     n: '02',
-    title: 'Cut in small batches',
-    body: 'Never more than the atelier can finish well in a week. Hand-padded lapels, French seams, hand-linked necks — the slow half of tailoring that nobody sees and everybody feels.',
+    title: 'Cut to your measure',
+    body: 'Standard sizes XS to XXL, or bespoke measurements taken at order — bust, waist, hip, shoulder, length. Production runs 7–10 working days; express in 2–3.',
   },
   {
     n: '03',
     title: 'Honest pricing',
-    body: 'Two seasons, no mid-season markdowns on new cloth, archive pricing only when cloth is genuinely ended. The price is the price because it is what the piece costs to make well.',
+    body: 'Made to order, never over-produced. The price is what the piece costs to make well — cloth, loom time and hands accounted for, nothing inflated for a markdown.',
   },
 ] as const
 
@@ -37,12 +36,12 @@ export function AboutPage() {
         <Reveal>
           <p className="eyebrow">The house</p>
           <h1 className="mt-3 font-display text-4xl font-light leading-[1.08] tracking-tight text-balance sm:text-5xl lg:text-[3.4rem]">
-            Style Sence is a study in ivory and charcoal.
+            Style Sence is made to your measure.
           </h1>
           <p className="mt-6 text-[0.98rem] leading-relaxed text-muted-foreground">
-            Founded by SKR in Lagos, the house makes considered womenswear in a palette of
-            ivory, oat, taupe, espresso and charcoal — fifteen pieces a season, cut in small
-            batches, meant to speak to every other piece already in your wardrobe.
+            Founded by SKR in Lagos, the house makes made-to-order womenswear —
+            polka-dot silk coordinates, fluid draping gowns and hand-woven Aso Oke —
+            cut to your measurements in small batches and delivered nationwide.
           </p>
           <p className="mt-4 text-[0.98rem] leading-relaxed text-muted-foreground">
             We call it sence — the Nigerian word for taste, for judgement, for knowing
@@ -52,8 +51,8 @@ export function AboutPage() {
         </Reveal>
         <Reveal delay={0.12}>
           <ProductImage
-            src="/images/editorial/look-2.png"
-            alt="The Atelier Blazer layered over the Ivory Silk Slip Dress"
+            src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056417/stylesence/editorial/camille-crop-set-blue.jpg"
+            alt="Polka-dot co-ord set in dusty blue from the collection"
             label="The house uniform"
             ratio="aspect-[4/5]"
             eager
@@ -90,8 +89,8 @@ export function AboutPage() {
           <Reveal className="lg:col-span-2">
             <p className="eyebrow !text-primary-foreground/70">From the founder</p>
             <blockquote className="mt-4 font-display text-2xl font-light italic leading-snug tracking-tight text-primary-foreground sm:text-3xl">
-              “I never wanted a label. I wanted a wardrobe — mine, then yours. Ivory and
-              charcoal, nothing orphaned, nothing loud.”
+              “I never wanted a label. I wanted a wardrobe — mine, then yours. Cloth that
+              moves, pieces that answer each other, nothing loud.”
             </blockquote>
             {/* pull-quote attribution — hairline rule, display name, mono role */}
             <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -101,17 +100,22 @@ export function AboutPage() {
                 Founder & Creative Director
               </p>
             </div>
-            <DevPlaceholder
-              className="mt-8 !border-primary-foreground/30 bg-transparent"
-              title="Press & collaborations"
-            >
-              Press kit and lookbook downloads are placeholders in this preview.
-            </DevPlaceholder>
+            <div className="mt-8 border border-primary-foreground/25 px-6 py-5">
+              <p className="eyebrow !text-[0.6rem] !text-primary-foreground/70">
+                Press, collaborations & fittings
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-primary-foreground/80">
+                Write to the studio on WhatsApp —{' '}
+                <span className="font-medium text-primary-foreground">+234 816 302 2233</span>{' '}
+                — for press kits, collaborations and private fitting appointments. We reply
+                within a working day.
+              </p>
+            </div>
           </Reveal>
           <Reveal delay={0.12} className="lg:col-span-3">
             <ProductImage
-              src="/images/editorial/look-3.png"
-              alt="The Longline Wool Coat over an ivory knit column"
+              src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056415/stylesence/products/ariella-gown-blue.jpg"
+              alt="The Ariella gown in powder blue on the staircase"
               label="The long line"
               ratio="aspect-[7/5]"
               className="w-full"

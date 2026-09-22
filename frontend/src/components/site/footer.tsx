@@ -164,10 +164,6 @@ function FinePrint() {
           <dd className="mt-2.5 text-[0.72rem] leading-relaxed text-muted-foreground">
             All prices in <span className="text-foreground">₦ — Nigerian Naira</span>, shown
             incl. VAT.
-            <span className="mt-1 block text-[0.64rem] text-muted-foreground/70">
-              VAT-inclusive display is a dev placeholder — tax handling is not wired in
-              this preview.
-            </span>
           </dd>
         </div>
         <div>
@@ -188,14 +184,10 @@ function FinePrint() {
           </dt>
           <dd className="mt-2.5">
             <PaymentMarks />
-            <div className="mt-2.5">
-              <DevPlaceholder compact title="Checkout is simulated">
-                <span className="text-[0.72rem]">
-                  No live card charging in this preview — Paystack / Verve integration
-                  pending.
-                </span>
-              </DevPlaceholder>
-            </div>
+            <p className="mt-2.5 text-[0.72rem] leading-relaxed text-muted-foreground">
+              Bank transfer or card on confirmation — payment details arrive with your
+              order confirmation, and production begins the moment payment lands.
+            </p>
           </dd>
         </div>
       </dl>
@@ -210,7 +202,7 @@ export function Footer() {
     queryFn: () => fetchJson<{ categories: Category[] }>('/api/categories'),
     staleTime: 5 * 60_000,
   })
-  const categories = data?.categories ?? []
+  const categories = (data?.categories ?? []).filter((c) => c.productCount > 0)
 
   return (
     <footer className="no-print mt-auto border-t border-line bg-secondary/60">
@@ -228,11 +220,10 @@ export function Footer() {
           </div>
           <div className="md:pt-3">
             <NewsletterForm />
-            <div className="mt-6">
-              <DevPlaceholder compact title="Email delivery">
-                Confirmation & welcome emails are simulated in this environment.
-              </DevPlaceholder>
-            </div>
+            <p className="mt-6 text-[0.72rem] leading-relaxed text-muted-foreground/80">
+              One letter a month — new pieces, atelier stories and styling notes.
+              Unsubscribe anytime.
+            </p>
           </div>
         </div>
 
