@@ -42,6 +42,7 @@ export function ProductImage({
   label,
   ratio = 'aspect-[3/4]',
   eager = false,
+  position,
 }: {
   src: string | null | undefined
   alt: string
@@ -49,6 +50,8 @@ export function ProductImage({
   label?: string
   ratio?: string
   eager?: boolean
+  /** Optional object-position override for art-directed crops (e.g. hero poster). */
+  position?: string
 }) {
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -100,6 +103,7 @@ export function ProductImage({
           playsInline
           onLoadedData={() => setLoaded(true)}
           onError={() => setFailed(true)}
+          style={position ? { objectPosition: position } : undefined}
           className={cn(
             'h-full w-full object-cover transition-opacity duration-700',
             loaded ? 'opacity-100' : 'opacity-0',
@@ -113,6 +117,7 @@ export function ProductImage({
           decoding="async"
           onError={() => setFailed(true)}
           onLoad={() => setLoaded(true)}
+          style={position ? { objectPosition: position } : undefined}
           className={cn(
             'h-full w-full object-cover transition-opacity duration-700',
             loaded ? 'opacity-100' : 'opacity-0',

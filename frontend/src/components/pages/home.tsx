@@ -123,6 +123,7 @@ export function HomePage() {
               label="The Signature Collection"
               ratio="h-full"
               eager
+              position="center 80%"
               className="h-full w-full"
             />
           ) : (
@@ -134,7 +135,8 @@ export function HomePage() {
               muted
               playsInline
               aria-label="The Àrẹ̀wà Set — hand-woven Aso Oke, worn in motion"
-              className="h-full w-full object-cover"
+              style={{ objectPosition: 'center 80%' }}
+              className="h-full w-full object-cover [filter:brightness(.86)_contrast(1.1)]"
             />
           )}
           <div
