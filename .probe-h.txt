@@ -1,0 +1,16 @@
+HTTP/1.1 500 Internal Server Error
+Date: Wed, 23 Sep 2026 18:48:59 GMT
+Transfer-Encoding: chunked
+Connection: keep-alive
+access-control-allow-credentials: true
+access-control-allow-headers: X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization
+access-control-allow-methods: GET,OPTIONS,PATCH,DELETE,POST,PUT
+access-control-allow-origin: *
+rndr-id: 189f606a-7cf3-418b
+Server: cloudflare
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+x-render-origin-server: Render
+cf-cache-status: DYNAMIC
+CF-RAY: a3fbba0aad8a3fda-AMS
+alt-svc: h3=":443"; ma=86400
+

@@ -2,7 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+// The site URL is only used server-side (metadata/OG/sitemap) — accept both the
+// private name (SITE_URL, Vercel "Config") and the classic public one.
+const SITE_URL =
+  process.env.SITE_URL ??
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  "http://localhost:3000";
 /** Social preview — a real collection photo. */
 const OG_IMAGE =
   "https://res.cloudinary.com/qaruxkhf/image/upload/w_1200,c_limit,ar_1.91,q_auto,f_jpg/v1790056402/stylesence/products/camille-duo-cafe.jpg";

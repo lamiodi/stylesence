@@ -102,25 +102,23 @@ export function CheckoutPage() {
 
   /** Payment rails for the selected country: Paystack for the African markets
    *  it serves, Stripe for the rest — only when the gateway is live. Falls
-   *  back to studio-confirmed payment when neither is configured. */
+   *  back to studio-confirmed payment when the country's gateway is not
+   *  configured (Paystack is never offered outside its African markets). */
   const recommendedMethod: 'paystack' | 'stripe' | 'confirmed' = (() => {
-    if (isPaystackCountry(country) && payConfig?.paystack) return 'paystack'
-    if (!isPaystackCountry(country) && payConfig?.stripe) return 'stripe'
-    if (isPaystackCountry(country) && payConfig?.stripe && !payConfig?.paystack) return 'stripe'
-    if (!isPaystackCountry(country) && payConfig?.paystack && !payConfig?.stripe) return 'paystack'
-    return 'confirmed'
+    if (isPaystackCountry(country)) return payConfig?.paystack ? 'paystack' : 'confirmed'
+    return payConfig?.stripe ? 'stripe' : 'confirmed'
   })()
   const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'stripe' | 'confirmed'>('confirmed')
   useEffect(() => {
     setPaymentMethod(recommendedMethod)
   }, [recommendedMethod])
 
-  /** Changing country invalidates a picked province — clear it when the new
-   *  country has its own list and the current value is not on it. */
+  /** Changing country invalidates a picked province — clear it whenever the
+   *  new country's list (or lack of one) no longer contains it. */
   const changeCountry = (next: string) => {
     setCountry(next)
     const list = provincesFor(next)
-    if (list && state && !list.includes(state)) setState('')
+    if (state && (!list || !list.includes(state))) setState('')
   }
 
   /** Round 13 geo rules, mirrored client-side (the server rejects mismatches
