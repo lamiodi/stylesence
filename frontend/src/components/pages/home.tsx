@@ -334,11 +334,11 @@ export function HomePage() {
               Tap a piece to make it yours.
             </p>
           </Reveal>
-          <div className="mt-10 grid gap-10 md:grid-cols-3 lg:gap-12">
+          <div className="mt-10 grid grid-cols-1 gap-10 md:grid-cols-3 lg:gap-12">
             {loadingLooks
               ? Array.from({ length: 3 }).map((_, i) => <LookSkeleton key={i} />)
               : looks.map((look, i) => (
-                  <Reveal key={look.slug} delay={i * 0.08}>
+                  <Reveal key={look.slug} delay={i * 0.08} className="min-w-0">
                     <figure className="group/look">
                       <Link
                         to={`/product/${look.slug}`}

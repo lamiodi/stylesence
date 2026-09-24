@@ -200,7 +200,7 @@ function WriteReviewDialog({ slug, product }: { slug: string; product: string })
               <span className="ml-2 font-mono text-sm tabular-nums text-muted-foreground">{rating}.0</span>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="rv-name" className="eyebrow">Name *</Label>
               <Input id="rv-name" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Adaeze O." className="h-10 border-line-strong" />
@@ -362,7 +362,7 @@ export function ProductDetailPage({ slug }: { slug: string }) {
 
   if (isLoading) {
     return (
-      <div className="container-site grid gap-10 py-14 lg:grid-cols-2 lg:gap-16" aria-busy>
+      <div className="container-site grid grid-cols-1 gap-10 py-14 lg:grid-cols-2 lg:gap-16" aria-busy>
         <div className="animate-pulse">
           <div className="aspect-[3/4] bg-secondary" />
           <div className="mt-3 flex gap-3">
@@ -447,6 +447,15 @@ function ProductInner({ product }: { product: ProductDetail }) {
     io.observe(el)
     return () => io.disconnect()
   }, [])
+
+  // flag the document while the mobile buy bar owns the bottom edge, so the
+  // WhatsApp concierge can lift itself above it (see globals.css)
+  useEffect(() => {
+    const root = document.documentElement
+    if (showStickyBar) root.setAttribute('data-buybar', '')
+    else root.removeAttribute('data-buybar')
+    return () => root.removeAttribute('data-buybar')
+  }, [showStickyBar])
 
   // record the visit once per product (external store — safe inside an effect)
   useEffect(() => {
@@ -585,7 +594,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
         <span className="text-foreground">{product.name}</span>
       </nav>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
+      <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
         {/* ————— gallery ————— */}
         <div>
           <div
@@ -1075,7 +1084,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
 
       {/* ————— reviews ————— */}
       <section id="reviews" className="mt-20 scroll-mt-24 border-t border-line pt-12">
-        <div className="grid gap-10 lg:grid-cols-[20rem_1fr] lg:gap-16">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[20rem_1fr] lg:gap-16">
           <Reveal>
             <p className="eyebrow">Client notes</p>
             <h2 className="mt-2 font-display text-3xl font-light tracking-tight">Reviews</h2>

@@ -281,6 +281,14 @@
   .text-balance {
     text-wrap: balance;
   }
+  /* On mobile PDPs the sticky buy bar owns the bottom edge while visible;
+     lift the floating WhatsApp concierge (and its panel/tooltip anchor)
+     above it instead of letting the two overlap. Bar is lg:hidden. */
+  @media (max-width: 1023.98px) {
+    html[data-buybar] [data-whatsapp-widget] {
+      bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
 }
 
 @keyframes ss-marquee {

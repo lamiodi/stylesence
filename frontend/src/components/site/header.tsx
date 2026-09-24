@@ -31,7 +31,7 @@ const CATEGORIES = [
 function Wordmark({ className }: { className?: string }) {
   return (
     <Link to="/" className={cn('group block text-center', className)} ariaLabel="Style Sence — home">
-      <span className="font-display text-[1.15rem] font-light uppercase leading-none tracking-[0.22em] text-foreground transition-opacity group-hover:opacity-70 sm:text-[1.5rem] sm:tracking-[0.4em]">
+      <span className="font-display text-[0.9rem] font-light uppercase leading-none tracking-[0.08em] text-foreground transition-opacity group-hover:opacity-70 min-[400px]:text-[1.15rem] min-[400px]:tracking-[0.22em] sm:text-[1.5rem] sm:tracking-[0.4em]">
         Style&nbsp;Sence
       </span>
       <span className="mt-1 block text-[0.5rem] font-medium uppercase tracking-[0.5em] text-muted-foreground">
@@ -107,7 +107,7 @@ export function Header() {
   const isAbout = mounted && route.path.startsWith('/about')
 
   const iconBtn = cn(
-    'relative flex h-10 w-10 items-center justify-center text-foreground/85 transition-colors',
+    'relative flex h-10 w-9 min-[400px]:w-10 items-center justify-center text-foreground/85 transition-colors',
     'hover:text-espresso focus-visible:outline-2 focus-visible:outline-ring',
   )
 
@@ -119,7 +119,7 @@ export function Header() {
       )}
     >
       <div className="container-site">
-        <div className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-3 sm:h-[4.5rem]">
+        <div className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 sm:h-[4.5rem] sm:gap-3">
           {/* ——— left: desktop nav / mobile burger ——— */}
           <div className="flex items-center gap-7">
             <Sheet open={navOpen} onOpenChange={setNavOpen}>

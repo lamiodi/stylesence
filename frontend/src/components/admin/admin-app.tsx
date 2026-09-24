@@ -190,7 +190,7 @@ function AdminShell({ admin }: { admin: AdminInfo }) {
         </div>
       </div>
 
-      <div className="container-site grid gap-8 py-8 lg:grid-cols-[13rem_1fr] lg:gap-10">
+      <div className="container-site grid grid-cols-1 gap-8 py-8 lg:grid-cols-[13rem_1fr] lg:gap-10">
         {/* sidebar */}
         <nav aria-label="Admin sections" className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:px-0">
           {TABS.map((t) => {

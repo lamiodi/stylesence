@@ -248,7 +248,7 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
           </div>
 
           {/* customer + shipping */}
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
               <p className="eyebrow">Customer</p>
               <div className="mt-2 space-y-0.5 text-sm">

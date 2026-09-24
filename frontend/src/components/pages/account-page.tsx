@@ -138,7 +138,7 @@ function AccountSkeleton() {
     <div className="animate-pulse" aria-busy="true">
       <Skeleton className="h-4 w-24 bg-secondary" />
       <Skeleton className="mt-4 h-12 w-72 bg-secondary" />
-      <div className="mt-12 grid gap-10 lg:grid-cols-[26rem_minmax(0,1fr)]">
+      <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-[26rem_minmax(0,1fr)]">
         <div className="space-y-8">
           <Skeleton className="h-96 w-full bg-secondary" />
           <Skeleton className="h-44 w-full bg-secondary" />
@@ -169,7 +169,7 @@ function SignedOut() {
         </p>
       </Reveal>
 
-      <div className="mt-10 grid gap-12 lg:grid-cols-2 lg:gap-16">
+      <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
         <Reveal className={cn(signup && 'order-2')} delay={0.05}>
           <SignInForm />
         </Reveal>
@@ -766,7 +766,7 @@ function AccountOverview({ customer }: { customer: CustomerView }) {
         </div>
       </Reveal>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[26rem_minmax(0,1fr)]">
+      <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[26rem_minmax(0,1fr)]">
         <div className="space-y-8">
           <Reveal delay={0.05}>
             <ProfileForm customer={customer} />

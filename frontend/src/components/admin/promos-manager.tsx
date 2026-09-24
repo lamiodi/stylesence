@@ -129,7 +129,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
           }}
           className="space-y-4"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="np-code" className="eyebrow">Code *</Label>
               <Input
@@ -164,7 +164,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
               className={field}
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label htmlFor="np-value" className="eyebrow">{type === 'PERCENT' ? 'Percent' : type === 'AMOUNT' ? 'Amount (₦)' : 'Value'}</Label>
               <Input

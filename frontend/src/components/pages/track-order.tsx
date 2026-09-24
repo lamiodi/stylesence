@@ -662,7 +662,7 @@ function OrderResult({ order }: { order: OrderView }) {
 
       {/* items · delivery · totals */}
       <Reveal delay={0.12} className="mt-8 sm:mt-10">
-        <div className="grid gap-6 lg:grid-cols-[1fr_19rem]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_19rem]">
           {/* items */}
           <section aria-label="Items in this order" className="border border-line bg-card">
             <div className="border-b border-line px-6 py-4">

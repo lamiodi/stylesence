@@ -413,7 +413,7 @@ export function Dashboard() {
             <Skeleton key={i} className="h-24 rounded-none border border-line" />
           ))}
         </div>
-        <div className="grid gap-6 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <Skeleton className="h-96 rounded-none border border-line xl:col-span-2" />
           <div className="space-y-6">
             <Skeleton className="h-44 rounded-none border border-line" />
@@ -483,7 +483,7 @@ export function Dashboard() {
       </div>
 
       {/* chart + side column */}
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <section className="border border-line bg-card p-4 sm:p-5 xl:col-span-2" aria-labelledby="dash-rev-label">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="eyebrow" id="dash-rev-label">Revenue — last 30 days</p>
@@ -566,7 +566,7 @@ export function Dashboard() {
       </div>
 
       {/* recent orders + low stock */}
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <section className="border border-line bg-card xl:col-span-2" aria-labelledby="dash-recent-label">
           <div className="flex items-center justify-between border-b border-line px-4 py-3.5 sm:px-5">
             <p className="eyebrow" id="dash-recent-label">Recent orders</p>

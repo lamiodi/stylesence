@@ -88,7 +88,9 @@ export const ProductCard = memo(function ProductCard({
           {product.subtitle ? (
             <p className="mt-0.5 text-[0.78rem] italic text-muted-foreground">{product.subtitle}</p>
           ) : null}
-          <div className="mt-2 flex items-center justify-between gap-3">
+          {/* flex-wrap: sale price + swatch dots exceed a narrow 2-col card —
+              the row wraps instead of pushing the card wider than its grid track */}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <p className="font-mono text-[0.85rem] font-medium tabular-nums">
               {formatNaira(product.price)}
               {onSale ? (

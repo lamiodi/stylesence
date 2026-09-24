@@ -269,9 +269,9 @@ export function CheckoutPage() {
           </div>
         </Reveal>
       ) : (
-        <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_23rem] lg:gap-16">
+        <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[1fr_23rem] lg:gap-16">
           {/* ————— form ————— */}
-          <div className="space-y-10">
+          <div className="min-w-0 space-y-10">
             <section aria-label="Contact details">
               <h2 className="font-display text-xl tracking-tight">01 — Contact</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -636,7 +636,7 @@ export function CheckoutPage() {
           </div>
 
           {/* ————— summary ————— */}
-          <aside className="lg:sticky lg:top-32 lg:self-start">
+          <aside className="min-w-0 lg:sticky lg:top-32 lg:self-start">
             <div className="border border-line bg-card">
               <div className="border-b border-line px-6 py-5">
                 <p className="eyebrow">Your order</p>

@@ -88,6 +88,7 @@ export function WhatsAppWidget() {
   return (
     <div
       ref={widgetRef}
+      data-whatsapp-widget=""
       className="no-print fixed bottom-6 right-4 z-40 font-sans lg:bottom-8 lg:right-8"
       aria-label="WhatsApp Concierge"
     >
@@ -99,8 +100,10 @@ export function WhatsAppWidget() {
           aria-labelledby="concierge-heading"
           className={cn(
             // responsive height cap — the panel flexes within the viewport and
-            // stops below the sticky navbar (z-50) instead of sliding under it
-            'absolute bottom-16 right-0 mb-2 flex max-h-[calc(100dvh-11.5rem)] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden',
+            // stops below the sticky navbar (z-50) instead of sliding under it.
+            // 13.5rem clears the announcement bar + header at the top of the
+            // page on zoomed/short desktop viewports, with breathing room.
+            'absolute bottom-16 right-0 mb-2 flex max-h-[calc(100dvh-13.5rem)] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden',
             'border border-line-strong bg-background/95 text-foreground backdrop-blur-xl',
             'shadow-[0_16px_40px_-12px_oklch(0.235_0.008_70_/_0.22)]',
             'animate-in fade-in zoom-in-95 duration-200 ease-out',

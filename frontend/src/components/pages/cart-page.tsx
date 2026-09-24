@@ -79,9 +79,9 @@ export function CartPage() {
           <BestsellerSuggestions />
         </>
       ) : (
-        <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
+        <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
           {/* items */}
-          <div>
+          <div className="min-w-0">
             <FreeShippingMeter subtotal={subtotal} unlockedByPromo={stackFreeShipping} />
 
             <ul className="divide-y divide-line border-t border-line">
@@ -145,7 +145,9 @@ export function CartPage() {
                         <X className="h-4 w-4" strokeWidth={1.5} />
                       </button>
                     </div>
-                    <div className="mt-auto flex items-center justify-between pt-4">
+                    {/* flex-wrap + ml-auto: on very narrow screens the line
+                        total drops to its own row instead of forcing overflow */}
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4">
                       <QuantityStepper
                         value={item.qty}
                         min={1}
@@ -153,7 +155,7 @@ export function CartPage() {
                         onChange={(v) => update.mutate({ itemId: item.id, qty: v })}
                         disabled={update.isPending}
                       />
-                      <span className="font-mono text-base font-medium tabular-nums">
+                      <span className="ml-auto font-mono text-base font-medium tabular-nums">
                         {formatNaira(item.product.price * item.qty)}
                       </span>
                     </div>
@@ -177,7 +179,7 @@ export function CartPage() {
           </div>
 
           {/* summary */}
-          <aside className="lg:sticky lg:top-32 lg:self-start">
+          <aside className="min-w-0 lg:sticky lg:top-32 lg:self-start">
             <div className="border border-line bg-card p-6">
               <p className="eyebrow">Order summary</p>
               <dl className="mt-4 space-y-2.5 text-sm">
