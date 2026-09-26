@@ -1,13 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_URL } from "@/lib/site";
 
-// The site URL is only used server-side (metadata/OG/sitemap) — accept both the
-// private name (SITE_URL, Vercel "Config") and the classic public one.
-const SITE_URL =
-  process.env.SITE_URL ??
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  "http://localhost:3000";
 /** Social preview — a real collection photo. */
 const OG_IMAGE =
   "https://res.cloudinary.com/qaruxkhf/image/upload/w_1200,c_limit,ar_1.91,q_auto,f_jpg/v1790056402/stylesence/products/camille-duo-cafe.jpg";
@@ -22,15 +17,33 @@ export const metadata: Metadata = {
     template: "%s — Style Sence by SKR",
   },
   description:
-    "Style Sence by SKR — made-to-order womenswear from Lagos. Polka-dot silk coordinates, fluid draping gowns and hand-woven Aso Oke, cut to your measurements and delivered nationwide.",
+    "Style Sence by SKR — made-to-order womenswear from Lagos. Polka-dot silk coordinates, fluid draping gowns and hand-woven Aso Oke, cut to your measurements and delivered worldwide.",
   keywords: [
-    "Style Sence", "SKR", "made to order", "womenswear", "Aso Oke", "luxury fashion",
-    "Lagos", "Nigeria", "custom fit", "two-piece sets", "dresses", "African fashion",
+    "Style Sence",
+    "StyleSence",
+    "SKR",
+    "stylesence.com",
+    "made to order",
+    "womenswear",
+    "Aso Oke",
+    "luxury fashion",
+    "Lagos",
+    "Nigeria",
+    "custom fit",
+    "two-piece sets",
+    "dresses",
+    "African luxury fashion",
   ],
-  authors: [{ name: "SKR Studio" }],
-  alternates: { canonical: "/" },
+  authors: [{ name: "SKR Studio", url: SITE_URL }],
+  creator: "SKR Studio",
+  publisher: "Style Sence by SKR",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
   openGraph: {
     title: "Style Sence by SKR — Made-to-Order Womenswear",
@@ -38,8 +51,16 @@ export const metadata: Metadata = {
       "Polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke — cut to your measurements in Lagos, delivered worldwide.",
     siteName: "Style Sence by SKR",
     type: "website",
-    url: "/",
-    images: [{ url: OG_IMAGE, width: 1200, height: 628, alt: "Two models in Style Sence polka-dot silk sets" }],
+    url: SITE_URL,
+    locale: "en_US",
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 628,
+        alt: "Two models in Style Sence polka-dot silk sets",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -50,7 +71,13 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
@@ -60,28 +87,47 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-/** Structured data — the storefront as an online store with its real contact channel. */
+/** Structured data — standard WebSite and OnlineStore Schema graph */
 const JSON_LD = {
   "@context": "https://schema.org",
-  "@type": "OnlineStore",
-  name: "Style Sence by SKR",
-  url: SITE_URL,
-  description:
-    "Made-to-order womenswear from Lagos — polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke, cut to your measurements.",
-  currenciesAccepted: "NGN",
-  priceRange: "₦₦",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "14A Awolowo Road, Ikoyi",
-    addressLocality: "Lagos",
-    addressCountry: "NG",
-  },
-  contactPoint: {
-    "@type": "ContactPoint",
-    contactType: "customer service",
-    telephone: "+2348163022233",
-    availableLanguage: ["English", "Yoruba"],
-  },
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "Style Sence by SKR",
+      alternateName: ["Style Sence", "stylesence.com"],
+      description:
+        "Made-to-order luxury womenswear from Lagos — polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke.",
+      inLanguage: "en-US",
+    },
+    {
+      "@type": "OnlineStore",
+      "@id": `${SITE_URL}/#store`,
+      name: "Style Sence by SKR",
+      url: SITE_URL,
+      logo: `${SITE_URL}/favicon.svg`,
+      image: OG_IMAGE,
+      description:
+        "Made-to-order womenswear from Lagos — polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke, cut to your measurements.",
+      currenciesAccepted: "NGN,USD,GBP,EUR",
+      priceRange: "₦₦₦",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "14A Awolowo Road, Ikoyi",
+        addressLocality: "Lagos",
+        addressRegion: "Lagos State",
+        postalCode: "101233",
+        addressCountry: "NG",
+      },
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer service",
+        telephone: "+2348163022233",
+        availableLanguage: ["English", "Yoruba"],
+      },
+    },
+  ],
 };
 
 export default function RootLayout({

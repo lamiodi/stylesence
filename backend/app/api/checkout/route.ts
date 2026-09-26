@@ -198,9 +198,13 @@ export async function POST(req: Request) {
 
   // Gateway payment — initialize and hand back the hosted payment URL. A
   // failed initialization leaves the order placed (PENDING_PAYMENT) and the
-  // studio settles it manually, so the customer never loses the order.
-  if (gatewayLive) {
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
+    if (gatewayLive) {
+    const frontendUrl =
+      process.env.FRONTEND_URL && process.env.FRONTEND_URL !== 'http://localhost:3000'
+        ? process.env.FRONTEND_URL.replace(/\/+$/, '')
+        : process.env.NODE_ENV === 'production'
+          ? 'https://stylesence.com'
+          : (process.env.FRONTEND_URL ?? 'http://localhost:3000').replace(/\/+$/, '')
     try {
       const payment =
         input.paymentMethod === 'paystack'

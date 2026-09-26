@@ -9,7 +9,12 @@ export const resend = resendApiKey ? new Resend(resendApiKey) : null
 const DEFAULT_FROM = process.env.EMAIL_FROM || 'Style Sence <onboarding@resend.dev>'
 
 function getFrontendUrl(): string {
-  return process.env.FRONTEND_URL || 'http://localhost:3000'
+  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL !== 'http://localhost:3000') {
+    return process.env.FRONTEND_URL.replace(/\/+$/, '')
+  }
+  return process.env.NODE_ENV === 'production'
+    ? 'https://stylesence.com'
+    : (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')
 }
 
 function formatNaira(amount: number): string {

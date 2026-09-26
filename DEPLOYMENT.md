@@ -93,3 +93,50 @@ Your frontend will go live (e.g. `https://stylesence.vercel.app`), automatically
 The database schema, categories, 185 product variants, and uploaded catalog items have already been seeded directly to your live Supabase PostgreSQL instance:
 - **Admin**: `owner@stylesence.example` / `stylesence-dev-2026`
 - **Catalog**: The Camille Skirt Set, The Camille Trouser Set, The Ariella Dress (Short & Long), The Àrẹ̀wà Set, and core collections.
+
+---
+
+## Part 4: Connect Custom Domain (Namecheap DNS) & Fix Google SEO
+
+If Google search results display the Namecheap parking lander (*"stylesence.com has been recently registered with namecheap.com..."*), it is because the domain is currently parked at Namecheap's default DNS. Follow these steps to connect your domain to Vercel and update Google's index.
+
+### 1. Configure DNS in Namecheap
+In your [Namecheap Account](https://ap.www.namecheap.com/):
+1. Go to **Domain List** &rarr; click **Manage** next to `stylesence.com`.
+2. Under the **Nameservers** section, ensure **Namecheap BasicDNS** is selected.
+3. Switch to the **Advanced DNS** tab.
+4. **Remove** any existing default Namecheap parking records:
+   - Delete any `URL Redirect Record` or `A Record` for parking (`@` / `parkingpage.namecheap.com`).
+   - Delete any `CNAME Record` pointing `www` to `parkingpage.namecheap.com`.
+5. **Add** the following Vercel DNS records:
+
+| Type | Host | Value | TTL |
+| :--- | :--- | :--- | :--- |
+| **A Record** | `@` | `76.76.21.21` | Automatic (or 1 min) |
+| **CNAME Record** | `www` | `cname.vercel-dns.com.` | Automatic (or 1 min) |
+
+### 2. Configure Custom Domain in Vercel
+In your [Vercel Dashboard](https://vercel.com/dashboard):
+1. Open your `stylesence` frontend project.
+2. Go to **Settings** &rarr; **Domains**.
+3. Add `stylesence.com`.
+4. Vercel will prompt you to add `www.stylesence.com` and automatically set up the recommended redirect from `www.stylesence.com` to `stylesence.com`.
+5. Once DNS propagates (typically 5 to 30 minutes), Vercel will issue a free SSL certificate (`https://stylesence.com`).
+
+### 3. Frontend & Backend Environment Variables
+Ensure the following variables are set:
+- **Vercel Frontend**:
+  - `SITE_URL`: `https://stylesence.com`
+  - `NEXT_PUBLIC_SITE_URL`: `https://stylesence.com`
+  - `BACKEND_URL`: `https://stylesence.onrender.com`
+- **Render Backend**:
+  - `FRONTEND_URL`: `https://stylesence.com`
+
+### 4. Force Google Re-Index in Google Search Console
+To immediately replace the Namecheap parking page snippet in Google search results with your luxury storefront metadata:
+1. Open [Google Search Console](https://search.google.com/search-console).
+2. Add your property: `https://stylesence.com`.
+3. In the top search bar, paste `https://stylesence.com` and press Enter (**URL Inspection**).
+4. Click **"Test Live URL"** to confirm Google sees your live brand title: *"Style Sence by SKR — Made-to-Order Womenswear, Lagos"*.
+5. Click **"Request Indexing"**. Google will prioritize re-crawling and replace the auction/parking snippet within 24–48 hours.
+

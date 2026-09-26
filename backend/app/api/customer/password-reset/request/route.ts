@@ -42,7 +42,12 @@ export async function POST(req: Request) {
     data: { resetTokenHash: hash, resetTokenAt: new Date() },
   })
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+  const frontendUrl =
+    process.env.FRONTEND_URL && process.env.FRONTEND_URL !== 'http://localhost:3000'
+      ? process.env.FRONTEND_URL.replace(/\/+$/, '')
+      : process.env.NODE_ENV === 'production'
+        ? 'https://stylesence.com'
+        : (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')
   const resetUrl = `${frontendUrl}/#/account?mode=reset&token=${plain}`
 
   // Non-blocking password reset email dispatch via Resend
