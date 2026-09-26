@@ -175,6 +175,11 @@ export function HomePage() {
                 <span className="text-primary-foreground/40" aria-hidden>
                   ·
                 </span>
+                <span>Lagos Atelier</span>
+                <span className="text-primary-foreground/40" aria-hidden>
+                  ·
+                </span>
+                <span>Worldwide Delivery</span>
               </p>
             </Reveal>
           </div>

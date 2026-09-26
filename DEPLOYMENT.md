@@ -35,17 +35,19 @@ In your [Render Dashboard](https://dashboard.render.com/):
 > Render's default build command is only `npm install` (which does not compile Next.js), and the start command defaulted to the root `concurrently` script. Setting the **Build Command** to `npm install && npm run build` and **Start Command** to `npm run start` ensures the Next.js production build is created before starting the server.
 
 ### 3. Configure Environment Variables
-Under the service's **Environment** tab, set:
-
 | Key | Value |
 | :--- | :--- |
 | `NODE_ENV` | `production` |
-| `DATABASE_URL` | `postgresql://postgres.cqdksblxkdznugfczgem:Ri8eObh2dLpijoEN@aws-0-eu-central-1.pooler.supabase.com:5432/postgres` |
+| `DATABASE_URL` | `postgresql://postgres.cqdksblxkdznugfczgem:Ri8eObh2dLpijoEN@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require` |
 | `CLOUDINARY_URL` | `cloudinary://897313336739949:Ctg4CB3CjD0xoCEj-_lyazaa5Xw@qaruxkhf` |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` |
 | `RESEND_API_KEY` | `re_xxxxxxxx` (Your live Resend API key) |
 | `EMAIL_FROM` | `Style Sence <onboarding@resend.dev>` (or your verified domain sender) |
 | `FRONTEND_URL` | `https://<your-vercel-app>.vercel.app` (or `*` for dev/wildcard) |
+| `PAYSTACK_SECRET_KEY` | `sk_live_…` (or `sk_test_…` for test mode) |
+| `STRIPE_SECRET_KEY` | `sk_live_…` (or `sk_test_…` for test mode) |
+| `STRIPE_CURRENCY` | `ngn` (default) or `usd` |
+| `STRIPE_NAIRA_RATE` | `0.00065` (required only if STRIPE_CURRENCY ≠ ngn) |
 
 
 ### 4. Deploy

@@ -68,7 +68,7 @@ export const ProductCard = memo(function ProductCard({
                 New
               </span>
             ) : null}
-            {onSale ? (
+            {onSale && !product.isNew ? (
               <span className="eyebrow bg-espresso px-2.5 py-1 !text-[0.55rem] text-background">
                 Archive
               </span>

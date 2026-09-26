@@ -18,3 +18,16 @@ services:
         value: qaruxkhf
       - key: FRONTEND_URL
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Style Sence <onboarding@resend.dev>
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_CURRENCY
+        value: ngn
+      - key: STRIPE_NAIRA_RATE
+        value: "0.00065"
+

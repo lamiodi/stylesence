@@ -38,6 +38,7 @@ const STEPS = [
 ] as const
 
 const STATUS_LABELS: Record<string, string> = {
+  PENDING_PAYMENT: 'Payment pending',
   PAID: 'Order placed',
   PROCESSING: 'In the atelier',
   SHIPPED: 'On its way',

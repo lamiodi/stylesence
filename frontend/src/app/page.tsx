@@ -40,9 +40,16 @@ function Router() {
 
   const [s0, s1, s2] = route.segments
 
-  // ensure a canonical hash on first load
+  // ensure a canonical hash on first load while preserving search queries & payment callbacks
   if (typeof window !== 'undefined' && !window.location.hash) {
-    window.location.replace(`${window.location.pathname}#/`)
+    const search = window.location.search
+    const params = new URLSearchParams(search)
+    const orderNum = params.get('order') ?? params.get('orderNumber')
+    if (orderNum) {
+      window.location.replace(`${window.location.pathname}${search}#/order/${encodeURIComponent(orderNum)}`)
+    } else {
+      window.location.replace(`${window.location.pathname}${search}#/`)
+    }
   }
 
   let page: React.ReactNode

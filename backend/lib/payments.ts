@@ -36,6 +36,7 @@ export async function initiatePaystack(params: {
   amountNaira: number
   callbackUrl: string
 }): Promise<InitiatedPayment> {
+  const reference = `${params.orderNumber}_${Date.now().toString(36)}`
   const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
     method: 'POST',
     headers: {
@@ -45,7 +46,7 @@ export async function initiatePaystack(params: {
     body: JSON.stringify({
       email: params.email,
       amount: params.amountNaira * 100,
-      reference: params.orderNumber,
+      reference,
       callback_url: params.callbackUrl,
       metadata: { orderNumber: params.orderNumber, custom_fields: [] },
     }),

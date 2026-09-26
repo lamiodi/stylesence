@@ -15,12 +15,19 @@ export interface Route {
   query: URLSearchParams
 }
 
-export function parseHash(hash: string): Route {
+export function parseHash(hash: string, search?: string): Route {
   const raw = hash.replace(/^#/, '') || '/'
   const [pathPart, queryPart] = raw.split('?')
   const path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`
   const segments = path.split('/').filter(Boolean).map(decodeURIComponent)
-  return { path, segments, query: new URLSearchParams(queryPart ?? '') }
+  const query = new URLSearchParams(queryPart ?? '')
+  if (search) {
+    const s = new URLSearchParams(search)
+    s.forEach((val, key) => {
+      if (!query.has(key)) query.set(key, val)
+    })
+  }
+  return { path, segments, query }
 }
 
 export function navigate(to: string, opts?: { replace?: boolean }) {
@@ -36,13 +43,17 @@ export function navigate(to: string, opts?: { replace?: boolean }) {
 
 export function useRoute(): Route {
   const [route, setRoute] = useState<Route>(() =>
-    typeof window === 'undefined' ? parseHash('/') : parseHash(window.location.hash),
+    typeof window === 'undefined' ? parseHash('/') : parseHash(window.location.hash, window.location.search),
   )
 
   useEffect(() => {
-    const onChange = () => setRoute(parseHash(window.location.hash))
+    const onChange = () => setRoute(parseHash(window.location.hash, window.location.search))
     window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
+    window.addEventListener('popstate', onChange)
+    return () => {
+      window.removeEventListener('hashchange', onChange)
+      window.removeEventListener('popstate', onChange)
+    }
   }, [])
 
   return route

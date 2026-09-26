@@ -48,6 +48,7 @@ const NG_STATES = [
 ]
 
 const STATUS_LABELS: Record<string, string> = {
+  PENDING_PAYMENT: 'Payment pending',
   PAID: 'Order placed',
   PROCESSING: 'In the atelier',
   SHIPPED: 'On its way',
@@ -56,6 +57,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_STYLES: Record<string, string> = {
+  PENDING_PAYMENT: 'border-amber-600/50 text-amber-700 dark:text-amber-400',
   DELIVERED: 'border-espresso/50 text-espresso',
   CANCELLED: 'border-destructive/45 text-destructive',
 }

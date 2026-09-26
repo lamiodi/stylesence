@@ -71,11 +71,17 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
   // Gateway return (Paystack callback / Stripe success redirect): verify the
   // payment server-side before believing anything, then refresh the order.
   useEffect(() => {
-    const hash = window.location.hash
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
+    const hash = typeof window !== 'undefined' ? window.location.hash : ''
     const queryIdx = hash.indexOf('?')
-    if (queryIdx === -1) return
-    const params = new URLSearchParams(hash.slice(queryIdx + 1))
-    const reference = params.get('reference') ?? params.get('trxref') ?? params.get('session_id')
+    const hashParams = queryIdx !== -1 ? new URLSearchParams(hash.slice(queryIdx + 1)) : new URLSearchParams()
+    const reference =
+      hashParams.get('reference') ??
+      hashParams.get('trxref') ??
+      hashParams.get('session_id') ??
+      searchParams.get('reference') ??
+      searchParams.get('trxref') ??
+      searchParams.get('session_id')
     if (!reference) return
     let cancelled = false
     ;(async () => {
@@ -135,7 +141,8 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
 
   const order = data.order
   const cancelled = order.status === 'CANCELLED'
-  const currentStep = STEPS.findIndex((s) => s.key === order.status)
+  const isPendingPayment = order.status === 'PENDING_PAYMENT'
+  const currentStep = isPendingPayment ? 0 : STEPS.findIndex((s) => s.key === order.status)
   const firstName = order.fullName.split(' ')[0]
 
   return (
@@ -144,12 +151,18 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
         <Reveal className="text-center">
           <p className="eyebrow">Order {order.orderNumber}</p>
           <h1 className="mt-3 font-display text-4xl font-light tracking-tight text-balance sm:text-5xl">
-            {cancelled ? 'This order was cancelled.' : `Thank you, ${firstName}.`}
+            {cancelled
+              ? 'This order was cancelled.'
+              : isPendingPayment
+                ? `Order received — pending payment.`
+                : `Thank you, ${firstName}.`}
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
             {cancelled
               ? 'The pieces have been released back to the rail. Nothing further is owed on this order.'
-              : 'Your pieces are being prepared. A confirmation email is on its way, and we will write again when your order leaves the studio.'}
+              : isPendingPayment
+                ? 'Your order has been recorded. Production begins as soon as payment is confirmed by the studio.'
+                : 'Your pieces are being prepared. A confirmation email is on its way, and we will write again when your order leaves the studio.'}
           </p>
           <div className="no-print mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             <button
@@ -163,6 +176,27 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
             <CopyOrderNumber orderNumber={order.orderNumber} />
           </div>
         </Reveal>
+
+        {isPendingPayment ? (
+          <Reveal delay={0.05} className="no-print mt-8">
+            <div className="border border-espresso/40 bg-[color-mix(in_oklch,var(--espresso)_6%,transparent)] p-5 text-center">
+              <p className="font-display text-lg">Awaiting Payment Confirmation</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                If paying by bank transfer or completing your card transaction, our atelier team is standing by to confirm your order.
+              </p>
+              <a
+                href={`https://wa.me/2348163022233?text=${encodeURIComponent(
+                  `Hello Style Sence, I would like to confirm payment for order ${order.orderNumber}.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.66rem] font-medium uppercase tracking-[0.2em] text-background transition-colors hover:bg-foreground/90"
+              >
+                Confirm on WhatsApp (+234 816 302 2233)
+              </a>
+            </div>
+          </Reveal>
+        ) : null}
 
         {!cancelled ? (
           <Reveal delay={0.08} className="no-print mt-12">

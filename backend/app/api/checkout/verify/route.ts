@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { verifyPaystack, verifyStripe } from '@/lib/payments'
+import { sendOrderConfirmationEmail } from '@/lib/email'
 
 /**
  * GET /api/checkout/verify?order=SS-2026-1234&reference=…
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
 
   const order = await db.order.findUnique({
     where: { orderNumber },
-    select: { id: true, status: true, paymentMethod: true, total: true },
+    include: { items: true },
   })
   if (!order) return fail(404, 'Order not found')
 
@@ -53,6 +54,31 @@ export async function GET(req: Request) {
       data: { status: 'PAID', paymentReference: reference },
       select: { status: true },
     })
+
+    // Non-blocking order confirmation email dispatch via Resend
+    sendOrderConfirmationEmail({
+      orderNumber: order.orderNumber,
+      fullName: order.fullName,
+      email: order.email,
+      phone: order.phone,
+      address: order.address,
+      city: order.city,
+      state: order.state,
+      shippingMethod: order.shippingMethod,
+      shipping: order.shipping,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      total: order.total,
+      items: order.items.map((item) => ({
+        productName: item.productName,
+        size: item.size,
+        color: item.color,
+        qty: item.qty,
+        unitPrice: item.unitPrice,
+        imageUrl: item.imageUrl,
+      })),
+    }).catch((err) => console.error('[api/checkout/verify] Failed to dispatch order confirmation email:', err))
+
     return ok({ order: orderNumber, status: updated.status, verified: true })
   } catch (err) {
     console.error('[api/checkout/verify] verification failed:', err)

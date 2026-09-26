@@ -50,5 +50,9 @@ export async function POST(req: Request) {
     console.error('[api/customer/password-reset] Failed to dispatch password reset email:', err)
   )
 
-  return ok({ ok: true, devResetUrl: `/#/account?mode=reset&token=${plain}` })
+  const isDevPreview = process.env.NODE_ENV !== 'production' || !process.env.RESEND_API_KEY
+  return ok({
+    ok: true,
+    ...(isDevPreview ? { devResetUrl: `/#/account?mode=reset&token=${plain}` } : {}),
+  })
 }
