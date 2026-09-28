@@ -20,6 +20,7 @@ import { useCustomer } from '@/hooks/use-customer'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 import { FREE_SHIPPING_THRESHOLD } from '@/components/site/shipping-meter'
+import { PaystackMark } from '@/components/site/paystack-mark'
 import {
   PRODUCTION_TIERS,
   SHIPPING_METHODS,
@@ -65,8 +66,10 @@ export function CheckoutPage() {
   const clearPromo = usePromoStore((s) => s.clear)
 
   // Live payment rails — booleans only; the UI routes by country
-  // (Paystack for African markets, Stripe everywhere else).
-  const { data: payConfig } = useQuery({
+  // (Paystack for African markets, Stripe everywhere else). A transient
+  // failure here must never silently strand the customer on the
+  // studio-confirmed rail — retry, and keep the previous data on refetch.
+  const { data: payConfig, isPending: payConfigLoading } = useQuery({
     queryKey: ['pay-config'],
     queryFn: async () => {
       const res = await fetch('/api/checkout/pay-config')
@@ -74,7 +77,9 @@ export function CheckoutPage() {
       return (await res.json()) as { paystack: boolean; stripe: boolean }
     },
     staleTime: 5 * 60_000,
-    retry: false,
+    retry: 2,
+    retryDelay: 1_500,
+    placeholderData: (prev) => prev,
   })
 
   // Signed-in customers get their saved details prefilled — but only into
@@ -588,13 +593,25 @@ export function CheckoutPage() {
                   </p>
                 ) : null}
               </div>
-              {payConfig?.paystack || payConfig?.stripe || !isPaystackCountry(country) ? (
+              {payConfigLoading && !payConfig ? (
+                <div className="mt-4 border border-espresso/30 bg-[color-mix(in_oklch,var(--espresso)_5%,transparent)] p-5">
+                  <div className="flex items-center gap-2.5">
+                    <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
+                    <p className="eyebrow !text-espresso !text-[0.6rem] animate-pulse">
+                      Preparing payment options…
+                    </p>
+                  </div>
+                </div>
+              ) : payConfig?.paystack || payConfig?.stripe || !isPaystackCountry(country) ? (
                 <div className="mt-4 border border-espresso/30 bg-[color-mix(in_oklch,var(--espresso)_5%,transparent)] p-5">
                   <div className="flex items-center gap-2.5">
                     <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
                     <p className="eyebrow !text-espresso !text-[0.6rem]">
                       {isPaystackCountry(country) ? 'Paystack — cards, bank transfer & USSD' : 'Card payment — Stripe · Coming soon'}
                     </p>
+                    {isPaystackCountry(country) && payConfig?.paystack ? (
+                      <PaystackMark className="ml-auto h-4 w-auto" aria-label="Paystack" />
+                    ) : null}
                   </div>
                   <RadioGroup
                     value={paymentMethod}
@@ -628,7 +645,12 @@ export function CheckoutPage() {
                         >
                           <RadioGroupItem value={opt.value} disabled={opt.disabled} />
                           <span className="min-w-0">
-                            <span className="block text-sm font-medium leading-tight">{opt.label}</span>
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm font-medium leading-tight">{opt.label}</span>
+                              {opt.value === 'paystack' && !opt.disabled ? (
+                                <PaystackMark className="h-3.5 w-3.5" ariaLabel="" />
+                              ) : null}
+                            </span>
                             <span className="mt-0.5 block text-[0.72rem] text-muted-foreground">{opt.hint}</span>
                           </span>
                         </label>

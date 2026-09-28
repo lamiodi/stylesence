@@ -6,6 +6,7 @@ import { useTheme } from 'next-themes'
 import { ArrowRight, Check, Lock, Sun, Moon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from '@/lib/router'
+import { PaystackMark } from '@/components/site/paystack-mark'
 import type { Category } from '@/lib/types'
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -125,7 +126,11 @@ function ClientCareLinks() {
 function PaymentMarks() {
   return (
     <div className="flex flex-wrap items-center gap-2" aria-label="Accepted payment methods">
-      {['PAYSTACK', 'BANK TRANSFER', 'VISA', 'MASTERCARD', 'VERVE'].map((m) => (
+      <span className="flex items-center gap-1.5 border border-line-strong px-2 py-1">
+        <PaystackMark className="h-3 w-3" ariaLabel="" />
+        <span className="font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground/70">PAYSTACK</span>
+      </span>
+      {['BANK TRANSFER', 'VISA', 'MASTERCARD', 'VERVE'].map((m) => (
         <span
           key={m}
           className="border border-line-strong px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-muted-foreground/70"
