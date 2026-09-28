@@ -127,7 +127,7 @@ export interface OrderEmailData {
 
 export async function sendOrderConfirmationEmail(order: OrderEmailData) {
   const siteUrl = getFrontendUrl()
-  const trackUrl = `${siteUrl}/#/track-order?lookup=${encodeURIComponent(order.orderNumber)}`
+  const trackUrl = `${siteUrl}/track-order?lookup=${encodeURIComponent(order.orderNumber)}`
 
   const itemsHtml = order.items
     .map(
@@ -225,7 +225,7 @@ export async function sendOrderStatusUpdateEmail(order: {
   status: string
 }) {
   const siteUrl = getFrontendUrl()
-  const trackUrl = `${siteUrl}/#/track-order?lookup=${encodeURIComponent(order.orderNumber)}`
+  const trackUrl = `${siteUrl}/track-order?lookup=${encodeURIComponent(order.orderNumber)}`
 
   const statusLabels: Record<string, { title: string; desc: string }> = {
     PROCESSING: {
@@ -324,7 +324,7 @@ export async function sendWelcomeNewsletterEmail(email: string) {
       <div style="font-size: 12px; color: #666257;">Enjoy 10% off your inaugural order at checkout</div>
     </div>
     <div style="text-align: center;">
-      <a href="${siteUrl}/#/shop" class="button" target="_blank">Explore The Collection</a>
+      <a href="${siteUrl}/shop" class="button" target="_blank">Explore The Collection</a>
     </div>
   `
 
@@ -349,7 +349,7 @@ export async function sendWelcomeCustomerEmail(email: string, name: string) {
       Your Style Sence client account has been created. From your private portal, you can track orders, save bespoke measurements for precision tailoring, and curate your personal wishlist.
     </p>
     <div style="text-align: center; margin: 32px 0;">
-      <a href="${siteUrl}/#/account" class="button" target="_blank">Access Your Client Portal</a>
+      <a href="${siteUrl}/account" class="button" target="_blank">Access Your Client Portal</a>
     </div>
   `
 

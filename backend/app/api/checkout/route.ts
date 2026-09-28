@@ -218,14 +218,14 @@ export async function POST(req: Request) {
               amountNaira: total,
               // The buyer's email rides the callback so the receipt page can
               // request the full order view (see /api/orders/[orderNumber]).
-              callbackUrl: `${frontendUrl}/#/order/${orderNumber}?email=${encodeURIComponent(input.email)}`,
+              callbackUrl: `${frontendUrl}/order/${orderNumber}?email=${encodeURIComponent(input.email)}`,
             })
           : await initiateStripe({
               orderNumber,
               email: input.email,
               amountNaira: total,
-              successUrl: `${frontendUrl}/#/order/${orderNumber}?email=${encodeURIComponent(input.email)}&session_id={CHECKOUT_SESSION_ID}`,
-              cancelUrl: `${frontendUrl}/#/order/${orderNumber}?email=${encodeURIComponent(input.email)}`,
+              successUrl: `${frontendUrl}/order/${orderNumber}?email=${encodeURIComponent(input.email)}&session_id={CHECKOUT_SESSION_ID}`,
+              cancelUrl: `${frontendUrl}/order/${orderNumber}?email=${encodeURIComponent(input.email)}`,
             })
       await db.order.update({
         where: { id: orderId },

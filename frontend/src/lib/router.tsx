@@ -1,74 +1,83 @@
 'use client'
 
 /**
- * Minimal hash router for the Style Sence SPA.
- * Routes live after `#` — e.g. `#/shop?category=knitwear&sort=price-asc`.
+ * Path-based SPA router for the Style Sence storefront.
+ *
+ * Every page is served by the app/[[...slug]] catch-all and rendered
+ * client-side from the path (`/shop?category=knitwear`), so each URL is a
+ * distinct, crawlable, shareable address. Legacy hash URLs (`/#/shop`),
+ * still present in old emails and bookmarks, are redirected once on load.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode, type MouseEvent } from 'react'
 
 export interface Route {
-  /** normalised path without leading '#', always starts with '/', e.g. '/shop' */
+  /** normalised path, always starts with '/', e.g. '/shop' */
   path: string
   /** path segments, e.g. ['product', 'silk-slip-dress'] */
   segments: string[]
-  /** query params from the hash */
+  /** query params from the location search */
   query: URLSearchParams
 }
 
-export function parseHash(hash: string, search?: string): Route {
-  const raw = hash.replace(/^#/, '') || '/'
-  const [pathPart, queryPart] = raw.split('?')
-  const path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`
+export function parseRoute(pathname: string, search?: string): Route {
+  const path = pathname.startsWith('/') ? pathname : `/${pathname}`
   const segments = path.split('/').filter(Boolean).map(decodeURIComponent)
-  const query = new URLSearchParams(queryPart ?? '')
-  if (search) {
-    const s = new URLSearchParams(search)
-    s.forEach((val, key) => {
-      if (!query.has(key)) query.set(key, val)
-    })
-  }
+  const query = new URLSearchParams(search ?? '')
   return { path, segments, query }
 }
 
+/**
+ * One-time redirect of legacy hash URLs: `/#/shop?a=1` (plus any top-level
+ * `?b=2`) becomes `/shop?a=1&b=2`. Runs before the first route parse and on
+ * any late-arriving hashchange, so old emails and bookmarks keep working.
+ */
+function migrateLegacyHash(): void {
+  const hash = window.location.hash
+  if (!hash.startsWith('#/')) return
+  const raw = hash.slice(1)
+  const [pathPart, queryPart] = raw.split('?')
+  const merged = new URLSearchParams(queryPart ?? '')
+  new URLSearchParams(window.location.search).forEach((val, key) => {
+    if (!merged.has(key)) merged.set(key, val)
+  })
+  const qs = merged.toString()
+  const path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`
+  window.history.replaceState(null, '', `${path}${qs ? `?${qs}` : ''}`)
+}
+
 export function navigate(to: string, opts?: { replace?: boolean }) {
-  const target = to.startsWith('#') ? to : `#${to}`
+  const target = to.startsWith('#') ? to.slice(1) : to
   if (opts?.replace) {
-    const url = `${window.location.pathname}${window.location.search}${target}`
-    window.history.replaceState(null, '', url)
-    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    window.history.replaceState(null, '', target)
   } else {
-    window.location.hash = target
+    window.history.pushState(null, '', target)
   }
+  // pushState/replaceState fire no event — notify the route subscribers.
+  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 export function useRoute(): Route {
-  const [route, setRoute] = useState<Route>(() =>
-    typeof window === 'undefined' ? parseHash('/') : parseHash(window.location.hash, window.location.search),
-  )
+  const [route, setRoute] = useState<Route>(() => {
+    if (typeof window === 'undefined') return parseRoute('/')
+    migrateLegacyHash()
+    return parseRoute(window.location.pathname, window.location.search)
+  })
 
   useEffect(() => {
-    const onChange = () => setRoute(parseHash(window.location.hash, window.location.search))
-    window.addEventListener('hashchange', onChange)
+    const onChange = () => setRoute(parseRoute(window.location.pathname, window.location.search))
+    const onHashChange = () => {
+      migrateLegacyHash()
+      onChange()
+    }
     window.addEventListener('popstate', onChange)
+    window.addEventListener('hashchange', onHashChange)
     return () => {
-      window.removeEventListener('hashchange', onChange)
       window.removeEventListener('popstate', onChange)
+      window.removeEventListener('hashchange', onHashChange)
     }
   }, [])
 
   return route
-}
-
-/** Serialise path + query object into a hash href. */
-export function toHash(path: string, query?: Record<string, string | undefined | null>): string {
-  const params = new URLSearchParams()
-  if (query) {
-    for (const [k, v] of Object.entries(query)) {
-      if (v !== undefined && v !== null && v !== '') params.set(k, v)
-    }
-  }
-  const qs = params.toString()
-  return `#${path}${qs ? `?${qs}` : ''}`
 }
 
 /** Scroll to top whenever the path (not query) changes. */
@@ -94,9 +103,26 @@ export function Link({
   ariaLabel?: string
   title?: string
 }) {
-  const href = to.startsWith('#') ? to : `#${to}`
+  // Tolerate legacy '#/path' targets; the href itself is the clean path so
+  // crawlers and middle/⌘-clicks get a real address.
+  const path = to.startsWith('#') ? to.slice(1) : to
   return (
-    <a href={href} className={className} onClick={onClick} aria-label={ariaLabel} title={title}>
+    <a
+      href={path}
+      className={className}
+      aria-label={ariaLabel}
+      title={title}
+      onClick={(e) => {
+        onClick?.(e)
+        if (e.defaultPrevented) return
+        // Plain left clicks navigate in-app; modified clicks fall through to
+        // the browser (new tab / new window).
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+        if (!path.startsWith('/')) return
+        e.preventDefault()
+        navigate(path)
+      }}
+    >
       {children}
     </a>
   )

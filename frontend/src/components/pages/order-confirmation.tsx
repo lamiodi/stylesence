@@ -70,18 +70,20 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
 
   // Gateway return (Paystack callback / Stripe success redirect): verify the
   // payment server-side before believing anything, then refresh the order.
+  // Query params arrive on the path (/order/SS-…?reference=…); legacy hash
+  // links (/#/order/SS-…?reference=…) are still honoured.
   useEffect(() => {
-    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
     const hash = typeof window !== 'undefined' ? window.location.hash : ''
     const queryIdx = hash.indexOf('?')
     const hashParams = queryIdx !== -1 ? new URLSearchParams(hash.slice(queryIdx + 1)) : new URLSearchParams()
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
     const reference =
-      hashParams.get('reference') ??
-      hashParams.get('trxref') ??
-      hashParams.get('session_id') ??
       searchParams.get('reference') ??
       searchParams.get('trxref') ??
-      searchParams.get('session_id')
+      searchParams.get('session_id') ??
+      hashParams.get('reference') ??
+      hashParams.get('trxref') ??
+      hashParams.get('session_id')
     if (!reference) return
     let cancelled = false
     ;(async () => {
@@ -109,12 +111,11 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
       // The gateway callback URL carries the buyer's email (set at checkout);
       // with it the API returns the full receipt view, without it a reduced
       // tracking view (status + items + totals).
+      const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
       const hash = typeof window !== 'undefined' ? window.location.hash : ''
       const queryIdx = hash.indexOf('?')
       const hashParams = queryIdx !== -1 ? new URLSearchParams(hash.slice(queryIdx + 1)) : new URLSearchParams()
-      const email =
-        hashParams.get('email') ??
-        new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('email')
+      const email = searchParams.get('email') ?? hashParams.get('email')
       const res = await fetch(
         `/api/orders/${orderNumber}${email ? `?email=${encodeURIComponent(email)}` : ''}`,
       )

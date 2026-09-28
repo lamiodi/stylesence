@@ -1,13 +1,14 @@
 'use client'
 
 /**
- * Style Sence by SKR — hash-routed SPA.
- * The entire storefront + admin console is served from this single route.
+ * Style Sence by SKR — path-routed SPA shell.
+ * Served by the app/[[...slug]] catch-all: the server shell renders for
+ * every address; the client router below decides which page shows.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
-import { useRoute, useScrollTop } from '@/lib/router'
+import { useRoute, useScrollTop, navigate } from '@/lib/router'
 import { useMounted } from '@/hooks/use-mounted'
 import { AnnouncementBar } from '@/components/site/announcement-bar'
 import { Header } from '@/components/site/header'
@@ -40,17 +41,20 @@ function Router() {
 
   const [s0, s1, s2] = route.segments
 
-  // ensure a canonical hash on first load while preserving search queries & payment callbacks
-  if (typeof window !== 'undefined' && !window.location.hash) {
-    const search = window.location.search
-    const params = new URLSearchParams(search)
+  // Legacy rescue: gateway returns and external links may land on `/` with
+  // `?order=SS-…` in the query — route them to the order page.
+  useEffect(() => {
+    if (route.path !== '/' || typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
     const orderNum = params.get('order') ?? params.get('orderNumber')
     if (orderNum) {
-      window.location.replace(`${window.location.pathname}${search}#/order/${encodeURIComponent(orderNum)}`)
-    } else {
-      window.location.replace(`${window.location.pathname}${search}#/`)
+      params.delete('order')
+      params.delete('orderNumber')
+      const qs = params.toString()
+      navigate(`/order/${encodeURIComponent(orderNum)}${qs ? `?${qs}` : ''}`, { replace: true })
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   let page: React.ReactNode
   let key = route.path
@@ -110,9 +114,10 @@ function Router() {
 
   void s2
 
-  // SSR renders `/` (home) — the client may hydrate against a deep hash link
-  // (#/product/…). Rendering nothing until mounted keeps hydration a match;
-  // the page then appears keyed + animated on the very next frame.
+  // The server renders the shell for every path; the client may route
+  // differently once mounted (deep links, legacy hash redirects). Rendering
+  // nothing until mounted keeps hydration a match; the page then appears
+  // keyed + animated on the very next frame.
   return (
     <main id="main" className="flex-1">
       {mounted ? <PageFade keyName={key}>{page}</PageFade> : null}
@@ -120,7 +125,7 @@ function Router() {
   )
 }
 
-export default function Home() {
+export function SpaShell() {
   const [queryClient] = useState(
     () =>
       new QueryClient({

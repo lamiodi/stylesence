@@ -18,6 +18,7 @@ import {
 } from 'recharts'
 import { ArrowRight, RefreshCw, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { navigate } from '@/lib/router'
 import { formatNaira, formatDateShort } from '@/lib/money'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -303,7 +304,7 @@ function PromoPerformance({ promos, orderTotal }: { promos: AdminStats['promos']
         <button
           type="button"
           onClick={() => {
-            window.location.hash = '#/admin?tab=promos'
+            navigate('/admin?tab=promos')
           }}
           className="flex items-center gap-1 text-[0.62rem] font-medium uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground"
         >
@@ -554,7 +555,7 @@ export function Dashboard() {
             <button
               type="button"
               onClick={() => {
-                window.location.hash = '#/admin?tab=reviews'
+                navigate('/admin?tab=reviews')
               }}
               className="mt-4 flex items-center gap-1.5 text-[0.66rem] font-medium uppercase tracking-[0.18em] text-espresso transition-colors hover:text-foreground"
             >
@@ -573,7 +574,7 @@ export function Dashboard() {
             <button
               type="button"
               onClick={() => {
-                window.location.hash = '#/admin?tab=orders'
+                navigate('/admin?tab=orders')
               }}
               className="flex items-center gap-1 text-[0.62rem] font-medium uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -600,12 +601,12 @@ export function Dashboard() {
                     tabIndex={0}
                     aria-label={`View order ${o.orderNumber} in the Orders panel`}
                     onClick={() => {
-                      window.location.hash = '#/admin?tab=orders'
+                      navigate('/admin?tab=orders')
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
-                        window.location.hash = '#/admin?tab=orders'
+                        navigate('/admin?tab=orders')
                       }
                     }}
                     className="cursor-pointer"
@@ -671,7 +672,7 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => {
-              window.location.hash = '#/admin?tab=products'
+              navigate('/admin?tab=products')
             }}
             className="mt-5 flex items-center gap-1.5 text-[0.66rem] font-medium uppercase tracking-[0.18em] text-espresso transition-colors hover:text-foreground"
           >
