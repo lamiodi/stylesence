@@ -30,21 +30,13 @@ export function CartSheet() {
         <SheetTitle className="sr-only">Shopping bag</SheetTitle>
         <SheetDescription className="sr-only">Review the pieces in your bag.</SheetDescription>
 
-        <div className="flex items-center justify-between border-b border-line px-6 py-5">
+        <div className="flex items-center border-b border-line px-6 py-5">
           <div>
             <p className="eyebrow">Your bag</p>
             <h2 className="mt-1 font-display text-xl font-light tracking-tight">
               {isLoading ? '—' : `${cart?.itemCount ?? 0} ${cart?.itemCount === 1 ? 'piece' : 'pieces'}`}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Close bag"
-          >
-            <X className="h-5 w-5" strokeWidth={1.5} />
-          </button>
         </div>
 
         <div className="scroll-elegant flex-1 overflow-y-auto px-6">

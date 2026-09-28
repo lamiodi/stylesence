@@ -3,11 +3,12 @@
 /**
  * #/account — customer accounts (email + password).
  *
- * Signed out: an editorial split — the sign-in form on the left, the benefits
- * panel with the register form on the right (`?mode=signup` leads with the
- * register column). Signed in: the account overview — profile & default
- * shipping details (editable; they prefill checkout), order history in the
- * track-order row language, and a wishlist preview.
+ * Signed out: one form at a time — sign in by default, the registration form
+ * with `?mode=signup` — with a switch link under the form (query-driven, so
+ * it's shareable and the back button behaves). The benefits panel sits beside
+ * whichever form is active. Signed in: the account overview — profile &
+ * default shipping details (editable; they prefill checkout), order history
+ * in the track-order row language, and a wishlist preview.
  *
  * `?mode=forgot` / `?mode=reset&token=…` are the password-reset flow — when
  * transactional email is not configured the API returns a devResetUrl the
@@ -172,12 +173,30 @@ function SignedOut() {
       </Reveal>
 
       <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
-        <Reveal className={cn(signup && 'order-2')} delay={0.05}>
-          <SignInForm />
+        {/* One form at a time — the links below switch the ?mode= query, so
+         * the state is shareable and the back button behaves. */}
+        <Reveal delay={0.05} key={signup ? 'register' : 'signin'}>
+          {signup ? <RegisterForm /> : <SignInForm />}
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            {signup ? (
+              <>
+                Already have an account?{' '}
+                <Link to="/account" className="link-underline font-medium text-foreground">
+                  Sign in
+                </Link>
+              </>
+            ) : (
+              <>
+                New to Style Sence?{' '}
+                <Link to="/account?mode=signup" className="link-underline font-medium text-foreground">
+                  Create your account
+                </Link>
+              </>
+            )}
+          </p>
         </Reveal>
-        <Reveal className={cn(signup && 'order-1')} delay={0.1}>
+        <Reveal delay={0.1}>
           <BenefitsPanel />
-          <RegisterForm />
         </Reveal>
       </div>
     </div>
@@ -279,12 +298,6 @@ function SignInForm() {
       </form>
 
       <div className="mt-6 space-y-2 text-sm leading-relaxed text-muted-foreground">
-        <p>
-          New to Style Sence?{' '}
-          <Link to="/account?mode=signup" className="link-underline font-medium text-foreground">
-            Create an account
-          </Link>
-        </p>
         <p>
           Track an order without an account —{' '}
           <Link to="/track" className="link-underline font-medium text-foreground">
@@ -440,13 +453,6 @@ function RegisterForm() {
           {busy ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
-
-      <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
-        Already have an account?{' '}
-        <Link to="/account" className="link-underline font-medium text-foreground">
-          Sign in
-        </Link>
-      </p>
     </section>
   )
 }

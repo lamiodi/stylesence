@@ -145,7 +145,7 @@ export function HomePage() {
           />
           <div className="container-site absolute inset-0 flex items-end pb-16 sm:items-center sm:pb-0">
             <Reveal className="max-w-xl">
-              <p className="eyebrow !text-primary-foreground/85">Made to order — Lagos, Nigeria</p>
+              <p className="eyebrow !text-primary-foreground/85">Made to order</p>
               <h1 className="mt-4 font-display text-5xl font-light leading-[1.05] tracking-tight text-primary-foreground sm:text-6xl lg:text-7xl">
                 The Signature Collection
               </h1>
