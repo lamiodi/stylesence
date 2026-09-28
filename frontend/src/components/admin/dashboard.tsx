@@ -79,7 +79,7 @@ interface AdminStats {
     recent: RecentOrder[]
   }
   products: { total: number; active: number; lowStock: LowStockItem[] }
-  reviews: { pending: number; approved: number; avgRating: number }
+  reviews: { pending: number; approved: number; avgRating: number | null }
   subscribers: number
   customers: number
   promos: {
@@ -438,7 +438,7 @@ export function Dashboard() {
   const ordersLast30 = data.orders.last30Series.reduce((sum, p) => sum + p.orders, 0)
   const aov = ordersLast30 > 0 ? Math.round(data.revenue.last30 / ordersLast30) : 0
   const maxStatus = Math.max(...STATUS_ORDER.map((s) => data.orders.byStatus[s] ?? 0), 1)
-  const avgRounded = Math.round(data.reviews.avgRating)
+  const avgRounded = Math.round(data.reviews.avgRating ?? 0)
 
   return (
     <div className="space-y-6">
@@ -473,7 +473,7 @@ export function Dashboard() {
         <Kpi
           label="Pending reviews"
           value={String(data.reviews.pending)}
-          sub={`${data.reviews.avgRating.toFixed(1)}★ avg · ${data.reviews.approved} approved`}
+          sub={`${data.reviews.avgRating != null ? `${data.reviews.avgRating.toFixed(1)}★ avg` : 'no reviews yet'} · ${data.reviews.approved} approved`}
         />
         <Kpi
           label="Low stock"
@@ -549,7 +549,7 @@ export function Dashboard() {
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              <span className="font-mono tabular-nums">{data.reviews.avgRating.toFixed(1)}</span> average ·{' '}
+              <span className="font-mono tabular-nums">{data.reviews.avgRating != null ? data.reviews.avgRating.toFixed(1) : '—'}</span> average ·{' '}
               <span className="font-mono tabular-nums">{data.reviews.approved}</span> approved
             </p>
             <button
