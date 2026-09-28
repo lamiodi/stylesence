@@ -1,0 +1,142 @@
+# Style Sence Deployment Guide
+
+This guide details how to manually deploy the **Backend on Render** and the **Frontend on Vercel**.
+
+---
+
+## Architecture
+
+- **Backend (Render)**: Next.js 16 API service with PostgreSQL database connection and Cloudinary CDN.
+- **Frontend (Vercel)**: Next.js 16 luxury storefront. Automatically proxies `/api/*` requests to the Render backend via Next.js rewrites.
+- **Database**: Supabase PostgreSQL (Frankfurt `eu-central-1` via IPv4 pooler).
+- **Media**: Cloudinary (`qaruxkhf`).
+
+---
+
+## Part 1: Deploy Backend on Render (Manual Setup)
+
+In your [Render Dashboard](https://dashboard.render.com/):
+
+### 1. Create or Open Web Service
+- If creating a new service: Click **"New +"** &rarr; **"Web Service"** &rarr; Select `lamiodi/stylesence`.
+- If modifying your existing service: Go to **Settings** of your `stylessence-backend` service.
+
+### 2. Configure Service Settings
+
+| Setting | Recommended Value | Alternative (if Root Dir is empty) |
+| :--- | :--- | :--- |
+| **Root Directory** | `backend` | *(Leave empty)* |
+| **Build Command** | `npm install && npm run build` | `npm install && npm run build:backend` |
+| **Start Command** | `npm run start` | `npm run start:backend` |
+| **Health Check Path** | `/api/health` | `/api/health` |
+
+> [!IMPORTANT]
+> **Why the previous deploy gave "Could not find a production build in the '.next' directory":**
+> Render's default build command is only `npm install` (which does not compile Next.js), and the start command defaulted to the root `concurrently` script. Setting the **Build Command** to `npm install && npm run build` and **Start Command** to `npm run start` ensures the Next.js production build is created before starting the server.
+
+### 3. Configure Environment Variables
+| Key | Value |
+| :--- | :--- |
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | `postgresql://<user>:<password>@<supabase-pooler-host>:5432/postgres?sslmode=require` — from Supabase → Settings → Database. **Never paste real values into this file.** |
+| `CLOUDINARY_URL` | `cloudinary://<api_key>:<api_secret>@<cloud_name>` — from Cloudinary dashboard. **Never paste real values into this file.** |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` |
+| `RESEND_API_KEY` | `re_xxxxxxxx` (Your live Resend API key) |
+| `EMAIL_FROM` | `Style Sence <concierge@stylesence.com>` (verified-domain sender) |
+| `FRONTEND_URL` | `https://stylesence.com` |
+| `PAYSTACK_SECRET_KEY` | `sk_live_…` (or `sk_test_…` for test mode) |
+| `STRIPE_SECRET_KEY` | `sk_live_…` (or `sk_test_…` for test mode) |
+| `STRIPE_CURRENCY` | `ngn` (default) or `usd` |
+| `STRIPE_NAIRA_RATE` | `0.00065` (required only if STRIPE_CURRENCY ≠ ngn) |
+
+
+### 4. Deploy
+Click **"Save Changes"** / **"Manual Deploy > Deploy latest commit"**.
+Once deployed, verify by opening in your browser:
+`https://<your-render-app>.onrender.com/api/health`
+It will return:
+```json
+{ "status": "ok", "service": "stylessence-backend" }
+```
+
+---
+
+## Part 2: Deploy Frontend on Vercel (Manual Setup)
+
+In your [Vercel Dashboard](https://vercel.com/dashboard):
+
+### 1. Import Repository
+1. Click **"Add New... > Project"**.
+2. Select your repository: `lamiodi/stylesence`.
+
+### 2. Configure Project Settings
+- **Project Name**: `stylesence` (or `stylesence-frontend`)
+- **Framework Preset**: `Next.js`
+- **Root Directory**: Click **Edit** &rarr; select **`frontend`**
+- **Build Command**: Default (`npm run build`)
+- **Output Directory**: Default (`.next`)
+
+### 3. Add Environment Variables
+| Key | Value | Notes |
+| :--- | :--- | :--- |
+| `BACKEND_URL` | `https://<your-render-app>.onrender.com` | **Your live Render URL from Part 1** |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | `qaruxkhf` | Cloudinary public identifier |
+
+### 4. Deploy
+Click **"Deploy"**.
+Your frontend will go live (e.g. `https://stylesence.vercel.app`), automatically proxying all storefront API calls (`/api/products`, `/api/cart`, `/api/checkout`, etc.) directly to your Render backend with zero CORS issues!
+
+---
+
+## Part 3: Database Migration Status
+
+The database schema, categories, 185 product variants, and uploaded catalog items have already been seeded directly to your live Supabase PostgreSQL instance:
+- **Admin**: `owner@stylesence.example` / `stylesence-dev-2026`
+- **Catalog**: The Camille Skirt Set, The Camille Trouser Set, The Ariella Dress (Short & Long), The Àrẹ̀wà Set, and core collections.
+
+---
+
+## Part 4: Connect Custom Domain (Namecheap DNS) & Fix Google SEO
+
+If Google search results display the Namecheap parking lander (*"stylesence.com has been recently registered with namecheap.com..."*), it is because the domain is currently parked at Namecheap's default DNS. Follow these steps to connect your domain to Vercel and update Google's index.
+
+### 1. Configure DNS in Namecheap
+In your [Namecheap Account](https://ap.www.namecheap.com/):
+1. Go to **Domain List** &rarr; click **Manage** next to `stylesence.com`.
+2. Under the **Nameservers** section, ensure **Namecheap BasicDNS** is selected.
+3. Switch to the **Advanced DNS** tab.
+4. **Remove** any existing default Namecheap parking records:
+   - Delete any `URL Redirect Record` or `A Record` for parking (`@` / `parkingpage.namecheap.com`).
+   - Delete any `CNAME Record` pointing `www` to `parkingpage.namecheap.com`.
+5. **Add** the following Vercel DNS records:
+
+| Type | Host | Value | TTL |
+| :--- | :--- | :--- | :--- |
+| **A Record** | `@` | `76.76.21.21` | Automatic (or 1 min) |
+| **CNAME Record** | `www` | `cname.vercel-dns.com.` | Automatic (or 1 min) |
+
+### 2. Configure Custom Domain in Vercel
+In your [Vercel Dashboard](https://vercel.com/dashboard):
+1. Open your `stylesence` frontend project.
+2. Go to **Settings** &rarr; **Domains**.
+3. Add `stylesence.com`.
+4. Vercel will prompt you to add `www.stylesence.com` and automatically set up the recommended redirect from `www.stylesence.com` to `stylesence.com`.
+5. Once DNS propagates (typically 5 to 30 minutes), Vercel will issue a free SSL certificate (`https://stylesence.com`).
+
+### 3. Frontend & Backend Environment Variables
+Ensure the following variables are set:
+- **Vercel Frontend**:
+  - `SITE_URL`: `https://stylesence.com`
+  - `NEXT_PUBLIC_SITE_URL`: `https://stylesence.com`
+  - `BACKEND_URL`: `https://stylesence.onrender.com`
+- **Render Backend**:
+  - `FRONTEND_URL`: `https://stylesence.com`
+
+### 4. Force Google Re-Index in Google Search Console
+To immediately replace the Namecheap parking page snippet in Google search results with your luxury storefront metadata:
+1. Open [Google Search Console](https://search.google.com/search-console).
+2. Add your property: `https://stylesence.com`.
+3. In the top search bar, paste `https://stylesence.com` and press Enter (**URL Inspection**).
+4. Click **"Test Live URL"** to confirm Google sees your live brand title: *"Style Sence by SKR — Made-to-Order Womenswear, Lagos"*.
+5. Click **"Request Indexing"**. Google will prioritize re-crawling and replace the auction/parking snippet within 24–48 hours.
+
