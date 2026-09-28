@@ -57,11 +57,11 @@ const SHIPPING_ROWS = [
 
 const SHIPPING_FACTS: { label: string; body: ReactNode }[] = [
   {
-    label: 'Complimentary shipping',
+    label: 'Delivery rates',
     body: (
       <>
-        Standard delivery is on us on orders over {formatNaira(150_000)} — applied
-        automatically at the bag.
+        Flat, insured rates — Lagos metro {formatNaira(2_500)}, nationwide{' '}
+        {formatNaira(3_500)}, international {formatNaira(25_000)}.
       </>
     ),
   },

@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { PROMO_STACK_MAX } from '@/lib/promo'
 import { MEASUREMENT_FIELDS } from '@/lib/types'
 
 /**
@@ -90,17 +89,17 @@ export const checkoutInput = z.object({
   }),
   promoCodes: z
     .array(z.string().trim().min(1).max(40))
-    .max(2, 'At most two promo codes per order')
+    .max(1, 'One promo code per order')
     .optional()
     .transform((v) => (v === undefined || v.length === 0 ? undefined : v)),
 })
 
-/** POST /api/promo/validate — the full applied stack (1–2 codes). */
+/** POST /api/promo/validate — the applied promo code. */
 export const promoValidateInput = z.object({
   codes: z
     .array(z.string().trim().min(1, 'Promo code is required').max(40, 'Promo code is too long'))
     .min(1, 'At least one code is required')
-    .max(PROMO_STACK_MAX, `At most ${PROMO_STACK_MAX} codes per bag`),
+    .max(1, 'One promo code per bag'),
   subtotal: z.number().int('Subtotal must be a whole number').min(0).max(100_000_000),
   /** Optional — enables the single-use-per-customer check for signed-in / typed emails. */
   email: optionalEmailInput,
@@ -119,7 +118,7 @@ export const promoInput = z.object({
     .max(40, 'Code is too long')
     .transform((v) => v.toUpperCase().replace(/\s+/g, '-')),
   label: optionalText(200, 'Label'),
-  type: z.enum(['PERCENT', 'AMOUNT', 'SHIPPING']),
+  type: z.enum(['PERCENT', 'AMOUNT']),
   value: z
     .number()
     .int('Value must be a whole number')
@@ -147,7 +146,7 @@ export const promoInput = z.object({
 
 export const promoPatchInput = z.object({
   label: nullableText(200, 'Label'),
-  type: z.enum(['PERCENT', 'AMOUNT', 'SHIPPING']).optional(),
+  type: z.enum(['PERCENT', 'AMOUNT']).optional(),
   value: z.number().int('Value must be a whole number').min(0).max(10_000_000).optional(),
   minSubtotal: z.number().int('Minimum subtotal must be a whole number').min(0).max(100_000_000).optional(),
   maxUsage: z

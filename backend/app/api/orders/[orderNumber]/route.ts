@@ -1,6 +1,8 @@
 import { db } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { parseMeasurements } from '@/lib/cart'
+import { paystackConfigured, stripeConfigured, verifyPaystack, verifyStripe } from '@/lib/payments'
+import { settleGatewayPayment } from '@/lib/order-settle'
 
 /**
  * GET /api/orders/[orderNumber]?email=… — order lookup by number.
@@ -11,6 +13,12 @@ import { parseMeasurements } from '@/lib/cart'
  * status, totals and item summary only. The storefront tracking page works
  * on the reduced view; the post-payment receipt passes ?email= via the
  * gateway callback URL.
+ *
+ * Self-heal: bank transfer / USSD payments often never redirect back to the
+ * site and webhooks can be missed — while a gateway order sits PENDING_PAYMENT,
+ * every lookup re-checks the gateway by its stored reference and settles
+ * (PAID + confirmation email) on a late confirmation. Best-effort: a gateway
+ * hiccup never fails the lookup itself.
  */
 export async function GET(req: Request, { params }: { params: Promise<{ orderNumber: string }> }) {
   const { orderNumber } = await params
@@ -21,6 +29,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ orderNum
     include: { items: { orderBy: { id: 'asc' } } },
   })
   if (!order) return fail(404, 'Order not found')
+
+  if (order.status === 'PENDING_PAYMENT' && order.paymentReference) {
+    try {
+      const result =
+        order.paymentMethod === 'paystack' && paystackConfigured()
+          ? await verifyPaystack(order.paymentReference)
+          : order.paymentMethod === 'stripe' && stripeConfigured()
+            ? await verifyStripe(order.paymentReference)
+            : { paid: false, amountNaira: null }
+      if (result.paid) {
+        const outcome = await settleGatewayPayment(order, order.paymentReference, result.amountNaira)
+        if (outcome === 'settled') order.status = 'PAID'
+      }
+    } catch (err) {
+      console.error(`[api/orders] self-heal verification failed for ${orderNumber}:`, err)
+    }
+  }
 
   const verified = email !== '' && email === order.email.toLowerCase()
 

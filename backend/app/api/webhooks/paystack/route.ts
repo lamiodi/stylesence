@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import { db } from '@/lib/db'
-import { sendOrderConfirmationEmail } from '@/lib/email'
+import { settleGatewayPayment } from '@/lib/order-settle'
 
 export async function GET() {
   return new Response(JSON.stringify({ status: 'active', gateway: 'paystack' }), {
@@ -62,50 +62,12 @@ export async function POST(req: Request) {
     }
 
     if (order && order.status === 'PENDING_PAYMENT') {
+      // Bank transfer / USSD payments often never redirect back to the site —
+      // this webhook is the only signal they ever produce. settleGatewayPayment
+      // amount-checks, flips the order PAID and sends the confirmation email
+      // exactly once (guarded against the verify/self-heal paths racing in).
       const amountPaid = typeof data?.amount === 'number' ? data.amount / 100 : null
-      // Same currency (NGN kobo ↔ naira): require an exact match — a
-      // percentage tolerance lets an attacker underpay deliberately.
-      const amountOk =
-        amountPaid === null || amountPaid === order.total
-
-      if (amountOk) {
-        await db.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'PAID',
-            paymentReference: reference || order.paymentReference,
-          },
-        })
-
-        sendOrderConfirmationEmail({
-          orderNumber: order.orderNumber,
-          fullName: order.fullName,
-          email: order.email,
-          phone: order.phone,
-          address: order.address,
-          city: order.city,
-          state: order.state,
-          shippingMethod: order.shippingMethod,
-          shipping: order.shipping,
-          subtotal: order.subtotal,
-          discount: order.discount,
-          total: order.total,
-          items: order.items.map((item) => ({
-            productName: item.productName,
-            size: item.size,
-            color: item.color,
-            qty: item.qty,
-            unitPrice: item.unitPrice,
-            imageUrl: item.imageUrl,
-          })),
-        }).catch((err) =>
-          console.error('[webhook/paystack] Failed to send order email:', err)
-        )
-      } else {
-        console.error(
-          `[webhook/paystack] Amount mismatch for order ${order.orderNumber}: expected ${order.total}, got ${amountPaid}`
-        )
-      }
+      await settleGatewayPayment(order, reference || order.paymentReference || '', amountPaid)
     }
   }
 

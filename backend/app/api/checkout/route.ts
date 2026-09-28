@@ -4,7 +4,6 @@ import { getCartFromCookie } from '@/lib/cart'
 import { checkoutInput } from '@/lib/validators'
 import { evaluatePromoStack } from '@/lib/promo'
 import { PRODUCTION_TIERS } from '@/lib/types'
-import { sendOrderConfirmationEmail } from '@/lib/email'
 import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured } from '@/lib/payments'
 
 /**
@@ -16,8 +15,8 @@ import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured 
  * field, a production timeline (standard 7–10 · express 2–3 working days,
  * express surcharge arranged by the studio — never charged here), and a
  * mandatory pre-production confirmation.
- * Optional `promoCodes` (up to 2 — one money-saving + one shipping, both
- * stackable) is validated, applied and usage-incremented per code.
+ * Optional `promoCodes` (a single money-saving code) is validated, applied
+ * and usage-incremented.
  * → 201 `{ order: { orderNumber, total, discount } }`.
  */
 
@@ -28,9 +27,6 @@ const SHIPPING_RATES: Record<'local' | 'nationwide' | 'international', number> =
   nationwide: 3500,
   international: 25000,
 }
-
-/** Complimentary nationwide shipping on merchandise subtotals at/above this value. */
-const FREE_SHIPPING_THRESHOLD = 150_000
 
 class StockError extends Error {}
 
@@ -74,15 +70,12 @@ export async function POST(req: Request) {
   let promoCode: string | null = null
   let promoCodes: string | null = null
   let promoIds: string[] = []
-  let freeShipping = false
   if (input.promoCodes) {
     const stackEval = await evaluatePromoStack(input.promoCodes, subtotal, input.email)
     if (!stackEval.ok) return fail(stackEval.status, stackEval.error)
     discount = stackEval.discount
-    freeShipping = stackEval.freeShipping
     promoCodes = stackEval.promos.map((p) => p.code).join(',')
-    // Primary code: the money-saving one when stacked, else the only code.
-    promoCode = stackEval.promos.find((p) => p.type !== 'SHIPPING')?.code ?? stackEval.promos[0].code
+    promoCode = stackEval.promos[0].code
     const rows = await db.promoCode.findMany({
       where: { code: { in: stackEval.promos.map((p) => p.code) } },
       select: { id: true },
@@ -96,11 +89,8 @@ export async function POST(req: Request) {
     return fail(400, 'Local and nationwide delivery are only available within Nigeria — choose international delivery.')
   }
 
-  // Complimentary nationwide shipping over the threshold (matches the storefront
-  // promise on the cart page + announcement bar). Promo free-shipping wins over
-  // everything (also waives international).
-  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && input.shippingMethod === 'nationwide'
-  const shipping = freeShipping || thresholdFree ? 0 : SHIPPING_RATES[input.shippingMethod]
+  // Delivery is charged on every order — flat rate by method.
+  const shipping = SHIPPING_RATES[input.shippingMethod]
   // Round 13 production timeline — express is contact-priced (surcharge
   // arranged by the studio after ordering; never charged here).
   const productionTier = input.productionTier ?? 'standard'

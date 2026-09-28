@@ -125,6 +125,12 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
       return (await res.json()) as { order: OrderView }
     },
     retry: false,
+    // Bank transfer / USSD payments often never redirect back — while the
+    // order sits pending, keep re-checking (the lookup itself re-verifies
+    // with the gateway server-side) so a late payment flips this page and
+    // triggers the confirmation email without a manual refresh.
+    refetchInterval: (query) =>
+      query.state.data?.order.status === 'PENDING_PAYMENT' ? 10_000 : false,
   })
 
   if (isLoading) {
@@ -364,7 +370,6 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">
                   {shippingLabel(order.shippingMethod)}
-                  {order.shipping === 0 ? ' — complimentary' : ''}
                 </dt>
                 <dd className="font-mono tabular-nums">{formatNaira(order.shipping)}</dd>
               </div>

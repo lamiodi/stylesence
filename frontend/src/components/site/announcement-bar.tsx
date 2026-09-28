@@ -1,5 +1,5 @@
 const ITEMS = [
-  'Complimentary shipping over ₦150,000',
+  'Express production — ready in 2–3 working days',
   'Made to order in Lagos — delivered nationwide',
   'Polka-dot silk sets · fluid gowns · hand-woven Aso Oke',
   'Cut to your measurements — XS to XXL or bespoke',

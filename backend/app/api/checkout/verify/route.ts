@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { verifyPaystack, verifyStripe } from '@/lib/payments'
-import { sendOrderConfirmationEmail } from '@/lib/email'
+import { settleGatewayPayment } from '@/lib/order-settle'
 
 /**
  * GET /api/checkout/verify?order=SS-2026-1234&reference=…
@@ -38,49 +38,12 @@ export async function GET(req: Request) {
       return ok({ order: orderNumber, status: 'PENDING_PAYMENT', verified: false })
     }
 
-    // Amount check — same-currency gateway amounts must match the order
-    // total exactly (no percentage tolerance: it invites deliberate
-    // underpayment). Null amount (gateway didn't report) still passes.
-    const amountOk = result.amountNaira === null || result.amountNaira === order.total
-
-    if (!amountOk) {
-      console.error(
-        `[api/checkout/verify] amount mismatch for ${orderNumber}: expected ${order.total}, got ${result.amountNaira}`,
-      )
+    const outcome = await settleGatewayPayment(order, reference, result.amountNaira)
+    if (outcome === 'amount-mismatch') {
       return fail(402, 'Payment amount does not match the order — contact the studio on WhatsApp +234 816 302 2233.')
     }
 
-    const updated = await db.order.update({
-      where: { id: order.id },
-      data: { status: 'PAID', paymentReference: reference },
-      select: { status: true },
-    })
-
-    // Non-blocking order confirmation email dispatch via Resend
-    sendOrderConfirmationEmail({
-      orderNumber: order.orderNumber,
-      fullName: order.fullName,
-      email: order.email,
-      phone: order.phone,
-      address: order.address,
-      city: order.city,
-      state: order.state,
-      shippingMethod: order.shippingMethod,
-      shipping: order.shipping,
-      subtotal: order.subtotal,
-      discount: order.discount,
-      total: order.total,
-      items: order.items.map((item) => ({
-        productName: item.productName,
-        size: item.size,
-        color: item.color,
-        qty: item.qty,
-        unitPrice: item.unitPrice,
-        imageUrl: item.imageUrl,
-      })),
-    }).catch((err) => console.error('[api/checkout/verify] Failed to dispatch order confirmation email:', err))
-
-    return ok({ order: orderNumber, status: updated.status, verified: true })
+    return ok({ order: orderNumber, status: 'PAID', verified: true })
   } catch (err) {
     console.error('[api/checkout/verify] verification failed:', err)
     return fail(502, 'Could not verify the payment. If you were charged, WhatsApp the studio on +234 816 302 2233.')

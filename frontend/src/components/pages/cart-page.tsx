@@ -13,7 +13,6 @@ import { ProductCard } from '@/components/site/product-card'
 import { useCart, useUpdateCartItem, useRemoveCartItem, useClearCart } from '@/lib/cart-client'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
-import { FreeShippingMeter } from '@/components/site/shipping-meter'
 import { formatMeasurements, type ProductsResponse } from '@/lib/types'
 
 async function fetchBestsellers(): Promise<ProductsResponse> {
@@ -38,7 +37,6 @@ export function CartPage() {
   const items = cart?.items ?? []
   const subtotal = cart?.subtotal ?? 0
   const discount = promoData?.discount ?? 0
-  const stackFreeShipping = promoData?.freeShipping ?? false
 
   return (
     <div className="container-site py-10 sm:py-14">
@@ -82,8 +80,6 @@ export function CartPage() {
         <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
           {/* items */}
           <div className="min-w-0">
-            <FreeShippingMeter subtotal={subtotal} unlockedByPromo={stackFreeShipping} />
-
             <ul className="divide-y divide-line border-t border-line">
               {items.map((item) => (
                 <li key={item.id} className="flex gap-5 py-6">
@@ -198,22 +194,9 @@ export function CartPage() {
                       <dd className="font-mono tabular-nums">−{formatNaira(p.discount)}</dd>
                     </div>
                   ))}
-                {promos
-                  .filter((p) => p.freeShipping)
-                  .map((p) => (
-                    <div key={`ship-${p.code}`} className="flex justify-between text-espresso">
-                      <dt className="flex items-center gap-1.5">
-                        <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
-                        {p.code}
-                      </dt>
-                      <dd>Complimentary shipping</dd>
-                    </div>
-                  ))}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Shipping</dt>
-                  <dd className="text-[0.78rem] text-muted-foreground">
-                    {stackFreeShipping ? 'Complimentary' : 'Calculated at checkout'}
-                  </dd>
+                  <dd className="text-[0.78rem] text-muted-foreground">Calculated at checkout</dd>
                 </div>
               </dl>
               <div className="mt-4 border-t border-line pt-4">

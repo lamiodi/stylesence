@@ -4,9 +4,9 @@ import { db } from '@/lib/db'
  * Shared promo-code evaluation used by /api/promo/validate and /api/checkout.
  * Money is integer Naira throughout.
  *
- * Stacking (Round 12): a bag may carry up to TWO codes — one money-saving
- * (PERCENT or AMOUNT) + one shipping (SHIPPING) — and only when BOTH are
- * flagged `stackable` in the admin console. Everything else behaves as before.
+ * One promo code per bag (PERCENT or AMOUNT). SHIPPING codes are retired —
+ * the studio charges delivery on every order, so legacy SHIPPING rows are
+ * rejected outright instead of silently waiving the fee.
  */
 
 export interface AppliedPromo {
@@ -15,18 +15,17 @@ export interface AppliedPromo {
   type: string
   value: number
   minSubtotal: number
-  /** Money-off contribution against the subtotal (0 for SHIPPING codes). */
+  /** Money-off contribution against the subtotal. */
   discount: number
-  freeShipping: boolean
   stackable: boolean
 }
 
 export type PromoStackEval =
-  | { ok: true; promos: AppliedPromo[]; discount: number; freeShipping: boolean }
+  | { ok: true; promos: AppliedPromo[]; discount: number }
   | { ok: false; status: number; error: string }
 
 /** Max codes a single bag may carry. */
-export const PROMO_STACK_MAX = 2
+export const PROMO_STACK_MAX = 1
 
 export function computeDiscount(type: string, value: number, subtotal: number): number {
   if (type === 'PERCENT') {
@@ -35,19 +34,12 @@ export function computeDiscount(type: string, value: number, subtotal: number): 
   if (type === 'AMOUNT') {
     return Math.min(subtotal, value)
   }
-  return 0 // SHIPPING → discount applies to the shipping fee, not the subtotal
-}
-
-/** Money-saving class (PERCENT/AMOUNT) vs shipping class (SHIPPING). */
-function typeClass(type: string): 'money' | 'shipping' {
-  return type === 'SHIPPING' ? 'shipping' : 'money'
+  return 0
 }
 
 /**
- * Evaluate the whole applied stack (1–2 codes) against a subtotal.
- * Each code's own rules still apply (active, window, usage cap, min subtotal,
- * single-use per customer). Additionally, a 2-code stack requires both codes
- * to be stackable and to sit in different type classes.
+ * Evaluate the applied code against a subtotal. The code's own rules still
+ * apply (active, window, usage cap, min subtotal, single-use per customer).
  */
 export async function evaluatePromoStack(
   rawCodes: string[],
@@ -62,7 +54,7 @@ export async function evaluatePromoStack(
   }
   if (codes.length === 0) return { ok: false, status: 400, error: 'Enter a promo code.' }
   if (codes.length > PROMO_STACK_MAX) {
-    return { ok: false, status: 400, error: `Two codes is the house limit per bag — ${codes.length} were submitted.` }
+    return { ok: false, status: 400, error: 'One promo code per bag.' }
   }
 
   const rows = await db.promoCode.findMany({ where: { code: { in: codes } } })
@@ -72,6 +64,13 @@ export async function evaluatePromoStack(
   for (const code of codes) {
     const promo = byCode.get(code)
     if (!promo) return { ok: false, status: 404, error: 'This code is not on the books.' }
+    if (promo.type === 'SHIPPING') {
+      return {
+        ok: false,
+        status: 400,
+        error: `${code} is no longer offered — delivery is charged on every order.`,
+      }
+    }
     if (!promo.isActive) return { ok: false, status: 400, error: `${code} is no longer active.` }
     if (promo.expiresAt && promo.expiresAt.getTime() < Date.now()) {
       return { ok: false, status: 400, error: `${code} has expired.` }
@@ -84,29 +83,6 @@ export async function evaluatePromoStack(
         ok: false,
         status: 400,
         error: `${code} applies from ₦${promo.minSubtotal.toLocaleString('en-NG')} — add ₦${(promo.minSubtotal - subtotal).toLocaleString('en-NG')} more.`,
-      }
-    }
-  }
-
-  // Stack rules — only when two codes are present.
-  if (codes.length === 2) {
-    const [a, b] = codes.map((c) => byCode.get(c)!)
-    if (!a.stackable || !b.stackable) {
-      const loner = !a.stackable ? a.code : b.code
-      return {
-        ok: false,
-        status: 400,
-        error: `${loner} prefers to travel alone — it cannot be combined with another code.`,
-      }
-    }
-    if (typeClass(a.type) === typeClass(b.type)) {
-      return {
-        ok: false,
-        status: 400,
-        error:
-          typeClass(a.type) === 'money'
-            ? 'These two codes overlap — a bag holds one money-saving code (pair it with a shipping code instead).'
-            : 'These two codes overlap — a bag holds one shipping code (pair it with a money-saving code instead).',
       }
     }
   }
@@ -143,7 +119,6 @@ export async function evaluatePromoStack(
       value: p.value,
       minSubtotal: p.minSubtotal,
       discount: computeDiscount(p.type, p.value, subtotal),
-      freeShipping: p.type === 'SHIPPING',
       stackable: p.stackable,
     }
   })
@@ -152,6 +127,5 @@ export async function evaluatePromoStack(
     ok: true,
     promos,
     discount: promos.reduce((sum, p) => sum + p.discount, 0),
-    freeShipping: promos.some((p) => p.freeShipping),
   }
 }

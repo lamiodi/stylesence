@@ -56,14 +56,14 @@ interface AdminPromo {
 function valueLabel(p: AdminPromo): string {
   if (p.type === 'PERCENT') return `${p.value}% off`
   if (p.type === 'AMOUNT') return `${formatNaira(p.value)} off`
-  return 'Complimentary shipping'
+  return 'Free shipping (retired)'
 }
 
 function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void }) {
   const qc = useQueryClient()
   const [code, setCode] = useState('')
   const [label, setLabel] = useState('')
-  const [type, setType] = useState<'PERCENT' | 'AMOUNT' | 'SHIPPING'>('PERCENT')
+  const [type, setType] = useState<'PERCENT' | 'AMOUNT'>('PERCENT')
   const [value, setValue] = useState('10')
   const [minSubtotal, setMinSubtotal] = useState('0')
   const [maxUsage, setMaxUsage] = useState('')
@@ -81,7 +81,7 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
           code: code.trim(),
           label: label.trim() || undefined,
           type,
-          value: type === 'SHIPPING' ? 0 : Math.max(0, Number(value) || 0),
+          value: Math.max(0, Number(value) || 0),
           minSubtotal: Math.max(0, Number(minSubtotal) || 0),
           maxUsage: maxUsage.trim() ? Math.max(1, Number(maxUsage)) : null,
           singleUsePerCustomer: singleUse,
@@ -142,14 +142,13 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="np-type" className="eyebrow">Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as 'PERCENT' | 'AMOUNT' | 'SHIPPING')}>
+              <Select value={type} onValueChange={(v) => setType(v as 'PERCENT' | 'AMOUNT')}>
                 <SelectTrigger id="np-type" className={cn(field, 'border-line-strong')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PERCENT">Percent off</SelectItem>
                   <SelectItem value="AMOUNT">Amount off (₦)</SelectItem>
-                  <SelectItem value="SHIPPING">Free shipping</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -166,14 +165,13 @@ function NewPromoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOp
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label htmlFor="np-value" className="eyebrow">{type === 'PERCENT' ? 'Percent' : type === 'AMOUNT' ? 'Amount (₦)' : 'Value'}</Label>
+              <Label htmlFor="np-value" className="eyebrow">{type === 'PERCENT' ? 'Percent' : 'Amount (₦)'}</Label>
               <Input
                 id="np-value"
                 type="number"
                 min={0}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                disabled={type === 'SHIPPING'}
                 className={cn(field, 'font-mono tabular-nums')}
               />
             </div>

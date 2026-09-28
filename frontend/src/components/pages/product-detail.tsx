@@ -777,7 +777,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                 </span>
               </p>
               <div
-                className="mt-2.5 grid grid-cols-2 border border-line-strong"
+                className="mt-3 grid grid-cols-2 border border-line-strong"
                 role="radiogroup"
                 aria-label="Size options"
               >
@@ -867,25 +867,27 @@ function ProductInner({ product }: { product: ProductDetail }) {
               ) : null}
 
               {/* the size rail — still required under Option B (closest size for the atelier) */}
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="eyebrow">
+              <div className="mt-3.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <p className="text-[0.72rem] font-medium text-muted-foreground">
                   {fitMode === 'custom' ? (
                     <>
-                      Closest size — <span className="text-foreground">{size ?? 'Select'}</span>
-                      <span className="ml-1.5 font-mono !text-[0.58rem] font-normal normal-case tracking-[0.06em] text-muted-foreground/75">
-                        pattern reference for the atelier
+                      Closest size: <span className="font-mono text-foreground">{size ?? '—'}</span>
+                      <span className="ml-1.5 hidden font-mono text-[0.62rem] font-normal tracking-[0.04em] text-muted-foreground/70 sm:inline">
+                        · pattern reference for the atelier
                       </span>
                     </>
-                  ) : (
+                  ) : size ? (
                     <>
-                      Size — <span className="text-foreground">{size ?? 'Select'}</span>
+                      Size: <span className="font-mono text-foreground">{size}</span>
                     </>
+                  ) : (
+                    'Select a size'
                   )}
                 </p>
                 <SizeGuideDialog />
               </div>
               <div
-                className="mt-2.5 flex flex-wrap gap-2"
+                className="mt-3 flex flex-wrap gap-2"
                 role="radiogroup"
                 aria-label={fitMode === 'custom' ? 'Closest size — pattern reference' : 'Size'}
               >
@@ -929,7 +931,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
           {/* tailoring notes — rides along on every add (all pieces, incl. one-size) */}
           <div className="mt-6">
             <Label htmlFor="order-notes" className="eyebrow">
-              Additional instructions for your order (optional)
+              Tailoring notes (optional)
             </Label>
             <Textarea
               id="order-notes"
@@ -937,7 +939,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
               maxLength={500}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Make it tighter around the waist · add extra length · make the sleeves longer · adjust the neckline…"
+              placeholder="e.g. tighter waist, extra length, longer sleeves…"
               className="mt-2 min-h-0 border-line-strong text-sm"
             />
             {notes.length > 350 ? (
@@ -1008,8 +1010,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
               <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
                 Local <span className="font-mono tabular-nums">₦2,500</span> · Lagos 1–2 days ·
                 Nationwide <span className="font-mono tabular-nums">₦3,500</span> · 3–5 days ·
-                International <span className="font-mono tabular-nums">₦25,000</span> ·{' '}
-                <span className="text-espresso">complimentary nationwide over ₦150,000</span>
+                International <span className="font-mono tabular-nums">₦25,000</span>
               </p>
             </div>
           </div>
@@ -1063,7 +1064,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                   <ul className="space-y-2.5 text-sm text-muted-foreground">
                     <li className="flex gap-2.5">
                       <Truck className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
-                      Local ₦2,500 — 1–2 days · Nationwide ₦3,500 — 3–5 days · International ₦25,000 — 7–14 days · complimentary nationwide over ₦150,000
+                      Local ₦2,500 — 1–2 days · Nationwide ₦3,500 — 3–5 days · International ₦25,000 — 7–14 days
                     </li>
                     <li className="flex gap-2.5">
                       <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />

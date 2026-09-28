@@ -186,7 +186,7 @@ export async function sendOrderConfirmationEmail(order: OrderEmailData) {
       }
       <tr>
         <td style="padding: 4px 0; color: #777368;">Shipping (${shippingLabel(order.shippingMethod)})</td>
-        <td align="right" style="padding: 4px 0;">${order.shipping === 0 ? 'Complimentary' : formatNaira(order.shipping)}</td>
+        <td align="right" style="padding: 4px 0;">${formatNaira(order.shipping)}</td>
       </tr>
       <tr>
         <td style="padding: 12px 0 4px; font-weight: 600; font-size: 15px; border-top: 1px solid #e5e3dc;">Total Paid</td>

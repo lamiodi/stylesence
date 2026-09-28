@@ -3,17 +3,17 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Check, X, Tag, Layers } from 'lucide-react'
+import { Check, X, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
-import { PROMO_STACK_MAX, type PromoInfo, type PromoStackInfo } from '@/lib/types'
+import { type PromoInfo, type PromoStackInfo } from '@/lib/types'
 import { usePromoStore } from '@/lib/store/promo'
 
 /**
- * Validates the persisted promo stack against a subtotal (and, when provided,
+ * Validates the applied promo code against a subtotal (and, when provided,
  * the customer email — enables the single-use-per-customer check early).
- * Returns `{ data: { promos, discount, freeShipping } }` when valid;
- * `isError` when any code in the stack fails.
+ * Returns `{ data: { promos, discount } }` when valid; `isError` when the
+ * code fails.
  */
 export function usePromoValidation(codes: string[], subtotal: number, email?: string) {
   // Only include plausible emails (typed '@') so keystroke edits don't spam refetches.
@@ -38,20 +38,15 @@ export function usePromoValidation(codes: string[], subtotal: number, email?: st
 }
 
 function chipNote(promo: PromoInfo): string {
-  if (promo.freeShipping) return 'Complimentary delivery'
   if (promo.type === 'PERCENT') return `${promo.value}% off — −${formatNaira(promo.discount)}`
   return `−${formatNaira(promo.discount)}`
 }
 
 /**
- * Promo code input + applied chips. State lives in the persisted promo store;
- * the server re-validates the whole stack at checkout (authoritative). The
- * optional email participates in validation so single-use-per-customer codes
- * fail loudly here rather than at checkout.
- *
- * Round 12 — stacking: a bag carries up to two codes (one money-saving + one
- * shipping, both stackable). Applying a second code validates the combined
- * stack server-side and rejects illegal pairings with a clear error.
+ * Promo code input + applied chip. State lives in the persisted promo store;
+ * the server re-validates at checkout (authoritative). One code per bag.
+ * The optional email participates in validation so single-use-per-customer
+ * codes fail loudly here rather than at checkout.
  */
 export function PromoInput({ subtotal, email }: { subtotal: number; email?: string }) {
   const codes = usePromoStore((s) => s.codes)
@@ -79,11 +74,8 @@ export function PromoInput({ subtotal, email }: { subtotal: number; email?: stri
       setInput('')
       const last = applied[applied.length - 1]
       const lastPromo = stack.promos.find((p) => p.code === last)
-      toast.success(applied.length > 1 ? `${applied.join(' + ')} stacked.` : `${last} applied.`, {
-        description:
-          applied.length > 1
-            ? `${formatNaira(stack.discount)} off${stack.freeShipping ? ' + complimentary delivery' : ''}.`
-            : lastPromo?.label ?? undefined,
+      toast.success(`${last} applied.`, {
+        description: lastPromo?.label ?? undefined,
       })
     },
     onError: (e: Error) => toast.error(e.message),
@@ -93,14 +85,13 @@ export function PromoInput({ subtotal, email }: { subtotal: number; email?: stri
     e.preventDefault()
     const value = input.trim()
     if (!value) return toast.error('Enter a promo code first.')
-    if (codes.length >= PROMO_STACK_MAX) return toast.error('Two codes is the limit per bag.')
     if (codes.includes(value.toUpperCase())) return toast.error('That code is already applied.')
     apply.mutate(value)
   }
 
   if (codes.length > 0) {
     return (
-      <div role="status" aria-label={isError ? 'Promo code no longer valid' : 'Promo codes applied'}>
+      <div role="status" aria-label={isError ? 'Promo code no longer valid' : 'Promo code applied'}>
         <ul className="space-y-1.5">
           {codes.map((code) => {
             const info = data?.promos.find((p) => p.code === code)
@@ -143,15 +134,6 @@ export function PromoInput({ subtotal, email }: { subtotal: number; email?: stri
             )
           })}
         </ul>
-        {codes.length >= PROMO_STACK_MAX ? (
-          <p className="mt-2 flex items-center gap-1.5 text-[0.66rem] leading-relaxed text-muted-foreground/80">
-            <Layers className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden />
-            Two codes is the limit — one saving + one shipping.
-          </p>
-        ) : (
-          /* Room for one more — keep the apply form under the chips. */
-          <PromoForm input={input} setInput={setInput} onSubmit={submit} pending={apply.isPending} hint={false} />
-        )}
       </div>
     )
   }
@@ -201,12 +183,9 @@ function PromoForm({
       </div>
       <p className="mt-2 text-[0.66rem] leading-relaxed text-muted-foreground/80">
         {hint ? (
-          <>
-            Try <span className="font-mono">SS-FRIEND</span> (10% off) — it stacks with{' '}
-            <span className="font-mono">SENCE-SHIP</span> for complimentary delivery.
-          </>
+          <>Have a privilege code from the studio? Enter it here.</>
         ) : (
-          <>Add a second stackable code — pair a saving with a shipping code.</>
+          <>One promo code per bag.</>
         )}
       </p>
     </form>

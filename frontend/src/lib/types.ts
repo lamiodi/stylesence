@@ -1,6 +1,6 @@
 /** Shared API response types — mirrors the backend contract in worklog.md */
 
-export const PROMO_STACK_MAX = 2
+export const PROMO_STACK_MAX = 1
 
 export interface Category {
   id: string
@@ -189,16 +189,13 @@ export interface PromoInfo {
   value: number
   minSubtotal: number
   discount: number
-  freeShipping: boolean
-  /** May combine with one other stackable code of a different type class. */
   stackable: boolean
 }
 
-/** POST /api/promo/validate response — the whole applied stack. */
+/** POST /api/promo/validate response — the applied promo code. */
 export interface PromoStackInfo {
   promos: PromoInfo[]
   discount: number
-  freeShipping: boolean
 }
 
 export const ORDER_STATUSES = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const
