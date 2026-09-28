@@ -73,8 +73,12 @@ interface AdminOrder {
   shippingMethod: string
   shipping: number
   subtotal: number
+  discount?: number
+  promoCodes?: string[] | null
   total: number
   status: OrderStatus
+  paymentMethod?: string | null
+  paymentReference?: string | null
   createdAt: string
   notes?: string | null
   /** Round 13 made-to-order: production tier, add-on fee, client confirmation. */
@@ -120,6 +124,27 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 /** Round 13 production timeline chip — what the atelier works to. */
+/** Which rail the order came through — Paystack / Stripe / studio transfer. */
+function PaymentRailBadge({ method }: { method?: string | null }) {
+  if (method === 'paystack')
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-[3px] border border-line-strong px-2 py-0.5 font-mono text-[0.58rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        Paystack
+      </span>
+    )
+  if (method === 'stripe')
+    return (
+      <span className="inline-flex items-center rounded-[3px] border border-line-strong px-2 py-0.5 font-mono text-[0.58rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        Stripe
+      </span>
+    )
+  return (
+    <span className="inline-flex items-center rounded-[3px] border border-dashed border-line-strong px-2 py-0.5 font-mono text-[0.58rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+      Bank transfer · studio
+    </span>
+  )
+}
+
 function ProductionBadge({ tier }: { tier: string }) {
   const express = tier === 'express'
   return (
@@ -177,6 +202,7 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
             <DialogTitle className="font-mono text-lg tracking-tight">{order.orderNumber}</DialogTitle>
             <div className="flex flex-wrap items-center gap-2">
               {order.productionTier ? <ProductionBadge tier={order.productionTier} /> : null}
+              <PaymentRailBadge method={order.paymentMethod} />
               <StatusBadge status={order.status} />
             </div>
           </div>
@@ -185,6 +211,11 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
               {formatDate(order.createdAt)} · {itemCount} item{itemCount === 1 ? '' : 's'} ·{' '}
               {formatNaira(order.total)}
             </span>
+            {order.paymentReference ? (
+              <span className="font-mono text-[0.62rem] text-muted-foreground [overflow-wrap:anywhere]">
+                ref {order.paymentReference}
+              </span>
+            ) : null}
             {order.confirmedProduction ? (
               <span className="flex items-center gap-1.5 text-espresso">
                 <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
@@ -215,7 +246,7 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
                   )}
                   <div className="min-w-0 flex-1">
                     <a
-                      href={`#/product/${it.productSlug}`}
+                      href={`/product/${it.productSlug}`}
                       className="link-underline text-sm leading-tight"
                     >
                       {it.productName}
@@ -289,9 +320,21 @@ function OrderDialog({ order, onClose }: { order: AdminOrder; onClose: () => voi
                 <dt className="text-muted-foreground">Subtotal</dt>
                 <dd className="font-mono tabular-nums">{formatNaira(order.subtotal)}</dd>
               </div>
+              {order.discount && order.discount > 0 ? (
+                <div className="flex justify-end gap-8">
+                  <dt className="text-muted-foreground">
+                    Discount{order.promoCodes?.length ? ` (${order.promoCodes.join(' · ')})` : ''}
+                  </dt>
+                  <dd className="font-mono tabular-nums text-[color:var(--espresso)]">
+                    −{formatNaira(order.discount)}
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex justify-end gap-8">
                 <dt className="text-muted-foreground">Shipping</dt>
-                <dd className="font-mono tabular-nums">{formatNaira(order.shipping)}</dd>
+                <dd className="font-mono tabular-nums">
+                  {order.shipping === 0 ? 'Complimentary' : formatNaira(order.shipping)}
+                </dd>
               </div>
               {order.productionFee && order.productionFee > 0 ? (
                 <div className="flex justify-end gap-8">

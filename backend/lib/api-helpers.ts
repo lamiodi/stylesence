@@ -169,6 +169,8 @@ export function toAdminOrder(o: Order & { items: OrderItem[] }) {
     confirmedProduction: o.confirmedProduction,
     total: o.total,
     status: o.status,
+    paymentMethod: o.paymentMethod,
+    paymentReference: o.paymentReference,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
     items: o.items.map((i) => ({

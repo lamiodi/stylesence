@@ -19,7 +19,6 @@ import { useCart } from '@/lib/cart-client'
 import { useCustomer } from '@/hooks/use-customer'
 import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
-import { FREE_SHIPPING_THRESHOLD } from '@/components/site/shipping-meter'
 import { PaystackMark } from '@/components/site/paystack-mark'
 import { ForeignTransferBlock } from '@/components/site/foreign-transfer'
 import {
@@ -170,13 +169,9 @@ export function CheckoutPage() {
 
   const subtotal = cart?.subtotal ?? 0
   const discount = promoData?.discount ?? 0
-  const stackFreeShipping = promoData?.freeShipping ?? false
 
-  /** Complimentary nationwide shipping over ₦150,000 (merchandise subtotal,
-   *  pre-discount) — mirrors the server rule in /api/checkout; a free-shipping
-   *  promo waives EVERY method (including international). */
-  const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && shipping === 'nationwide'
-  const shippingPrice = stackFreeShipping || thresholdFree ? 0 : SHIPPING_METHODS[shipping].price
+  /** Flat delivery rate for the picked method (server-authoritative mirror). */
+  const shippingPrice = SHIPPING_METHODS[shipping].price
   /** Express production add-on — 2–3 day production instead of standard 7–10. */
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice + productionFee
@@ -426,14 +421,22 @@ export function CheckoutPage() {
                   {errors.state ? <p className="text-[0.7rem] text-destructive">{errors.state}</p> : null}
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="ck-notes" className="eyebrow">Delivery notes (optional)</Label>
+                  <Label htmlFor="ck-notes" className="eyebrow">
+                    Delivery notes <span className="font-normal normal-case tracking-normal text-muted-foreground/70">· optional</span>
+                  </Label>
+                  <p className="text-[0.68rem] leading-relaxed text-muted-foreground">
+                    Anything the courier or atelier should know — a gate code, preferred delivery
+                    hours, a gift note. The studio sees this with your order, and it appears on
+                    your receipt.
+                  </p>
                   <Textarea
                     id="ck-notes"
-                    rows={2}
+                    rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Gate code, preferred hours, gift note…"
-                    className="border-line-strong"
+                    maxLength={500}
+                    placeholder="e.g. Call on arrival — gate 2, deliver after 4pm weekdays. This is a gift, please omit the invoice."
+                    className="min-h-[88px] resize-y border-line-strong bg-background text-sm leading-relaxed"
                   />
                 </div>
               </div>
@@ -450,11 +453,6 @@ export function CheckoutPage() {
                   const m = SHIPPING_METHODS[key]
                   const enabled = methodEnabled(key)
                   const note = disabledNote(key)
-                  // A shipping promo waives EVERY method (mirrors the server rule);
-                  // the ₦150k threshold only unlocks nationwide. Disabled cards stay
-                  // priced but never claim the complimentary unlock.
-                  const methodFree =
-                    enabled && (stackFreeShipping || (key === 'nationwide' && subtotal >= FREE_SHIPPING_THRESHOLD))
                   return (
                     <Label
                       key={key}
@@ -474,9 +472,7 @@ export function CheckoutPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium">{m.label}</span>
-                          <span className={cn('font-mono text-sm tabular-nums', methodFree && 'text-espresso')}>
-                            {methodFree ? 'Complimentary' : formatNaira(m.price)}
-                          </span>
+                          <span className="font-mono text-sm tabular-nums">{formatNaira(m.price)}</span>
                         </div>
                         <p className="mt-1 text-[0.72rem] text-muted-foreground">
                           {key === 'international'
@@ -490,13 +486,6 @@ export function CheckoutPage() {
                         ) : null}
                         {note ? (
                           <p className="mt-1 text-[0.7rem] font-medium text-foreground">{note}</p>
-                        ) : null}
-                        {methodFree ? (
-                          <p className="mt-1 text-[0.66rem] uppercase tracking-[0.14em] text-espresso">
-                            {stackFreeShipping
-                              ? 'Unlocked — your code covers delivery'
-                              : 'Unlocked — orders over ₦150,000'}
-                          </p>
                         ) : null}
                       </div>
                     </Label>
@@ -768,21 +757,9 @@ export function CheckoutPage() {
                         <dd className="font-mono tabular-nums">−{formatNaira(p.discount)}</dd>
                       </div>
                     ))}
-                  {promos
-                    .filter((p) => p.freeShipping)
-                    .map((p) => (
-                      <div key={`ship-${p.code}`} className="flex justify-between text-espresso">
-                        <dt className="flex items-center gap-1.5">
-                          <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
-                          {p.code}
-                        </dt>
-                        <dd>Complimentary</dd>
-                      </div>
-                    ))}
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">
                       {SHIPPING_METHODS[shipping].label}
-                      {shippingPrice === 0 ? ' — complimentary' : ''}
                     </dt>
                     <dd className="font-mono tabular-nums">{formatNaira(shippingPrice)}</dd>
                   </div>
