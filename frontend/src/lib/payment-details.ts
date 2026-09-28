@@ -1,0 +1,36 @@
+/**
+ * Studio bank details for direct international transfers.
+ *
+ * The owner fills this in ONCE and every international customer sees it at
+ * checkout (Pay on confirmation is the international rail while cards are
+ * coming soon) and on pending orders. Keep it null to hide the block — an
+ * empty template renders nothing rather than placeholder banking details.
+ */
+export interface ForeignAccountDetails {
+  /** Receiving bank, e.g. 'Wise — TransferWise Ltd'. */
+  bankName: string
+  /** Exact account name the transfer must address. */
+  accountName: string
+  /** Account number (or IBAN — use the iban field when separate). */
+  accountNumber: string
+  /** SWIFT/BIC code. */
+  swift: string
+  /** Transfer currency the account settles in, e.g. 'USD'. */
+  currency: string
+  /** Optional IBAN, when the account number is not already one. */
+  iban?: string
+  /** Optional extra line, e.g. 'Reference your order number'. */
+  note?: string
+}
+
+// ── Fill in the studio's real details and the block goes live everywhere ──
+export const FOREIGN_ACCOUNT: ForeignAccountDetails | null = null
+// Example:
+// export const FOREIGN_ACCOUNT: ForeignAccountDetails | null = {
+//   bankName: 'Guaranty Trust Bank — Domiciliary',
+//   accountName: 'Style Sence by SKR',
+//   accountNumber: '0123456789',
+//   swift: 'GTBINGLA',
+//   currency: 'USD',
+//   note: 'Reference your order number as the transfer narration.',
+// }

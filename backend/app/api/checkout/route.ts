@@ -11,19 +11,22 @@ import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured 
  * POST /api/checkout
  * Re-checks stock, atomically decrements it, snapshots order items
  * (incl. Round-13 made-to-order measurements + per-item tailoring notes),
- * creates a PAID order (dev placeholder payment), clears the cart.
+ * creates a PENDING_PAYMENT order, clears the cart.
  * Round 13: delivery tiers (local / nationwide / international) with a country
  * field, a production timeline (standard 7–10 · express 2–3 working days,
- * fee = dev placeholder), and a mandatory pre-production confirmation.
+ * express surcharge arranged by the studio — never charged here), and a
+ * mandatory pre-production confirmation.
  * Optional `promoCodes` (up to 2 — one money-saving + one shipping, both
  * stackable) is validated, applied and usage-incremented per code.
  * → 201 `{ order: { orderNumber, total, discount } }`.
  */
 
+/** Flat delivery rates — mirrored in frontend/src/lib/types.ts
+ *  (SHIPPING_METHODS). Change both together. */
 const SHIPPING_RATES: Record<'local' | 'nationwide' | 'international', number> = {
   local: 2500,
   nationwide: 3500,
-  international: 25000, // dev placeholder — live international rates pending
+  international: 25000,
 }
 
 /** Complimentary nationwide shipping on merchandise subtotals at/above this value. */
@@ -98,7 +101,8 @@ export async function POST(req: Request) {
   // everything (also waives international).
   const thresholdFree = subtotal >= FREE_SHIPPING_THRESHOLD && input.shippingMethod === 'nationwide'
   const shipping = freeShipping || thresholdFree ? 0 : SHIPPING_RATES[input.shippingMethod]
-  // Round 13 production timeline — express is a paid add-on (fee is a dev placeholder).
+  // Round 13 production timeline — express is contact-priced (surcharge
+  // arranged by the studio after ordering; never charged here).
   const productionTier = input.productionTier ?? 'standard'
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal - discount + shipping + productionFee

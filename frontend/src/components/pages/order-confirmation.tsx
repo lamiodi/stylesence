@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { ProductImage } from '@/components/site/price'
 import { Reveal } from '@/components/site/reveal'
 import { PRODUCTION_TIERS, formatMeasurements, shippingLabel, type OrderView } from '@/lib/types'
+import { isPaystackCountry } from '@/lib/geo'
+import { ForeignTransferBlock } from '@/components/site/foreign-transfer'
 
 const STEPS = [
   { key: 'PAID', label: 'Order placed', icon: Check },
@@ -209,6 +211,11 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
                 Confirm on WhatsApp (+234 816 302 2233)
               </a>
             </div>
+            {!isPaystackCountry(order.country) ? (
+              <div className="mt-4 border border-line bg-card p-5 text-left">
+                <ForeignTransferBlock />
+              </div>
+            ) : null}
           </Reveal>
         ) : null}
 

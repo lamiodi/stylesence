@@ -1002,8 +1002,8 @@ function ProductInner({ product }: { product: ProductDetail }) {
               <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
                 Every piece is made to order — standard production{' '}
                 <span className="font-mono tabular-nums">7–10</span> working days · express{' '}
-                <span className="font-mono tabular-nums">2–3</span> working days (add-on fee at
-                checkout).
+                <span className="font-mono tabular-nums">2–3</span> working days (costs extra —
+                the studio will contact you).
               </p>
               <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
                 Local <span className="font-mono tabular-nums">₦2,500</span> · Lagos 1–2 days ·

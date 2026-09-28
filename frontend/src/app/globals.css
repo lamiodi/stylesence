@@ -235,6 +235,27 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+  /* Themed page scrollbar — the main vertical scrollbar matches the UI
+   * (resolves the theme vars, so it follows light/dark automatically). */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) var(--background);
+  }
+  html::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  html::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  html::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
+    border: 3px solid var(--background);
+  }
+  html::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
   /* Elegant thin scrollbar for long lists */
   .scroll-elegant {
     scrollbar-width: thin;

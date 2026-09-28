@@ -21,6 +21,7 @@ import { usePromoStore } from '@/lib/store/promo'
 import { PromoInput, usePromoValidation } from '@/components/site/promo-box'
 import { FREE_SHIPPING_THRESHOLD } from '@/components/site/shipping-meter'
 import { PaystackMark } from '@/components/site/paystack-mark'
+import { ForeignTransferBlock } from '@/components/site/foreign-transfer'
 import {
   PRODUCTION_TIERS,
   SHIPPING_METHODS,
@@ -534,8 +535,10 @@ export function CheckoutPage() {
                       <div className="flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium">{t.label}</span>
-                          {t.fee > 0 ? (
-                            <span className="font-mono text-sm tabular-nums">+{formatNaira(t.fee)}</span>
+                          {key === 'express' ? (
+                            <span className="text-[0.72rem] uppercase tracking-[0.12em] text-muted-foreground">
+                              Costs extra
+                            </span>
                           ) : (
                             <span className="text-[0.8rem] text-muted-foreground">Included</span>
                           )}
@@ -548,7 +551,9 @@ export function CheckoutPage() {
               </RadioGroup>
               <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
                 Express moves your piece to the front of the cutting queue — production
-                within 2–3 working days instead of the standard 7–10.
+                within 2–3 working days instead of the standard 7–10. The express
+                surcharge is arranged by the studio — we will contact you after
+                ordering.
               </p>
             </section>
 
@@ -670,11 +675,15 @@ export function CheckoutPage() {
                     </p>
                   ) : (
                     <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
-                      Card payments via Stripe are coming soon — for now the studio sends payment details with your
-                      confirmation.{' '}
+                      Card payments via Stripe are coming soon.{' '}
                       <span className="font-medium text-foreground">Production begins the moment payment lands.</span>
                     </p>
                   )}
+                  {!isPaystackCountry(country) ? (
+                    <div className="mt-3 border-t border-espresso/20 pt-3">
+                      <ForeignTransferBlock compact />
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="mt-4 border border-espresso/30 bg-[color-mix(in_oklch,var(--espresso)_5%,transparent)] p-5">
