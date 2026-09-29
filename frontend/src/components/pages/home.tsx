@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useReducedMotion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, ArrowUpRight, Clock3 } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Clock3 } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { Reveal } from '@/components/site/reveal'
 import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card'
+import { CoverflowCarousel } from '@/components/ui/coverflow-carousel'
 import { ProductImage } from '@/components/site/price'
 import { formatDate } from '@/lib/money'
 import { useMoney } from '@/lib/store/currency'
@@ -30,6 +31,20 @@ async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) throw new Error('Request failed')
   return res.json()
+}
+
+/**
+ * Coverflow cards are plain <img> tags, so a video asset (the Àrẹ̀wà Set's
+ * primary is an .mp4) has to become its first-frame still — the same
+ * so_1,f_jpg Cloudinary recipe the hero poster uses.
+ */
+function slideImage(p: { primaryImage: string | null; secondaryImage: string | null }): string | null {
+  const src = p.primaryImage ?? p.secondaryImage
+  if (!src) return null
+  if (!/\.(mp4|webm)(\?|$)/i.test(src)) return src
+  return src
+    .replace('/upload/', '/upload/so_1,q_auto,f_jpg/')
+    .replace(/\.(mp4|webm)(\?|$)/i, '.jpg')
 }
 
 /** Loading placeholder for an editorial look (image + piece rows). */
@@ -88,7 +103,9 @@ export function HomePage() {
 
   const { data: newArrivals, isLoading: loadingNew } = useQuery({
     queryKey: ['home', 'newest'],
-    queryFn: () => fetchJson<ProductsResponse>('/api/products?sort=newest&perPage=8'),
+    // A fuller ring reads better in the coverflow — 12 pieces give the
+    // receding rake something to trail off into.
+    queryFn: () => fetchJson<ProductsResponse>('/api/products?sort=newest&perPage=12'),
   })
   const { data: bestsellers, isLoading: loadingBest } = useQuery({
     queryKey: ['home', 'bestsellers'],
@@ -114,40 +131,6 @@ export function HomePage() {
   const categories = (catsData?.categories ?? []).filter((c) => c.productCount > 0)
   const posts = journalData?.posts ?? []
   const looks = looksData?.looks ?? []
-
-  // New-arrivals rail: track the scroll edges so the desktop arrows can
-  // dim themselves at either end (and vanish entirely when it fits).
-  const railRef = useRef<HTMLDivElement>(null)
-  const [railEdges, setRailEdges] = useState({ prev: false, next: false })
-
-  const measureRail = useCallback(() => {
-    const el = railRef.current
-    if (!el) return
-    const max = el.scrollWidth - el.clientWidth
-    setRailEdges({ prev: el.scrollLeft > 8, next: el.scrollLeft < max - 8 })
-  }, [])
-
-  useEffect(() => {
-    const el = railRef.current
-    if (!el) return
-    // measured post-layout via rAF so data/viewport changes settle first
-    const raf = requestAnimationFrame(measureRail)
-    el.addEventListener('scroll', measureRail, { passive: true })
-    window.addEventListener('resize', measureRail)
-    return () => {
-      cancelAnimationFrame(raf)
-      el.removeEventListener('scroll', measureRail)
-      window.removeEventListener('resize', measureRail)
-    }
-  }, [measureRail, loadingNew, newArrivals])
-
-  const scrollRail = (dir: 1 | -1) => {
-    const el = railRef.current
-    if (!el) return
-    const card = el.firstElementChild as HTMLElement | null
-    const step = card ? card.offsetWidth + 24 : el.clientWidth * 0.8
-    el.scrollBy({ left: dir * step, behavior: prefersReducedMotion ? 'auto' : 'smooth' })
-  }
 
   return (
     <div>
@@ -215,7 +198,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ————— NEW ARRIVALS — full-bleed snap rail ————— */}
+      {/* ————— NEW ARRIVALS — coverflow ring ————— */}
       <section className="py-16 sm:py-20" aria-label="New arrivals">
         <div className="container-site">
           <Reveal>
@@ -226,85 +209,42 @@ export function HomePage() {
                   New arrivals
                 </h2>
               </div>
-              <div className="flex items-center gap-5">
-                <div className="hidden items-center gap-2 lg:flex">
-                  <button
-                    type="button"
-                    onClick={() => scrollRail(-1)}
-                    disabled={!railEdges.prev}
-                    aria-label="Scroll new arrivals back"
-                    className="flex h-10 w-10 items-center justify-center border border-line text-muted-foreground transition-colors hover:border-espresso hover:text-espresso focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-25"
-                  >
-                    <ArrowLeft className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollRail(1)}
-                    disabled={!railEdges.next}
-                    aria-label="Scroll new arrivals forward"
-                    className="flex h-10 w-10 items-center justify-center border border-line text-muted-foreground transition-colors hover:border-espresso hover:text-espresso focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-25"
-                  >
-                    <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                  </button>
-                </div>
-                <Link
-                  to="/shop"
-                  className="eyebrow-ink group hidden shrink-0 items-center gap-1.5 border-b border-foreground pb-1 transition-colors hover:border-espresso hover:text-espresso sm:flex"
-                >
-                  Shop all pieces
-                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} aria-hidden />
-                </Link>
-              </div>
+              <Link
+                to="/shop"
+                className="eyebrow-ink group flex shrink-0 items-center gap-1.5 border-b border-foreground pb-1 transition-colors hover:border-espresso hover:text-espresso"
+              >
+                Shop all pieces
+                <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} aria-hidden />
+              </Link>
             </div>
           </Reveal>
         </div>
 
         {/*
-          The rail bleeds to the right viewport edge — the next card is always
-          half-cut, which is the affordance to keep scrolling. Inline-start
-          padding mirrors container-site (px-4/6/10 centered on 1440px) so the
-          first card lands exactly on the container's content edge at any
-          viewport; percentages, not vw, so the OS scrollbar never skews it.
+          The ring runs full-bleed — the raked side cards lean out past the
+          container edge, so the fold reads as one continuous strip of cloth.
         */}
-        <Reveal delay={0.1} className="mt-8">
-          <div
-            ref={railRef}
-            tabIndex={0}
-            role="region"
-            aria-label="New arrivals pieces — scrollable list"
-            className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto md:gap-6
-                       ps-[max(1rem,calc(50%_-_720px))] pe-4
-                       sm:ps-[max(1.5rem,calc(50%_-_720px))] sm:pe-6
-                       lg:ps-[max(2.5rem,calc(50%_-_720px))] lg:pe-10
-                       scroll-ps-[max(1rem,calc(50%_-_720px))]
-                       sm:scroll-ps-[max(1.5rem,calc(50%_-_720px))]
-                       lg:scroll-ps-[max(2.5rem,calc(50%_-_720px))]
-                       focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            {loadingNew
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="w-[72vw] min-[540px]:w-[42vw] md:w-[32vw] lg:w-[27vw] xl:w-[21vw] 2xl:w-[19vw] max-w-[21rem] shrink-0 snap-start">
-                    <ProductCardSkeleton />
-                  </div>
-                ))
-              : (newArrivals?.products ?? []).map((p, i) => (
-                  <div key={p.id} className="w-[72vw] min-[540px]:w-[42vw] md:w-[32vw] lg:w-[27vw] xl:w-[21vw] 2xl:w-[19vw] max-w-[21rem] shrink-0 snap-start">
-                    <ProductCard product={p} eager index={i} />
-                  </div>
-                ))}
-          </div>
+        <Reveal delay={0.1} className="mt-6">
+          {loadingNew ? (
+            <div className="container-site" aria-hidden>
+              <div className="h-72 animate-pulse bg-secondary/60 sm:h-96" />
+            </div>
+          ) : (
+            <CoverflowCarousel
+              label="New arrivals pieces"
+              slides={(newArrivals?.products ?? [])
+                .map((p) => {
+                  const src = slideImage(p)
+                  return src
+                    ? { src, alt: p.name, title: p.name, subtitle: format(p.price), href: `/product/${p.slug}` }
+                    : null
+                })
+                .filter((s): s is NonNullable<typeof s> => s !== null)}
+              showCaption
+              showNavigation
+            />
+          )}
         </Reveal>
-
-        <div className="container-site">
-          <div className="mt-8 flex justify-center sm:hidden">
-            <Link
-              to="/shop"
-              className="eyebrow-ink flex items-center gap-1.5 border-b border-foreground pb-1"
-            >
-              Shop all pieces <ArrowRight className="h-3 w-3" aria-hidden />
-            </Link>
-          </div>
-        </div>
       </section>
 
       {/* ————— CATEGORIES ————— */}
