@@ -11,13 +11,14 @@ import { Reveal } from '@/components/site/reveal'
 import { useWishlist } from '@/lib/store/wishlist'
 import { useCustomer } from '@/hooks/use-customer'
 import { useMounted } from '@/hooks/use-mounted'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import type { ProductsResponse } from '@/lib/types'
 
 export function WishlistPage() {
   const items = useWishlist((s) => s.items)
   const remove = useWishlist((s) => s.remove)
   const clear = useWishlist((s) => s.clear)
+  const { format } = useMoney()
   const mounted = useMounted()
   const { data: customer } = useCustomer()
   useEffect(() => {
@@ -108,7 +109,7 @@ export function WishlistPage() {
                 type="button"
                 onClick={() => {
                   remove(item.slug)
-                  toast(`${item.name} — removed`, { description: formatNaira(item.price) })
+                  toast(`${item.name} — removed`, { description: format(item.price) })
                 }}
                 className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center bg-background/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive"
                 aria-label={`Remove ${item.name} from wishlist`}

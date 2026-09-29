@@ -8,7 +8,8 @@ import { Link, navigate } from '@/lib/router'
 import { Reveal } from '@/components/site/reveal'
 import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card'
 import { ProductImage } from '@/components/site/price'
-import { formatDate, formatNaira } from '@/lib/money'
+import { formatDate } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import { WelcomeModal } from '@/components/site/welcome-modal'
 import { HowItWorksModal } from '@/components/site/how-it-works-modal'
@@ -79,6 +80,7 @@ function SectionHead({
 
 export function HomePage() {
   const prefersReducedMotion = useReducedMotion()
+  const { format } = useMoney()
 
   useEffect(() => {
     document.title = 'Style Sence by SKR — Modern Womenswear'
@@ -464,7 +466,7 @@ export function HomePage() {
                                 {piece.name}
                               </span>
                               <span className="shrink-0 font-mono text-[0.72rem] text-muted-foreground tabular-nums">
-                                {formatNaira(piece.price)}
+                                {format(piece.price)}
                               </span>
                               <ArrowUpRight
                                 className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-colors group-hover/row:text-espresso"
@@ -477,7 +479,7 @@ export function HomePage() {
                         <li className="flex items-baseline justify-between border-t border-line pt-3" aria-label="Look total">
                           <span className="eyebrow !text-[0.58rem]">The look — {look.pieces.length} pieces</span>
                           <span className="font-mono text-[0.78rem] tracking-tight text-foreground tabular-nums">
-                            {formatNaira(look.pieces.reduce((sum, p) => sum + p.price, 0))}
+                            {format(look.pieces.reduce((sum, p) => sum + p.price, 0))}
                           </span>
                         </li>
                       </ul>

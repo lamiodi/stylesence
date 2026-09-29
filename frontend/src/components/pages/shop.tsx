@@ -5,7 +5,7 @@ import { useQuery, useQueries, keepPreviousData } from '@tanstack/react-query'
 import { SlidersHorizontal, X, Search, Truck, Check, Rows3, Columns2 } from 'lucide-react'
 import { useRoute, navigate, Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -83,6 +83,7 @@ function FilterRail({
 }) {
   const hasFilters = !!(params.size || params.color || params.minPrice || params.maxPrice || params.inStock)
   const priceSteps = [50000, 100000, 150000, 200000, 250000]
+  const { format } = useMoney()
 
   return (
     <div>
@@ -234,7 +235,7 @@ function FilterRail({
                 <SelectItem value="_any">Min — any</SelectItem>
                 {priceSteps.map((p) => (
                   <SelectItem key={p} value={String(p)}>
-                    {formatNaira(p)}+
+                    {format(p)}+
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -251,7 +252,7 @@ function FilterRail({
                 <SelectItem value="_any">Max — any</SelectItem>
                 {priceSteps.map((p) => (
                   <SelectItem key={p} value={String(p)}>
-                    under {formatNaira(p)}
+                    under {format(p)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -275,6 +276,7 @@ function FilterRail({
 export function ShopPage() {
   const route = useRoute()
   const page = Math.max(1, Number(route.query.get('page') ?? '1') || 1)
+  const { format } = useMoney()
 
   const params = useMemo(() => {
     const q = route.query
@@ -377,12 +379,12 @@ export function ShopPage() {
     activeChips.push({ label: params.color, clear: () => setParam({ color: null }) })
   if (params.minPrice)
     activeChips.push({
-      label: `${formatNaira(Number(params.minPrice))}+`,
+      label: `${format(Number(params.minPrice))}+`,
       clear: () => setParam({ minPrice: null }),
     })
   if (params.maxPrice)
     activeChips.push({
-      label: `Under ${formatNaira(Number(params.maxPrice))}`,
+      label: `Under ${format(Number(params.maxPrice))}`,
       clear: () => setParam({ maxPrice: null }),
     })
 

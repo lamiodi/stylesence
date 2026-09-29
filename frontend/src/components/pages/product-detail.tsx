@@ -379,8 +379,6 @@ export function ProductDetailPage({ slug }: { slug: string }) {
   })
 
   const product = data?.product
-  const { format } = useMoney()
-  const deliveryTiers = useDeliveryTiers()
 
   useEffect(() => {
     if (product) document.title = `${product.name} — Style Sence`
@@ -429,6 +427,8 @@ export function ProductDetailPage({ slug }: { slug: string }) {
 }
 
 function ProductInner({ product }: { product: ProductDetail }) {
+  const { format, currency } = useMoney()
+  const deliveryTiers = useDeliveryTiers()
   const [color, setColor] = useState<string | null>(product.variants[0]?.color ?? null)
   // One-size products (single OR multi-colour) start with the size pre-selected —
   // the size rail is hidden for them, so the default colour must land on a variant.

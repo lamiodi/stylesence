@@ -14,7 +14,7 @@ import { useEffect, type ReactNode } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { Link, navigate, useRoute } from '@/lib/router'
 import { cn } from '@/lib/utils'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { DELIVERY_ZONES } from '@/lib/shipping'
 import { Reveal } from '@/components/site/reveal'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -185,22 +185,29 @@ const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
   },
   {
     q: 'Do you ship internationally?',
-    a: (
-      <div className="space-y-3">
-        <p>
-          Yes — we deliver worldwide from the Lagos atelier. A flat rate by destination:
-          ₦35,000 within West Africa, up to ₦85,000 for Asia, Oceania and the Americas,
-          arriving in 7–20 days. Within Nigeria, delivery is a flat fee by state as above.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Import duties and taxes, where they apply, are paid by the recipient. Ordering
-          from somewhere not listed at checkout? WhatsApp the studio on +234 816 302 2233
-          and we will arrange it in one conversation.
-        </p>
-      </div>
-    ),
+    a: <IntlShippingAnswer />,
   },
 ]
+
+/** FAQ answer whose rates render in the visitor's display currency (₦ canonical). */
+function IntlShippingAnswer() {
+  const { format } = useMoney()
+  return (
+    <div className="space-y-3">
+      <p>
+        Yes — we deliver worldwide from the Lagos atelier. A flat rate by destination:
+        {format(35000)} within West Africa, up to {format(85000)} for Asia, Oceania and
+        the Americas, arriving in 7–20 days. Within Nigeria, delivery is a flat fee by
+        state as above.
+      </p>
+      <p className="text-sm text-muted-foreground">
+        Import duties and taxes, where they apply, are paid by the recipient. Ordering
+        from somewhere not listed at checkout? WhatsApp the studio on +234 816 302 2233
+        and we will arrange it in one conversation.
+      </p>
+    </div>
+  )
+}
 
 /* ————————————————— pieces ————————————————— */
 
@@ -272,6 +279,7 @@ function Section({
 export function HelpPage() {
   const route = useRoute()
   const topic = asTopic(route.query.get('topic'))
+  const { format } = useMoney()
 
   useEffect(() => {
     document.title = 'Client Care — Style Sence'
@@ -366,7 +374,7 @@ export function HelpPage() {
                   <TableRow key={r.method} className="border-line hover:bg-transparent">
                     <TableCell className="px-5 py-4 font-medium">{r.method}</TableCell>
                     <TableCell className="px-5 py-4 font-mono text-[0.85rem] tabular-nums text-espresso">
-                      {r.from ? 'from ' : ''}{formatNaira(r.fee)}
+                      {r.from ? 'from ' : ''}{format(r.fee)}
                     </TableCell>
                     <TableCell className="px-5 py-4">{r.eta}</TableCell>
                     <TableCell className="px-5 py-4 text-muted-foreground">{r.note}</TableCell>
