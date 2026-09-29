@@ -134,6 +134,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Return visits in the same tab skip the entrance overlay. Decided
+            pre-paint, before hydration — otherwise slow phones render the
+            overlay for a few hundred ms and then yank it away. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(sessionStorage.getItem('ss-entrance')==='1')document.documentElement.classList.add('ss-entrance-done')}catch(e){}",
+          }}
+        />
         {/* CDN warm-up + hero LCP — the storefront's imagery lives on Cloudinary */}
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
         <link rel="preload" as="image" fetchPriority="high" href={HERO_POSTER_URL} />

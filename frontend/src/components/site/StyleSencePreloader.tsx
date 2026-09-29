@@ -29,11 +29,27 @@ export default function StyleSencePreloader({
   const [visible, setVisible] = useState(() => !ready);
   const [expired, setExpired] = useState(false);
   const [minElapsed, setMinElapsed] = useState(false);
+  /** Flips once the signature bitmap is decoded — the reveal never plays
+   * against an empty stage on a cold mobile connection. Fails open. */
+  const [assetsIn, setAssetsIn] = useState(false);
+  const logoRef = useRef<HTMLImageElement | null>(null);
   const leaving = (ready || expired) && minElapsed;
   const exited = useRef(false);
   const onExitRef = useRef(onExit);
 
   useEffect(() => { onExitRef.current = onExit; }, [onExit]);
+
+  // A cached logo can finish decoding between the server paint and this
+  // effect — the onLoad handler would never see it, so check .complete too.
+  useEffect(() => {
+    if (assetsIn) return;
+    if (logoRef.current?.complete && logoRef.current.naturalWidth > 0) {
+      setAssetsIn(true);
+      return;
+    }
+    const timeout = window.setTimeout(() => setAssetsIn(true), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [assetsIn]);
 
   useEffect(() => {
     if (!visible) return;
@@ -72,7 +88,7 @@ export default function StyleSencePreloader({
 
   return (
     <div
-      className={`ss-loader${leaving ? ' ss-loader--leaving' : ''}`}
+      className={`ss-loader${assetsIn ? ' ss-loader--in' : ''}${leaving ? ' ss-loader--leaving' : ''}`}
       role="status"
       aria-live="polite"
       aria-label="Loading Style Sence"
@@ -80,6 +96,7 @@ export default function StyleSencePreloader({
       <div className="ss-loader__content" aria-hidden="true">
         <div className="ss-loader__signature">
           <img
+            ref={logoRef}
             className="ss-loader__logo"
             src={logoSrc}
             alt=""
@@ -87,6 +104,8 @@ export default function StyleSencePreloader({
             height={240}
             decoding="async"
             fetchPriority="high"
+            onLoad={() => setAssetsIn(true)}
+            onError={() => setAssetsIn(true)}
           />
         </div>
         <span className="ss-loader__caption">MADE TO ORDER IN LAGOS</span>

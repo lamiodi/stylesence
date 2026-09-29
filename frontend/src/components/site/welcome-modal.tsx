@@ -118,13 +118,15 @@ export function WelcomeModal() {
         <div className="px-8 pt-10 pb-8 sm:px-10">
           <p className="eyebrow">The house list</p>
           <DialogTitle className="mt-3 font-display text-3xl font-light leading-tight tracking-tight text-balance">
-            Ten percent, with our compliments.
+            Take 10% off your first order.
           </DialogTitle>
           <DialogDescription asChild>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              First look at new pieces, atelier notes and private sales — plus{' '}
+              Join the house list and we&apos;ll send you code{' '}
               <span className="font-mono text-[0.72rem] tracking-[0.14em] text-espresso">ATELIER10</span>{' '}
-              for your first order.
+              — 10% off your first order, any piece, cut to your measure. You&apos;ll
+              also get first look at new collections, atelier notes and private
+              sales, before anyone else.
             </p>
           </DialogDescription>
           {international ? (
@@ -139,7 +141,9 @@ export function WelcomeModal() {
               <div>
                 <p className="text-sm font-medium">Welcome to the house.</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Your code is on its way — check your inbox (and the studio&apos;s occasional letters).
+                  Code <span className="font-mono text-[0.72rem] tracking-[0.14em] text-espresso">ATELIER10</span>{' '}
+                  is on its way — check your inbox, then apply it at the bag for
+                  10% off your first order.
                 </p>
               </div>
             </div>

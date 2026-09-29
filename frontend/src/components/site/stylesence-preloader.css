@@ -11,9 +11,14 @@
   background: var(--ss-paper);
   color: var(--ss-ink);
   opacity: 1;
+  /* Soft rise over whatever the first paint holds — the overlay never snaps. */
+  animation: ss-curtain 280ms ease-out;
   transition: opacity 520ms cubic-bezier(.22, 1, .36, 1), visibility 520ms;
 }
 .ss-loader, .ss-loader * { box-sizing: border-box; }
+/* Same-tab return visits: decided pre-paint by the inline head script, so
+   the overlay is never rendered only to be yanked after hydration. */
+html.ss-entrance-done .ss-loader { display: none; }
 .ss-loader__content {
   width: min(72vw, 328px);
   display: flex;
@@ -22,8 +27,12 @@
   transform: translateY(-10px);
   transition: transform 520ms cubic-bezier(.22, 1, .36, 1);
 }
-.ss-loader__signature {
-  width: 100%;
+/* Only the signature reveal waits for its bitmap — on a cold mobile
+   connection the gesture must not play against an empty stage and let the
+   logo pop in mid-sweep. Caption, rule and foot are plain CSS so the stage
+   is composed even before hydration attaches. */
+.ss-loader__signature { opacity: 0; }
+.ss-loader--in .ss-loader__signature {
   animation: ss-signature 1250ms cubic-bezier(.22, .72, .18, 1) both;
 }
 .ss-loader__logo {
@@ -77,11 +86,16 @@
   animation: ss-caption 1000ms 100ms both;
 }
 .ss-loader--leaving {
+  animation: none;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
 .ss-loader--leaving .ss-loader__content { transform: translateY(-20px); }
+@keyframes ss-curtain {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @keyframes ss-signature {
   from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateY(8px); }
   20% { opacity: 1; }
@@ -97,12 +111,13 @@
   100% { transform: translateX(105%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ss-loader { transition-duration: 160ms; }
+  .ss-loader { animation: none; transition-duration: 160ms; }
   .ss-loader__content,
   .ss-loader--leaving .ss-loader__content { transform: none; transition: none; }
-  .ss-loader__signature,
+  .ss-loader .ss-loader__signature,
+  .ss-loader--in .ss-loader__signature { animation: none; opacity: 1; clip-path: none; transform: none; }
   .ss-loader__caption,
   .ss-loader__line,
-  .ss-loader__foot { animation: none; opacity: 1; clip-path: none; transform: none; }
+  .ss-loader__foot { animation: none; opacity: 1; transform: none; }
   .ss-loader__line > span { animation: none; transform: none; opacity: .5; }
 }

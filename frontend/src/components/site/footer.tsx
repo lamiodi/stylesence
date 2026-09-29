@@ -178,11 +178,8 @@ function FinePrint() {
             The studio
           </dt>
           <dd className="mt-2.5 text-[0.72rem] leading-relaxed text-muted-foreground">
-            <span className="block">Tue – Sat · 10:00 – 18:00 WAT</span>
-            <span className="mt-1 block text-[0.64rem] text-muted-foreground/70">
-              Private fittings by appointment — or order online from anywhere.
-              We deliver worldwide.
-            </span>
+            Private fittings by appointment — or order online from anywhere.
+            We deliver worldwide.
           </dd>
         </div>
         <div>
@@ -288,9 +285,6 @@ export function Footer() {
           <div>
             <p className="eyebrow mb-4">Visit</p>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Tue – Sat · 10:00 – 18:00 WAT
-            </p>
-            <p className="mt-2 text-[0.72rem] leading-relaxed text-muted-foreground/80">
               Private fittings by appointment — or order online from anywhere.
               We deliver worldwide.
             </p>
