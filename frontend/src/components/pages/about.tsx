@@ -41,7 +41,7 @@ export function AboutPage() {
           <p className="mt-6 text-[0.98rem] leading-relaxed text-muted-foreground">
             Founded by SKR in Lagos, the house makes made-to-order womenswear —
             polka-dot silk coordinates, fluid draping gowns and hand-woven Aso Oke —
-            cut to your measurements in small batches and delivered nationwide.
+            cut to your measurements in small batches and delivered worldwide.
           </p>
           <p className="mt-4 text-[0.98rem] leading-relaxed text-muted-foreground">
             We call it sence — the Nigerian word for taste, for judgement, for knowing

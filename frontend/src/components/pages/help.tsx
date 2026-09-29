@@ -183,10 +183,15 @@ const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
     q: 'Do you ship internationally?',
     a: (
       <div className="space-y-3">
-        <p>Today we ship nationwide within Nigeria only — Standard and Express, as above.</p>
+        <p>
+          Yes — we deliver worldwide from the Lagos atelier. A flat rate by destination:
+          ₦35,000 within West Africa, up to ₦85,000 for Asia, Oceania and the Americas,
+          arriving in 7–20 days. Within Nigeria, delivery is a flat fee by state as above.
+        </p>
         <p className="text-sm text-muted-foreground">
-          International delivery is in the works. If you are outside Nigeria, WhatsApp the
-          studio on +234 816 302 2233 and we will arrange shipping and a quote manually.
+          Import duties and taxes, where they apply, are paid by the recipient. Ordering
+          from somewhere not listed at checkout? WhatsApp the studio on +234 816 302 2233
+          and we will arrange it in one conversation.
         </p>
       </div>
     ),
@@ -548,7 +553,10 @@ export function HelpPage() {
                 <br />
                 Ikoyi, Lagos, Nigeria
               </address>
-              <p className="mt-3 text-sm text-muted-foreground">Walk-ins welcome during studio hours.</p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Private fittings by appointment — or order online from anywhere. We
+                deliver worldwide.
+              </p>
             </div>
           </Reveal>
           <Reveal delay={0.16} className="bg-background">

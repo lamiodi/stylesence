@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { OG_IMAGE, OG_IMAGE_ALT } from "@/lib/seo";
 import { HERO_POSTER_URL, SITE_URL } from "@/lib/site";
-
-/** Social preview — a real collection photo. */
-const OG_IMAGE =
-  "https://res.cloudinary.com/qaruxkhf/image/upload/w_1200,c_limit,ar_1.91,q_auto,f_jpg/v1790056402/stylesence/products/camille-duo-cafe.jpg";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -54,8 +51,8 @@ export const metadata: Metadata = {
       {
         url: OG_IMAGE,
         width: 1200,
-        height: 628,
-        alt: "Two models in Style Sence polka-dot silk sets",
+        height: 630,
+        alt: OG_IMAGE_ALT,
       },
     ],
   },
@@ -109,6 +106,7 @@ const JSON_LD = {
         "Made-to-order womenswear from Lagos — polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke, cut to your measurements.",
       currenciesAccepted: "NGN,USD,GBP,EUR",
       priceRange: "₦₦₦",
+      areaServed: "Worldwide",
       address: {
         "@type": "PostalAddress",
         streetAddress: "14A Awolowo Road, Ikoyi",

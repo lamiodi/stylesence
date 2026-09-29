@@ -26,6 +26,18 @@ import { useRecentlyViewed } from '@/lib/store/recently-viewed'
 import { useMounted } from '@/hooks/use-mounted'
 import { useCustomer } from '@/hooks/use-customer'
 import { MEASUREMENT_FIELDS, type CustomMeasurements, type MeasurementKey, type ProductDetail } from '@/lib/types'
+import { DELIVERY_ZONES } from '@/lib/shipping'
+
+/** Fee range across the zones of one method — from the reviewed table, never hand-copied. */
+const zoneFee = (method: 'local' | 'nationwide' | 'international') => {
+  const fees = DELIVERY_ZONES.filter((z) => z.method === method).map((z) => z.price)
+  const lo = Math.min(...fees)
+  const hi = Math.max(...fees)
+  return lo === hi ? formatNaira(lo) : `${formatNaira(lo)}–${formatNaira(hi)}`
+}
+
+/** Delivery tiers quoted on the PDP — matches checkout exactly. */
+const DELIVERY_TIERS = `Lagos ${zoneFee('local')} · 1–3 days · Nationwide ${zoneFee('nationwide')} by state · 2–7 days · International ${zoneFee('international')} by destination · 7–20 days`
 
 const SIZE_GUIDE = [
   ['XS', '32–34', '84', '66', '92'],
@@ -1008,9 +1020,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                 the studio will contact you).
               </p>
               <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
-                Local <span className="font-mono tabular-nums">₦2,500</span> · Lagos 1–2 days ·
-                Nationwide <span className="font-mono tabular-nums">₦3,500</span> · 3–5 days ·
-                International <span className="font-mono tabular-nums">₦25,000</span>
+                {DELIVERY_TIERS}
               </p>
             </div>
           </div>
@@ -1064,7 +1074,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                   <ul className="space-y-2.5 text-sm text-muted-foreground">
                     <li className="flex gap-2.5">
                       <Truck className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
-                      Local ₦2,500 — 1–2 days · Nationwide ₦3,500 — 3–5 days · International ₦25,000 — 7–14 days
+                      {DELIVERY_TIERS}
                     </li>
                     <li className="flex gap-2.5">
                       <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />

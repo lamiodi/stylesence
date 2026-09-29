@@ -151,7 +151,7 @@ export function HomePage() {
               </h1>
               <p className="mt-5 max-w-md text-[0.95rem] leading-relaxed text-primary-foreground/85">
                 Polka-dot silk coordinates, fluid Ariella gowns and hand-woven Aso Oke —
-                every piece cut to your measurements and delivered nationwide.
+                every piece cut to your measurements and delivered worldwide.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <button

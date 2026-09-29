@@ -7,6 +7,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { SpaShell } from '@/components/site/spa-shell'
+import { pageMetadata } from '@/lib/seo'
 
 /** Route segments the SPA knows; anything else is a 404. */
 const SEGMENTS = new Set([
@@ -19,31 +20,17 @@ const NOINDEX = new Set(['admin', 'account', 'order', 'checkout', 'cart', 'track
 
 const BACKEND = (process.env.BACKEND_URL || 'http://127.0.0.1:3001').replace(/\/+$/, '')
 
-async function productName(slug: string): Promise<string | null> {
+/** Product facts for social previews — memoized with the PDP's own fetch. */
+async function productSnapshot(slug: string): Promise<{ name?: string; image?: string | null } | null> {
   try {
     const res = await fetch(`${BACKEND}/api/products/${encodeURIComponent(slug)}`, {
       next: { revalidate: 3600 },
     })
     if (!res.ok) return null
-    const body = (await res.json()) as { product?: { name?: string } }
-    return body.product?.name ?? null
+    const body = (await res.json()) as { product?: { name?: string; primaryImage?: string | null } }
+    return { name: body.product?.name, image: body.product?.primaryImage ?? undefined }
   } catch {
     return null
-  }
-}
-
-function meta(
-  title: string,
-  description: string,
-  path: string,
-  noindex: boolean,
-): Metadata {
-  return {
-    title,
-    description,
-    alternates: { canonical: path },
-    openGraph: { url: path },
-    ...(noindex ? { robots: { index: false, follow: false } } : {}),
   }
 }
 
@@ -58,41 +45,45 @@ export async function generateMetadata({
   const noindex = s0 !== undefined && NOINDEX.has(s0)
 
   switch (s0) {
+    // The homepage sets no openGraph of its own — it inherits the root
+    // layout's complete brand block (image included) untouched.
     case undefined:
       return {
         description:
           'Made-to-order luxury womenswear from Lagos — polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke, cut to your measurements.',
         alternates: { canonical: '/' },
-        openGraph: { url: '/' },
       }
     case 'shop':
-      return meta('Shop the Collection', 'Ready-to-wear and made-to-order pieces — silk coordinates, gowns and hand-woven Aso Oke, cut to your measurements.', path, noindex)
+      return pageMetadata({ title: 'Shop the Collection', description: 'Ready-to-wear and made-to-order pieces — silk coordinates, gowns and hand-woven Aso Oke, cut to your measurements.', path, noindex })
     case 'product': {
-      if (!s1) return meta('Piece', 'Made-to-order luxury womenswear by Style Sence.', path, true)
-      const name = await productName(s1)
-      return meta(
-        name ?? 'Piece',
-        name
-          ? `${name} — made to order in Lagos, cut to your measurements and delivered nationwide.`
+      if (!s1) return pageMetadata({ title: 'Piece', description: 'Made-to-order luxury womenswear by Style Sence.', path, noindex: true })
+      const product = await productSnapshot(s1)
+      const name = product?.name
+      return pageMetadata({
+        title: name ?? 'Piece',
+        description: name
+          ? `${name} — made to order in Lagos, cut to your measurements and delivered worldwide.`
           : 'Made-to-order luxury womenswear by Style Sence.',
         path,
         noindex,
-      )
+        image: product?.image,
+        imageAlt: name ? `${name} by Style Sence` : undefined,
+      })
     }
     case 'wishlist':
-      return meta('Wishlist', 'Pieces saved for later.', path, true)
+      return pageMetadata({ title: 'Wishlist', description: 'Pieces saved for later.', path, noindex: true })
     case 'journal':
-      return meta(s1 ? 'Journal' : 'The Journal', 'Atelier notes, styling stories and craft from the Style Sence studio.', path, noindex)
+      return pageMetadata({ title: s1 ? 'Journal' : 'The Journal', description: 'Atelier notes, styling stories and craft from the Style Sence studio.', path, noindex })
     case 'about':
-      return meta('About Style Sence', 'The house, the atelier and the hands behind every made-to-order piece.', path, noindex)
+      return pageMetadata({ title: 'About Style Sence', description: 'The house, the atelier and the hands behind every made-to-order piece.', path, noindex })
     case 'help':
-      return meta('Client Care', 'Shipping, sizing, care and every answer in between.', path, noindex)
+      return pageMetadata({ title: 'Client Care', description: 'Shipping, sizing, care and every answer in between.', path, noindex })
     case 'track':
-      return meta('Track Your Order', 'Follow your order from the atelier to your door.', path, true)
+      return pageMetadata({ title: 'Track Your Order', description: 'Follow your order from the atelier to your door.', path, noindex: true })
     case 'account':
-      return meta('Your Account', 'Sign in or create your Style Sence account.', path, true)
+      return pageMetadata({ title: 'Your Account', description: 'Sign in or create your Style Sence account.', path, noindex: true })
     default:
-      return meta('Style Sence', 'Made-to-order luxury womenswear from Lagos.', path, true)
+      return pageMetadata({ title: 'Style Sence', description: 'Made-to-order luxury womenswear from Lagos.', path, noindex: true })
   }
 }
 

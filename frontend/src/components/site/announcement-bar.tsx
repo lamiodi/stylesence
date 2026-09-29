@@ -1,6 +1,6 @@
 const ITEMS = [
   'Express production — ready in 2–3 working days',
-  'Made to order in Lagos — delivered nationwide',
+  'Made to order in Lagos — delivered worldwide',
   'Polka-dot silk sets · fluid gowns · hand-woven Aso Oke',
   'Cut to your measurements — XS to XXL or bespoke',
 ]

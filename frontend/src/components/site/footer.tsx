@@ -177,7 +177,8 @@ function FinePrint() {
             14A Awolowo Road, Ikoyi, Lagos
             <span className="mt-1 block">Tue – Sat · 10:00 – 18:00 WAT</span>
             <span className="mt-1 block text-[0.64rem] text-muted-foreground/70">
-              Private fittings by appointment.
+              Private fittings by appointment — or order online from anywhere.
+              We deliver worldwide.
             </span>
           </dd>
         </div>
@@ -291,6 +292,10 @@ export function Footer() {
                 Tue – Sat · 10:00 – 18:00 WAT
               </span>
             </address>
+            <p className="mt-2 text-[0.72rem] leading-relaxed text-muted-foreground/80">
+              Private fittings by appointment — or order online from anywhere.
+              We deliver worldwide.
+            </p>
             <div className="mt-4 flex items-center gap-3">
               <a
                 href="https://wa.me/2348163022233"
@@ -323,7 +328,7 @@ export function Footer() {
             <span className="hidden h-3 w-px bg-line-strong sm:block" aria-hidden />
             <p className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground/80">
               <Check className="h-3 w-3 text-espresso" aria-hidden />
-              Made to order in Lagos · Delivered nationwide
+              Made to order in Lagos · Delivered worldwide
             </p>
           </div>
           <div className="flex items-center gap-5">
