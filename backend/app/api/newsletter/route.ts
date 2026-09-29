@@ -1,10 +1,15 @@
 import { db } from '@/lib/db'
-import { ok, readValidated } from '@/lib/api-helpers'
+import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { newsletterInput } from '@/lib/validators'
 import { sendWelcomeNewsletterEmail } from '@/lib/email'
+import { checkIpRateLimit, clientKey } from '@/lib/rate-limit'
 
 /** POST /api/newsletter — dedupe via upsert; always `{ ok: true }` for a valid email. */
 export async function POST(req: Request) {
+  if (!checkIpRateLimit(`newsletter:${clientKey(req)}`, 5, 5 * 60 * 1000)) {
+    return fail(429, 'Too many signups from this network — please try again in a few minutes.')
+  }
+
   const parsed = await readValidated(req, newsletterInput)
   if (!parsed.ok) return parsed.response
   const { email } = parsed.data

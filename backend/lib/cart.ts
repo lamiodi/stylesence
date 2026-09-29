@@ -118,6 +118,7 @@ export function setCartCookie(res: NextResponse, cookieId: string): void {
   res.cookies.set(CART_COOKIE, cookieId, {
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: CART_COOKIE_MAX_AGE,
     path: '/',
   })

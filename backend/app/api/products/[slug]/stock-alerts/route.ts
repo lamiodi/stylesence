@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { stockAlertInput } from '@/lib/validators'
+import { checkIpRateLimit, clientKey } from '@/lib/rate-limit'
 
 /**
  * POST /api/products/[slug]/stock-alerts — back-in-stock waitlist signup.
@@ -11,6 +12,10 @@ import { stockAlertInput } from '@/lib/validators'
  * 200 `{ ok: true, alreadyWaiting: true }` when already on the list.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+  if (!checkIpRateLimit(`stock-alert:${clientKey(req)}`, 5, 5 * 60 * 1000)) {
+    return fail(429, 'Too many alerts from this network — please try again in a few minutes.')
+  }
+
   const { slug } = await params
 
   const parsed = await readValidated(req, stockAlertInput)
