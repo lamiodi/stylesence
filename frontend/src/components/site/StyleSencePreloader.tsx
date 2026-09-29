@@ -10,20 +10,26 @@ export type StyleSencePreloaderProps = {
   logoSrc?: string;
   /** Fail open so the entrance never blocks the site indefinitely. */
   maxWaitMs?: number;
+  /** The entrance is a brand beat, not a loader: even a warm cache keeps it
+   * on screen long enough to register (kills the mobile cache-flash). */
+  minMs?: number;
   /** Called once, after the overlay is removed. */
   onExit?: () => void;
 };
 
-/** One entrance per mount. No artificial minimum wait or simulated percentage. */
+/** One entrance per mount. No simulated percentage — but a minimum display
+ * window so a cached hero can't turn the brand moment into a flash. */
 export default function StyleSencePreloader({
   ready,
   logoSrc = '/stylesence-logo.png',
   maxWaitMs = 6000,
+  minMs = 1400,
   onExit,
 }: StyleSencePreloaderProps) {
   const [visible, setVisible] = useState(() => !ready);
   const [expired, setExpired] = useState(false);
-  const leaving = ready || expired;
+  const [minElapsed, setMinElapsed] = useState(false);
+  const leaving = (ready || expired) && minElapsed;
   const exited = useRef(false);
   const onExitRef = useRef(onExit);
 
@@ -37,6 +43,15 @@ export default function StyleSencePreloader({
     );
     return () => window.clearTimeout(timeout);
   }, [visible, maxWaitMs]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const timeout = window.setTimeout(
+      () => setMinElapsed(true),
+      Number.isFinite(minMs) ? Math.max(0, minMs) : 1400,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [visible, minMs]);
 
   useEffect(() => {
     if (!visible || !leaving) return;

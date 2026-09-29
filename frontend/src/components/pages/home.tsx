@@ -10,6 +10,8 @@ import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card
 import { ProductImage } from '@/components/site/price'
 import { formatDate, formatNaira } from '@/lib/money'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
+import { WelcomeModal } from '@/components/site/welcome-modal'
+import { HowItWorksModal } from '@/components/site/how-it-works-modal'
 import type { ProductsResponse, Category, JournalCard, LookView } from '@/lib/types'
 
 /**
@@ -168,6 +170,9 @@ export function HomePage() {
                 >
                   Read the edit
                 </button>
+              </div>
+              <div className="mt-7">
+                <HowItWorksModal />
               </div>
             </Reveal>
           </div>
@@ -461,6 +466,10 @@ export function HomePage() {
 
       {/* ————— RECENTLY VIEWED ————— */}
       <RecentlyViewedStrip className="container-site pb-16 sm:pb-20" />
+
+      {/* House-list welcome — fires once per visitor under the trigger rules
+          in the component (never in the first 5s, never over another overlay). */}
+      <WelcomeModal />
     </div>
   )
 }

@@ -129,6 +129,25 @@ function Router() {
 export function SpaShell() {
   const mounted = useMounted()
   const [entranceDone, setEntranceDone] = useState(false)
+  // Once per browser session: a return visit in the same tab skips the
+  // entrance overlay. Resolved AFTER hydration (an effect, like useMounted)
+  // so the server render and first client paint always match — reading
+  // storage in a render-time initializer would mismatch on every reload.
+  const [entranceSkipped, setEntranceSkipped] = useState(false)
+  useEffect(() => {
+    let skip = false
+    try {
+      skip = sessionStorage.getItem('ss-entrance') === '1'
+      if (!skip) sessionStorage.setItem('ss-entrance', '1')
+    } catch {
+      // Private mode — the entrance simply shows every visit.
+    }
+    if (!skip) return
+    // Deferred a frame so the skip never cascades a synchronous re-render.
+    const raf = requestAnimationFrame(() => setEntranceSkipped(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  const showEntrance = !entranceSkipped
   const [heroReady, setHeroReady] = useState(false)
 
   // The entrance may only lift once the first screen can actually paint:
@@ -168,9 +187,11 @@ export function SpaShell() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
-        <StyleSencePreloader ready={mounted && heroReady} onExit={() => setEntranceDone(true)} />
+        {showEntrance ? (
+          <StyleSencePreloader ready={mounted && heroReady} onExit={() => setEntranceDone(true)} />
+        ) : null}
         <noscript><style>{`.ss-loader { display: none; }`}</style></noscript>
-        <div className="flex min-h-screen flex-col" inert={mounted && !entranceDone} aria-busy={!mounted}>
+        <div className="flex min-h-screen flex-col" inert={mounted && showEntrance && !entranceDone} aria-busy={!mounted}>
           <AnnouncementBar />
           <Header />
           <Router />
