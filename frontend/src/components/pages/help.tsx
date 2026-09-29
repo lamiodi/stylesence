@@ -195,10 +195,11 @@ function IntlShippingAnswer() {
   return (
     <div className="space-y-3">
       <p>
-        Yes — we deliver worldwide from the Lagos atelier. A flat rate by destination:
-        {format(35000)} within West Africa, up to {format(85000)} for Asia, Oceania and
-        the Americas, arriving in 7–20 days. Within Nigeria, delivery is a flat fee by
-        state as above.
+        Yes — we deliver worldwide from the Lagos atelier by DHL Express, priced
+        on your destination zone and parcel weight: from {format(75000)} to the
+        UK, {format(78000)} within West Africa and {format(90000)} to North
+        America, arriving within 3–7 business days of dispatch. Within Nigeria,
+        delivery is a flat fee by state as above.
       </p>
       <p className="text-sm text-muted-foreground">
         Import duties and taxes, where they apply, are paid by the recipient. Ordering

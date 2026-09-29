@@ -19,7 +19,9 @@ function load(file, mocks = {}) {
 assert.equal(fs.readFileSync(path.join(root,'backend/lib/shipping.ts'),'utf8'),fs.readFileSync(path.join(root,'frontend/src/lib/shipping.ts'),'utf8'));
 const shipping = load('backend/lib/shipping.ts');
 const geo = load('frontend/src/lib/geo.ts');
-const cases=[['Nigeria','Lagos',5000,'local'],['Nigeria','Ogun',8000,'nationwide'],['Nigeria','Oyo',8000,'nationwide'],['Nigeria','FCT — Abuja',12500,'nationwide'],['Nigeria','Rivers',12500,'nationwide'],['Ghana','Greater Accra',35000,'international'],['Kenya','Nairobi',50000,'international'],['United Kingdom','England',55000,'international'],['Germany','Berlin',65000,'international'],['Canada','Ontario',75000,'international'],['Japan','Tokyo',85000,'international']];
+// [country, state, 1-piece zone price, method, 2-piece checkout price] — international
+// rows differ because the DHL card is weight-based: 2 pieces bill as 4kg.
+const cases=[['Nigeria','Lagos',5000,'local',5000],['Nigeria','Ogun',7500,'nationwide',7500],['Nigeria','Oyo',7500,'nationwide',7500],['Nigeria','FCT — Abuja',10000,'nationwide',10000],['Nigeria','Rivers',10000,'nationwide',10000],['Nigeria','Benue',10500,'nationwide',10500],['Nigeria','Kano',10000,'nationwide',10000],['Nigeria','Sokoto',12500,'nationwide',12500],['Ghana','Greater Accra',78000,'international',128000],['Kenya','Nairobi',90000,'international',170000],['United Kingdom','England',75000,'international',130000],['Germany','Berlin',95000,'international',174500],['Canada','Ontario',90000,'international',170000],['Japan','Tokyo',115000,'international',188000]];
 for(const [country,state,price,method] of cases){const zone=shipping.deliveryZone(country,state);assert.equal(zone.price,price);assert.equal(zone.method,method);assert.equal(shipping.shippingError(country,state,method),null);}
 for(const country of geo.COUNTRY_NAMES){
   for(const state of geo.provincesFor(country)??['Region'])assert.ok(shipping.deliveryZone(country,state),country+' '+state);
@@ -29,7 +31,7 @@ assert.ok(shipping.shippingError('Nigeria','Lagos','international'));
 assert.ok(shipping.shippingError('United Kingdom','England','nationwide'));
 assert.equal(shipping.deliveryZone('Nigeria','Made up'),null);
 // Unmapped destinations order at the rest-of-the-world rate — nobody is stranded.
-assert.equal(shipping.deliveryZone('Vanuatu','Region').price,85000);
+assert.equal(shipping.deliveryZone('Vanuatu','Region').price,90000);
 assert.equal(shipping.deliveryZone('Vanuatu','Region').method,'international');
 async function checkoutTest(country,state,method,expected){
   let saved,stockWrites=0,cartClears=0;
@@ -61,12 +63,12 @@ async function verifyTest(status,reference,expectedStatus,expectedVerified){
   assert.equal(gatewayCalls,0);
 }
 (async()=>{
-  for(const [country,state,price,method] of cases)await checkoutTest(country,state,method,price);
+  for(const [country,state,,method,checkoutPrice] of cases)await checkoutTest(country,state,method,checkoutPrice);
   await checkoutTest('Nigeria','Kano','local',null);
   await checkoutTest('Nigeria','Lagos','international',null);
   await checkoutTest('United Kingdom','England','nationwide',null);
   await checkoutTest('Nigeria','Bogus','nationwide',null);
-  await checkoutTest('Vanuatu','Region','international',85000);
+  await checkoutTest('Vanuatu','Region','international',170000);
   await verifyTest('PENDING_PAYMENT','other-order',400);
   await verifyTest('CANCELLED','correct',200,false);
   await verifyTest('PAID','correct',200,true);

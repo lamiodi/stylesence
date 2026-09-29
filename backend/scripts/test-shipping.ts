@@ -80,8 +80,21 @@ check(zonePrice(uk, 1) === 75000, 'UK 1 piece = ₦75,000')
 check(zonePrice(uk, 3) === 170000, 'UK 3 pieces (6kg) = ₦170,000')
 const lagos = deliveryZone('Nigeria', 'Lagos')
 check(lagos?.method === 'local' && zonePrice(lagos, 5) === 5000, 'Lagos stays flat ₦5,000 regardless of pieces')
-const kano = deliveryZone('Nigeria', 'Kano')
-check(zonePrice(kano, 2) === 12500, 'Rest of Nigeria stays flat ₦12,500')
+
+// ——— Nigeria: per-state KTI interstate card (every band + boundary states) ———
+const NG_CARD: [string, number][] = [
+  ['Ogun', 7500], ['Ekiti', 7500],
+  ['Abia', 10000], ['Rivers', 10000], ['Edo', 10000], ['Kwara', 10000],
+  ['FCT — Abuja', 10000], ['Kano', 10000],
+  ['Benue', 10500],
+  ['Kogi', 12500], ['Kaduna', 12500], ['Sokoto', 12500], ['Gombe', 12500], ['Borno', 12500],
+]
+for (const [st, fee] of NG_CARD) {
+  const z = deliveryZone('Nigeria', st)
+  check(z?.method === 'nationwide' && zonePrice(z, 3) === fee, `${st} prices flat at ₦${fee.toLocaleString()}`, z && zonePrice(z, 3), fee)
+  check(z?.label === st, `${st} zone labels with the state name`, z?.label, st)
+}
+check(DELIVERY_ZONES.filter((z) => z.method === 'nationwide').length === 4, 'four KTI interstate bands')
 check(deliveryZone('Nigeria', 'Not a State') === null, 'invalid Nigerian state rejected')
 check(zonePrice(null, 3) === 0, 'null zone prices 0')
 check(KG_PER_PIECE === 2, 'each piece capped at 2kg')
