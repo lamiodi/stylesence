@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useReducedMotion } from 'framer-motion'
-import { ArrowRight, ArrowUpRight, Clock3 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ArrowUpRight, Clock3 } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { Reveal } from '@/components/site/reveal'
 import { ProductCard, ProductCardSkeleton } from '@/components/site/product-card'
@@ -113,6 +113,40 @@ export function HomePage() {
   const posts = journalData?.posts ?? []
   const looks = looksData?.looks ?? []
 
+  // New-arrivals rail: track the scroll edges so the desktop arrows can
+  // dim themselves at either end (and vanish entirely when it fits).
+  const railRef = useRef<HTMLDivElement>(null)
+  const [railEdges, setRailEdges] = useState({ prev: false, next: false })
+
+  const measureRail = useCallback(() => {
+    const el = railRef.current
+    if (!el) return
+    const max = el.scrollWidth - el.clientWidth
+    setRailEdges({ prev: el.scrollLeft > 8, next: el.scrollLeft < max - 8 })
+  }, [])
+
+  useEffect(() => {
+    const el = railRef.current
+    if (!el) return
+    // measured post-layout via rAF so data/viewport changes settle first
+    const raf = requestAnimationFrame(measureRail)
+    el.addEventListener('scroll', measureRail, { passive: true })
+    window.addEventListener('resize', measureRail)
+    return () => {
+      cancelAnimationFrame(raf)
+      el.removeEventListener('scroll', measureRail)
+      window.removeEventListener('resize', measureRail)
+    }
+  }, [measureRail, loadingNew, newArrivals])
+
+  const scrollRail = (dir: 1 | -1) => {
+    const el = railRef.current
+    if (!el) return
+    const card = el.firstElementChild as HTMLElement | null
+    const step = card ? card.offsetWidth + 24 : el.clientWidth * 0.8
+    el.scrollBy({ left: dir * step, behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+  }
+
   return (
     <div>
       {/* ————— HERO ————— */}
@@ -179,19 +213,87 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ————— NEW ARRIVALS ————— */}
-      <section className="container-site py-16 sm:py-20" aria-label="New arrivals">
-        <Reveal>
-          <SectionHead eyebrow="Just in" title="New arrivals" href="/shop" hrefLabel="Shop all pieces" />
-        </Reveal>
+      {/* ————— NEW ARRIVALS — full-bleed snap rail ————— */}
+      <section className="py-16 sm:py-20" aria-label="New arrivals">
+        <div className="container-site">
+          <Reveal>
+            <div className="flex items-end justify-between gap-6">
+              <div>
+                <p className="eyebrow">Just in</p>
+                <h2 className="mt-2 font-display text-3xl font-light tracking-tight text-balance sm:text-4xl">
+                  New arrivals
+                </h2>
+              </div>
+              <div className="flex items-center gap-5">
+                <div className="hidden items-center gap-2 lg:flex">
+                  <button
+                    type="button"
+                    onClick={() => scrollRail(-1)}
+                    disabled={!railEdges.prev}
+                    aria-label="Scroll new arrivals back"
+                    className="flex h-10 w-10 items-center justify-center border border-line text-muted-foreground transition-colors hover:border-espresso hover:text-espresso focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-25"
+                  >
+                    <ArrowLeft className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollRail(1)}
+                    disabled={!railEdges.next}
+                    aria-label="Scroll new arrivals forward"
+                    className="flex h-10 w-10 items-center justify-center border border-line text-muted-foreground transition-colors hover:border-espresso hover:text-espresso focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-25"
+                  >
+                    <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </button>
+                </div>
+                <Link
+                  to="/shop"
+                  className="eyebrow-ink group hidden shrink-0 items-center gap-1.5 border-b border-foreground pb-1 transition-colors hover:border-espresso hover:text-espresso sm:flex"
+                >
+                  Shop all pieces
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} aria-hidden />
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+
+        {/*
+          The rail bleeds to the right viewport edge — the next card is always
+          half-cut, which is the affordance to keep scrolling. Inline-start
+          padding mirrors container-site (px-4/6/10 centered on 1440px) so the
+          first card lands exactly on the container's content edge at any
+          viewport; percentages, not vw, so the OS scrollbar never skews it.
+        */}
         <Reveal delay={0.1} className="mt-8">
-          <div className="grid grid-cols-1 gap-y-8 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-4 md:gap-x-6">
+          <div
+            ref={railRef}
+            tabIndex={0}
+            role="region"
+            aria-label="New arrivals pieces — scrollable list"
+            className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto md:gap-6
+                       ps-[max(1rem,calc(50%_-_720px))] pe-4
+                       sm:ps-[max(1.5rem,calc(50%_-_720px))] sm:pe-6
+                       lg:ps-[max(2.5rem,calc(50%_-_720px))] lg:pe-10
+                       scroll-ps-[max(1rem,calc(50%_-_720px))]
+                       sm:scroll-ps-[max(1.5rem,calc(50%_-_720px))]
+                       lg:scroll-ps-[max(2.5rem,calc(50%_-_720px))]
+                       focus-visible:outline-2 focus-visible:outline-ring"
+          >
             {loadingNew
-              ? Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="w-[72vw] min-[540px]:w-[42vw] md:w-[32vw] lg:w-[27vw] xl:w-[21vw] 2xl:w-[19vw] max-w-[21rem] shrink-0 snap-start">
+                    <ProductCardSkeleton />
+                  </div>
+                ))
               : (newArrivals?.products ?? []).map((p, i) => (
-                  <ProductCard key={p.id} product={p} eager index={i} />
+                  <div key={p.id} className="w-[72vw] min-[540px]:w-[42vw] md:w-[32vw] lg:w-[27vw] xl:w-[21vw] 2xl:w-[19vw] max-w-[21rem] shrink-0 snap-start">
+                    <ProductCard product={p} eager index={i} />
+                  </div>
                 ))}
           </div>
+        </Reveal>
+
+        <div className="container-site">
           <div className="mt-8 flex justify-center sm:hidden">
             <Link
               to="/shop"
@@ -200,7 +302,7 @@ export function HomePage() {
               Shop all pieces <ArrowRight className="h-3 w-3" aria-hidden />
             </Link>
           </div>
-        </Reveal>
+        </div>
       </section>
 
       {/* ————— CATEGORIES ————— */}
