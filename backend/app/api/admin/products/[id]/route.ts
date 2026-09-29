@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { fail, ok, readValidated, toAdminProduct } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
+import { generateSku } from '@/lib/sku'
 import { productPatchInput } from '@/lib/validators'
 
 /** Include shape used for admin product responses (module-private). */
@@ -34,7 +35,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 /**
  * PATCH /api/admin/products/[id] — partial update (name, slug, subtitle, price,
  * compareAtPrice (null clears), isActive, isFeatured, categoryId, description,
- * material, care, details, variantStocks, relatedSlugs (curated "Complete the
+ * material, care, details, variants (full-set edit: rows with id update, rows
+ * without id create, missing ones delete — cart lines/waitlists cascade),
+ * variantStocks (stock-only legacy path), relatedSlugs (curated "Complete the
  * look" set — replaced atomically; [] clears), images (media pipeline — full
  * replace, ≥1 required, position = order). Returns the full updated product
  * plus `notifiedStockAlerts` — waitlist entries marked notified by this PATCH
@@ -98,9 +101,87 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (input.isFeatured !== undefined) data.isFeatured = input.isFeatured
 
   let notifiedStockAlerts = 0
-  if (input.variantStocks !== undefined) {
-    // Read the current stocks first so 0 → >0 restock transitions can be
-    // detected after the (ownership-guarded) updates land.
+  if (input.variants !== undefined) {
+    // Full variant-set edit. Ownership + duplicates are validated up front so
+    // the transaction below can update/delete by id alone; deleting a variant
+    // cascades its cart lines and waitlist entries (orders keep snapshots).
+    const existing = await db.productVariant.findMany({
+      where: { productId: id },
+      select: { id: true, stock: true },
+    })
+    const beforeById = new Map(existing.map((v) => [v.id, v.stock]))
+
+    const keepIds = new Set<string>()
+    for (const row of input.variants) {
+      if (row.id === undefined) continue
+      if (!beforeById.has(row.id)) {
+        return fail(400, `Variant "${row.id}" does not belong to this product`)
+      }
+      if (keepIds.has(row.id)) {
+        return fail(400, 'A variant appears more than once in the set')
+      }
+      keepIds.add(row.id)
+    }
+
+    const updates = input.variants.filter(
+      (row): row is typeof row & { id: string } => row.id !== undefined,
+    )
+    const creates = input.variants.filter((row) => row.id === undefined)
+    const deleteIds = existing.filter((v) => !keepIds.has(v.id)).map((v) => v.id)
+
+    // New rows need globally-unique SKUs.
+    const takenSkus =
+      creates.length > 0
+        ? new Set((await db.productVariant.findMany({ select: { sku: true } })).map((v) => v.sku))
+        : new Set<string>()
+
+    await db.$transaction([
+      ...(deleteIds.length > 0
+        ? [db.productVariant.deleteMany({ where: { id: { in: deleteIds } } })]
+        : []),
+      ...updates.map((u) =>
+        db.productVariant.update({
+          where: { id: u.id },
+          data: {
+            size: u.size,
+            color: u.color,
+            colorHex: u.colorHex ?? '#EDE7DC',
+            stock: u.stock,
+          },
+        }),
+      ),
+      ...(creates.length > 0
+        ? [
+            db.productVariant.createMany({
+              data: creates.map((c) => ({
+                productId: id,
+                size: c.size,
+                color: c.color,
+                colorHex: c.colorHex ?? '#EDE7DC',
+                stock: c.stock,
+                sku: generateSku(c.color, c.size, takenSkus),
+              })),
+            }),
+          ]
+        : []),
+    ])
+
+    // All writes landed — mark every un-notified waitlist entry on variants
+    // that just came back into stock (the email itself is a dev placeholder).
+    const restocked = updates.filter((u) => beforeById.get(u.id) === 0 && u.stock > 0)
+    for (const u of restocked) {
+      const marked = await db.stockAlert.updateMany({
+        where: { variantId: u.id, notifiedAt: null },
+        data: { notifiedAt: new Date() },
+      })
+      notifiedStockAlerts += marked.count
+    }
+    if (notifiedStockAlerts > 0) {
+      console.log(`[api/admin/products] simulated back-in-stock email(s): ${notifiedStockAlerts}`)
+    }
+  } else if (input.variantStocks !== undefined) {
+    // Legacy stock-only path — read the current stocks first so 0 → >0 restock
+    // transitions can be detected after the (ownership-guarded) updates land.
     const before = await db.productVariant.findMany({
       where: { productId: id },
       select: { id: true, stock: true },

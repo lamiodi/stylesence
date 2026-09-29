@@ -30,16 +30,19 @@ export async function POST(req: Request) {
         return fail(400, 'No file provided in form data (expected field "file")')
       }
 
-      // Cap uploads before buffering into memory.
-      const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-      if (file.size > MAX_UPLOAD_BYTES) {
-        return fail(413, 'File too large — the limit is 10 MB.')
-      }
-
       if (file.type.startsWith('video/')) {
         resourceType = 'video'
       } else if (file.type.startsWith('image/')) {
         resourceType = 'image'
+      }
+
+      // Cap uploads before buffering into memory. Videos get Cloudinary's own
+      // per-file ceiling; this relay path is the fallback — the admin UI
+      // uploads large media directly to Cloudinary via /api/admin/upload-sign.
+      const isVideo = resourceType === 'video'
+      const MAX_BYTES = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024
+      if (file.size > MAX_BYTES) {
+        return fail(413, isVideo ? 'File too large — the limit is 100 MB for video.' : 'File too large — the limit is 10 MB for images.')
       }
 
       const bytes = await file.arrayBuffer()

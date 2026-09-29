@@ -1,0 +1,6 @@
+event: heartbeat
+data: null
+
+event: complete
+data: [{"path": "/tmp/gradio/eb3f057887039b9f6bcbff8e5d3b3ec6054a807fc5e248a45d19bc57ea7aff3e/image.webp", "url": "https://black-forest-labs-flux-1-schnell.hf.space/gradio_api/file=/tmp/gradio/eb3f057887039b9f6bcbff8e5d3b3ec6054a807fc5e248a45d19bc57ea7aff3e/image.webp", "size": null, "orig_name": "image.webp", "mime_type": null, "is_stream": false, "meta": {"_type": "gradio.FileData"}}, 8217]
+

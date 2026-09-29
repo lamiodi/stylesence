@@ -61,7 +61,7 @@ function esc(value: string): string {
 /** Human label for the shipping enum (local | nationwide | international). */
 function shippingLabel(method: string): string {
   if (method === 'local') return 'Lagos Dispatch'
-  if (method === 'international') return 'International Delivery'
+  if (method === 'international') return 'DHL Express International'
   return 'Nationwide Delivery'
 }
 

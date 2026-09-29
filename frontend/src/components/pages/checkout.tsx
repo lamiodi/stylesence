@@ -7,7 +7,7 @@ import { Lock, ArrowRight } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
-import { deliveryZone, shippingError } from '@/lib/shipping'
+import { deliveryZone, shippingError, zonePrice } from '@/lib/shipping'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -153,8 +153,9 @@ export function CheckoutPage() {
   const subtotal = cart?.subtotal ?? 0
   const discount = promoData?.discount ?? 0
 
-  /** Flat delivery rate for the picked method (server-authoritative mirror). */
-  const shippingPrice = delivery?.price ?? 0
+  /** Delivery fee for the picked method and bag size (server-authoritative mirror). */
+  const pieces = items.reduce((sum, i) => sum + i.qty, 0)
+  const shippingPrice = zonePrice(delivery, pieces)
   /** Express production add-on — 2–3 day production instead of standard 7–10. */
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice + productionFee
@@ -490,16 +491,22 @@ export function CheckoutPage() {
                 {delivery ? <>
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-sm font-medium">{SHIPPING_METHODS[shipping].label}</span>
-                    <span className="font-mono text-sm tabular-nums">{formatNaira(delivery.price)}</span>
+                    <span className="font-mono text-sm tabular-nums">{formatNaira(shippingPrice)}</span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{delivery.label} · {delivery.eta} after dispatch</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {delivery.label} · {delivery.eta} after dispatch
+                    {shipping === 'international'
+                      ? ` · ${pieces} piece${pieces === 1 ? '' : 's'} billed as ${pieces * 2}kg parcel weight`
+                      : ''}
+                  </p>
                 </> : <p className="text-sm">{country === 'Nigeria' ? 'Select your state to see your flat delivery fee.' : 'Contact the studio for a delivery quote to this destination before ordering.'}</p>}
               </div>
               {errors.shipping ? <p role="alert" className="mt-2 text-xs text-destructive">{errors.shipping}</p> : null}
               <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
-                One flat delivery fee per order, based on your destination. Delivery times
-                start after production and dispatch. International import duties and taxes
-                are paid separately by the recipient.
+                Within Nigeria, one flat delivery fee per order. International parcels ship DHL
+                Express, priced on chargeable weight — each piece counts as up to 2kg. A DHL
+                tracking number is issued once payment is confirmed; import duties and taxes are
+                paid by the recipient.
               </p>
             </section>
 

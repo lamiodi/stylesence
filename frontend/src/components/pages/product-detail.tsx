@@ -29,15 +29,20 @@ import { MEASUREMENT_FIELDS, type CustomMeasurements, type MeasurementKey, type 
 import { DELIVERY_ZONES } from '@/lib/shipping'
 
 /** Fee range across the zones of one method — from the reviewed table, never hand-copied. */
-const zoneFee = (method: 'local' | 'nationwide' | 'international') => {
+const zoneFee = (method: 'local' | 'nationwide') => {
   const fees = DELIVERY_ZONES.filter((z) => z.method === method).map((z) => z.price)
   const lo = Math.min(...fees)
   const hi = Math.max(...fees)
   return lo === hi ? formatNaira(lo) : `${formatNaira(lo)}–${formatNaira(hi)}`
 }
 
+/** Cheapest single-piece DHL rate on the card (each piece counts as up to 2kg). */
+const internationalFrom = formatNaira(
+  Math.min(...DELIVERY_ZONES.filter((z) => z.method === 'international').map((z) => z.price)),
+)
+
 /** Delivery tiers quoted on the PDP — matches checkout exactly. */
-const DELIVERY_TIERS = `Lagos ${zoneFee('local')} · 1–3 days · Nationwide ${zoneFee('nationwide')} by state · 2–7 days · International ${zoneFee('international')} by destination · 7–20 days`
+const DELIVERY_TIERS = `Lagos ${zoneFee('local')} · 1–3 days · Nationwide ${zoneFee('nationwide')} by state · 2–7 days · International DHL Express from ${internationalFrom} by destination & weight · 3–7 days`
 
 const SIZE_GUIDE = [
   ['XS', '32–34', '84', '66', '92'],

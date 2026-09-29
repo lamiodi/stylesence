@@ -1,37 +1,162 @@
-/** Store flat rates in whole NGN, reviewed 2026-09-29. Small apparel parcel estimates,
- * not live courier quotes. Keep backend/lib/shipping.ts and frontend/src/lib/shipping.ts
- * identical: each service deploys independently. See scripts/check-shipping.cjs. */
+/** Store delivery rates in whole NGN, reviewed 2026-09-29. Domestic Nigeria is
+ * a flat fee per order; international ships DHL Express, priced on chargeable
+ * weight with every piece capped into the 0–2kg band (KG_PER_PIECE). Rates are
+ * the studio's DHL card, not live courier quotes. Keep backend/lib/shipping.ts
+ * and frontend/src/lib/shipping.ts identical: each service deploys
+ * independently. See scripts/check-shipping.cjs. */
 export type ShippingMethod = 'local' | 'nationwide' | 'international'
-export const DELIVERY_ZONES = [
+
+/** Chargeable weight per piece — each product is billed within the 0–2kg band. */
+export const KG_PER_PIECE = 2
+
+/** DHL Express International eta, after dispatch from the atelier. */
+const DHL_ETA = '3–7 business days'
+
+/** DHL rate-card weight caps (kg), aligned index-for-index with zone ladders. */
+const DHL_WEIGHT_CAPS = [2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10] as const
+
+export interface DhlZone {
+  id: string
+  label: string
+  countries: readonly string[]
+  /** Rate per weight cap: index 0 = 0–2kg … last = 9.5–10kg. */
+  ladder: readonly number[]
+  /** Rate per kg past 10kg, added to the 10kg rate. */
+  above10PerKg: number
+}
+
+/** DHL Express zones (updated rate card). The last entry is the rest-of-world
+ * fallback for destinations outside the card — it prices on the Zone 3 ladder
+ * and the studio confirms the courier per order. */
+export const DHL_ZONES: readonly DhlZone[] = [
+  {
+    id: 'dhl-1',
+    label: 'Zone 1 — United Kingdom & Ireland',
+    countries: ['United Kingdom', 'Ireland'],
+    ladder: [75000, 98000, 105000, 121500, 130000, 143500, 150000, 170000, 186800, 206000, 226000, 253000],
+    above10PerKg: 24000,
+  },
+  {
+    id: 'dhl-2',
+    label: 'Zone 2 — Benin, Ghana, Gambia, Sierra Leone, Togo, Liberia, Mali, Niger & Cameroon',
+    countries: ['Benin', 'Ghana', 'Gambia', 'Sierra Leone', 'Togo', 'Liberia', 'Mali', 'Niger', 'Cameroon'],
+    ladder: [78000, 102000, 110800, 117500, 128000, 142500, 156000, 174000, 197000, 220000, 242000, 267000],
+    above10PerKg: 25000,
+  },
+  {
+    id: 'dhl-3',
+    label: 'Zone 3 — USA, Canada & Mexico',
+    countries: ['United States', 'Canada', 'Mexico'],
+    ladder: [90000, 120000, 140000, 158000, 170000, 179500, 198800, 227000, 259800, 285000, 315000, 342000],
+    above10PerKg: 33000,
+  },
+  {
+    id: 'dhl-4',
+    label: 'Zone 4 — Germany, Belgium, Italy, Sweden, France, Netherlands, Switzerland, Malta, Iceland, Luxembourg, Turkey, Finland & Spain',
+    countries: ['Germany', 'Belgium', 'Italy', 'Sweden', 'France', 'Netherlands', 'Switzerland', 'Malta', 'Iceland', 'Luxembourg', 'Turkey', 'Finland', 'Spain'],
+    ladder: [95000, 123500, 145000, 155000, 174500, 180000, 197000, 228000, 255000, 283800, 325000, 375000],
+    above10PerKg: 35000,
+  },
+  {
+    id: 'dhl-5',
+    label: 'Zone 5 — South Africa, Tanzania, Uganda, Egypt, Mauritania, Algeria, Rwanda, Namibia & Botswana',
+    countries: ['South Africa', 'Tanzania', 'Uganda', 'Egypt', 'Mauritania', 'Algeria', 'Rwanda', 'Namibia', 'Botswana'],
+    ladder: [98000, 125000, 148000, 160000, 175800, 185000, 200000, 238500, 270000, 297000, 335000, 375000],
+    above10PerKg: 35500,
+  },
+  {
+    id: 'dhl-6',
+    label: 'Zone 6 — UAE, Saudi Arabia, Lebanon, Bahrain, Israel, Oman, Jordan & Syria',
+    countries: ['United Arab Emirates', 'Saudi Arabia', 'Lebanon', 'Bahrain', 'Israel', 'Oman', 'Jordan', 'Syria'],
+    ladder: [200000, 230000, 250000, 274000, 286500, 289800, 305000, 358000, 390000, 425000, 455000, 492000],
+    above10PerKg: 57000,
+  },
+  {
+    id: 'dhl-7',
+    label: 'Zone 7 — India, Singapore, Thailand, Philippines, Malaysia, Pakistan, Maldives, Georgia, Hong Kong, Japan & Vietnam',
+    countries: ['India', 'Singapore', 'Thailand', 'Philippines', 'Malaysia', 'Pakistan', 'Maldives', 'Georgia', 'Hong Kong', 'Japan', 'Vietnam'],
+    ladder: [115000, 135000, 157000, 173800, 188000, 195000, 210000, 240000, 298000, 334000, 369000, 406000],
+    above10PerKg: 38500,
+  },
+  {
+    id: 'dhl-8',
+    label: 'Zone 8 — Australia, Caribbean & South America',
+    countries: ['Australia', 'Trinidad and Tobago', 'Grenada', 'Jamaica', 'Saint Lucia', 'Uruguay', 'Guyana', 'New Zealand', 'Saint Kitts and Nevis', 'French Guiana', 'Dominica', 'Barbados'],
+    ladder: [121800, 165000, 178000, 190800, 207500, 230000, 250000, 305000, 355000, 395000, 441000, 511000],
+    above10PerKg: 48000,
+  },
+  {
+    id: 'dhl-worldwide',
+    label: 'Rest of the world',
+    countries: [],
+    ladder: [90000, 120000, 140000, 158000, 170000, 179500, 198800, 227000, 259800, 285000, 315000, 342000],
+    above10PerKg: 33000,
+  },
+]
+
+/** Zone for a destination country — every country is orderable; destinations
+ * outside the DHL card fall back to the rest-of-world zone (last in the list). */
+export function dhlZoneFor(country: string): DhlZone {
+  return DHL_ZONES.find((z) => z.countries.includes(country)) ?? DHL_ZONES[DHL_ZONES.length - 1]
+}
+
+/** DHL rate for a shipment of `weightKg` — bracketed up to 10kg, then the 10kg
+ * rate plus the per-kg rate for every started kilogram past 10kg. */
+export function dhlRate(zone: DhlZone, weightKg: number): number {
+  const bracket = DHL_WEIGHT_CAPS.findIndex((cap) => weightKg <= cap)
+  if (bracket !== -1) return zone.ladder[bracket]
+  const overKg = Math.ceil(weightKg - 10)
+  return zone.ladder[zone.ladder.length - 1] + overKg * zone.above10PerKg
+}
+
+/** A delivery zone resolved from the address. `price` is the domestic flat fee
+ * or the single-piece DHL rate — use zonePrice() for a multi-piece parcel. */
+export interface DeliveryZone {
+  id: string
+  label: string
+  method: ShippingMethod
+  eta: string
+  price: number
+  /** Present on international zones — the DHL rate card this destination prices on. */
+  dhl?: DhlZone
+}
+
+/** Domestic flat zones + one entry per DHL zone (single-piece rate as `price`). */
+export const DELIVERY_ZONES: readonly DeliveryZone[] = [
   { id: 'lagos', label: 'Lagos', price: 5000, eta: '1–3 business days', method: 'local' },
   { id: 'southwest', label: 'Ogun, Oyo, Osun, Ondo and Ekiti', price: 8000, eta: '2–5 business days', method: 'nationwide' },
   { id: 'nigeria', label: 'Rest of Nigeria', price: 12500, eta: '3–7 business days', method: 'nationwide' },
-  { id: 'west-africa', label: 'Ghana, Côte d’Ivoire, Senegal and Cameroon', price: 35000, eta: '7–15 business days', method: 'international' },
-  { id: 'africa', label: 'Kenya and South Africa', price: 50000, eta: '7–15 business days', method: 'international' },
-  { id: 'uk', label: 'United Kingdom', price: 55000, eta: '10–15 business days', method: 'international' },
-  { id: 'europe', label: 'Europe and Middle East', price: 65000, eta: '7–15 business days', method: 'international' },
-  { id: 'north-america', label: 'United States and Canada', price: 75000, eta: '7–15 business days', method: 'international' },
-  { id: 'other', label: 'Rest of the world', price: 85000, eta: '10–20 business days', method: 'international' },
-] as const
+  ...DHL_ZONES.map((dhl) => ({
+    id: dhl.id,
+    label: dhl.label,
+    method: 'international' as const,
+    eta: DHL_ETA,
+    price: dhl.ladder[0],
+    dhl,
+  })),
+]
+
 const states = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT — Abuja','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']
 const southwest = ['Ogun','Oyo','Osun','Ondo','Ekiti']
-const international: Record<string, string[]> = {
-  'west-africa': ['Ghana','Côte d’Ivoire','Senegal','Cameroon'],
-  africa: ['Kenya','South Africa'], uk: ['United Kingdom'],
-  europe: ['Ireland','France','Germany','Netherlands','Belgium','Spain','Italy','Portugal','Switzerland','Sweden','Norway','Denmark','Finland','Austria','Poland','United Arab Emirates','Saudi Arabia','Qatar','Turkey'],
-  'north-america': ['United States','Canada'],
-  other: ['China','India','Japan','Australia','New Zealand','Brazil','Mexico'],
-}
-export function deliveryZone(country: string, state: string) {
+
+export function deliveryZone(country: string, state: string): DeliveryZone | null {
   if (country === 'Nigeria') {
     if (!states.includes(state)) return null
     return DELIVERY_ZONES.find(z => z.id === (state === 'Lagos' ? 'lagos' : southwest.includes(state) ? 'southwest' : 'nigeria'))!
   }
-  const id = Object.keys(international).find(key => international[key].includes(country))
-  // Every country is orderable: destinations outside the mapped zones get the
-  // rest-of-the-world rate; the studio confirms the courier per order.
-  return DELIVERY_ZONES.find(z => z.id === id) ?? DELIVERY_ZONES.find(z => z.id === 'other')!
+  const dhl = dhlZoneFor(country)
+  return { id: dhl.id, label: dhl.label, method: 'international', eta: DHL_ETA, price: dhl.ladder[0], dhl }
 }
+
+/** Delivery fee for a parcel of `pieces` product units. Domestic stays a flat
+ * per-order fee; international prices on chargeable weight — every piece
+ * counts as up to KG_PER_PIECE kg on the destination's DHL card. */
+export function zonePrice(zone: DeliveryZone | null, pieces: number): number {
+  if (!zone) return 0
+  if (zone.method !== 'international' || !zone.dhl) return zone.price
+  return dhlRate(zone.dhl, Math.max(1, pieces) * KG_PER_PIECE)
+}
+
 export function shippingError(country: string, state: string, method: ShippingMethod): string | null {
   const zone = deliveryZone(country, state)
   if (!zone) return country === 'Nigeria' ? 'Select a valid Nigerian state.' : 'Contact the studio for a delivery quote to this destination before ordering.'
@@ -41,5 +166,5 @@ export function shippingError(country: string, state: string, method: ShippingMe
 export const SHIPPING_METHODS = {
   local: { label: 'Lagos Delivery', eta: '1–3 business days', note: 'Flat rate within Lagos.' },
   nationwide: { label: 'Nationwide Delivery', eta: '2–7 business days', note: 'Flat rate by destination state.' },
-  international: { label: 'International Delivery', eta: '7–20 business days', note: 'Flat rate by destination country. Import duties and taxes are paid by the recipient.' },
+  international: { label: 'DHL Express International', eta: DHL_ETA, note: 'Priced by destination and parcel weight — each piece counts as up to 2kg. A DHL tracking number is issued once payment is confirmed. Import duties and taxes are paid by the recipient.' },
 } as const

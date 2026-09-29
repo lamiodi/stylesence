@@ -4,7 +4,7 @@ import { getCartFromCookie } from '@/lib/cart'
 import { checkoutInput } from '@/lib/validators'
 import { evaluatePromoStack } from '@/lib/promo'
 import { PRODUCTION_TIERS } from '@/lib/types'
-import { deliveryZone, shippingError } from '@/lib/shipping'
+import { deliveryZone, shippingError, zonePrice } from '@/lib/shipping'
 import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured } from '@/lib/payments'
 import { getFrontendUrl } from '@/lib/email'
 
@@ -78,9 +78,11 @@ export async function POST(req: Request) {
   }
 
   // Resolve the price from the address, never from a client-supplied amount.
+  // International parcels ship DHL Express — chargeable weight is pieces × 2kg.
   const deliveryError = shippingError(input.country, input.state, input.shippingMethod)
   if (deliveryError) return fail(400, deliveryError)
-  const shipping = deliveryZone(input.country, input.state)!.price
+  const pieces = items.reduce((sum, i) => sum + i.qty, 0)
+  const shipping = zonePrice(deliveryZone(input.country, input.state), pieces)
   // Round 13 production timeline — express is contact-priced (surcharge
   // arranged by the studio after ordering; never charged here).
   const productionTier = input.productionTier ?? 'standard'

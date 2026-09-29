@@ -410,6 +410,24 @@ export const productPatchInput = z.object({
       })
     )
     .optional(),
+  /** Full variant-set edit — rows with `id` update in place, rows without `id`
+   *  are created (auto-SKU), and existing variants missing from the set are
+   *  deleted (their cart lines and waitlist entries cascade). */
+  variants: z
+    .array(
+      z.object({
+        id: z.string().min(1, 'Variant id is required').optional(),
+        size: requiredText(1, 40, 'Size'),
+        color: requiredText(1, 40, 'Color'),
+        colorHex: optionalText(20, 'colorHex'),
+        stock: z.number().int('Stock must be a whole number').min(0, 'Stock cannot be negative').max(100000),
+      })
+    )
+    .max(50, 'At most 50 variants')
+    .optional(),
+}).refine((data) => !(data.variants !== undefined && data.variantStocks !== undefined), {
+  message: 'Send either variants (full set) or variantStocks, not both',
+  path: ['variants'],
 })
 
 /* ------------------------------------------------------------------ *

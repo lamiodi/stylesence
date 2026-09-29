@@ -43,12 +43,16 @@ function asTopic(value: string | null): Topic | null {
 
 const SHIPPING_ROWS = DELIVERY_ZONES.map(zone => ({
   method: zone.label, fee: zone.price, eta: zone.eta,
-  note: zone.method === 'international' ? 'Import duties and taxes paid separately by the recipient.' : 'Flat delivery fee per order.',
+  from: zone.method === 'international',
+  note: zone.method === 'international'
+    ? 'DHL Express — billed on parcel weight (each piece counts as up to 2kg); the fee shown covers one piece. A tracking number is issued once payment is confirmed. Import duties and taxes are paid by the recipient.'
+    : 'Flat delivery fee per order.',
 }))
 const SHIPPING_FACTS: { label: string; body: ReactNode }[] = [
-  { label: 'Delivery rates', body: 'One flat fee per order, based on your destination. Select your country and state at checkout for the exact fee.' },
+  { label: 'Delivery rates', body: 'Within Nigeria, one flat fee per order by state. International parcels ship DHL Express, priced on chargeable weight — each piece counts as up to 2kg and the rate scales with your destination zone. Select your country and state at checkout for the exact fee.' },
   { label: 'Production first', body: 'Delivery estimates begin after production and dispatch, not when the order is placed.' },
-  { label: 'International orders', body: 'Import duties and taxes are not included. Contact the studio for destinations not listed.' },
+  { label: 'DHL tracking', body: 'A DHL Express tracking number is issued once payment is confirmed and processed.' },
+  { label: 'International orders', body: 'Import duties and taxes are not included. Destinations outside the DHL card are quoted by the studio before dispatch.' },
 ]
 
 const RETURN_TERMS = [
@@ -335,7 +339,7 @@ export function HelpPage() {
         label="Shipping and delivery"
         eyebrow="Shipping"
         title="Dispatch & delivery"
-        lede="Delivery from the Ikoyi atelier across Nigeria and to selected international destinations."
+        lede="Delivery from the Ikoyi atelier across Nigeria and worldwide by DHL Express."
         flash={topic === 'shipping'}
       >
         <Reveal delay={0.08} className="mt-10">
@@ -362,7 +366,7 @@ export function HelpPage() {
                   <TableRow key={r.method} className="border-line hover:bg-transparent">
                     <TableCell className="px-5 py-4 font-medium">{r.method}</TableCell>
                     <TableCell className="px-5 py-4 font-mono text-[0.85rem] tabular-nums text-espresso">
-                      {formatNaira(r.fee)}
+                      {r.from ? 'from ' : ''}{formatNaira(r.fee)}
                     </TableCell>
                     <TableCell className="px-5 py-4">{r.eta}</TableCell>
                     <TableCell className="px-5 py-4 text-muted-foreground">{r.note}</TableCell>

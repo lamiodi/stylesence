@@ -3,13 +3,15 @@
 /**
  * Admin — Products panel.
  * Catalogue table with live active/featured toggles (optimistic PATCH),
- * search + category filters, and create/edit dialogs incl. a repeatable
- * variant editor (create) and per-variant stock editing (edit).
+ * search + category filters, and create/edit dialogs incl. a full variant
+ * editor (sizes, colours, hex swatches, stock — add/remove anytime) and the
+ * media-pipeline gallery — any image format plus video, multi-file upload
+ * direct to Cloudinary with server-signed credentials.
  */
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronUp, Loader2, Package, Pencil, Plus, Search, Sparkles, Trash2, Upload, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Package, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNaira, formatDateShort } from '@/lib/money'
 import { Button } from '@/components/ui/button'
@@ -177,11 +179,9 @@ const DEFAULT_VARIANT_ROWS: VariantRow[] = ['XS', 'S', 'M', 'L', 'XL'].map((size
 function VariantEditor({
   variants,
   onChange,
-  editable,
 }: {
   variants: VariantRow[]
   onChange: (rows: VariantRow[]) => void
-  editable: boolean
 }) {
   const update = (i: number, patch: Partial<VariantRow>) => {
     onChange(variants.map((v, idx) => (idx === i ? { ...v, ...patch } : v)))
@@ -190,72 +190,55 @@ function VariantEditor({
   return (
     <div className="space-y-2">
       <div
-        className={cn(
-          'grid items-center gap-2 text-[0.58rem] font-medium uppercase tracking-[0.18em] text-muted-foreground',
-          editable ? 'grid-cols-[3.75rem_1fr_5.25rem_4.25rem_1.75rem]' : 'grid-cols-[3.75rem_1fr_4.25rem]',
-        )}
+        className="grid items-center gap-2 text-[0.58rem] font-medium uppercase tracking-[0.18em] text-muted-foreground grid-cols-[3.75rem_1fr_5.25rem_4.25rem_1.75rem]"
         aria-hidden
       >
         <span>Size</span>
         <span>Colour</span>
-        {editable ? <span>Hex</span> : null}
+        <span>Hex</span>
         <span className="text-right">Stock</span>
         <span />
       </div>
       {variants.map((v, i) => (
         <div
           key={v.id ?? `new-${i}`}
-          className={cn(
-            'grid items-center gap-2',
-            editable ? 'grid-cols-[3.75rem_1fr_5.25rem_4.25rem_1.75rem]' : 'grid-cols-[3.75rem_1fr_4.25rem]',
-          )}
+          className="grid items-center gap-2 grid-cols-[3.75rem_1fr_5.25rem_4.25rem_1.75rem]"
         >
-          {editable ? (
-            <Input
-              value={v.size}
-              onChange={(e) => update(i, { size: e.target.value })}
-              aria-label={`Variant ${i + 1} size`}
-              className="h-9 border-line-strong"
-              placeholder="S"
-            />
-          ) : (
-            <p className="font-mono text-sm">{v.size}</p>
-          )}
-          {editable ? (
+          <Input
+            value={v.size}
+            onChange={(e) => update(i, { size: e.target.value })}
+            aria-label={`Variant ${i + 1} size`}
+            className="h-9 border-line-strong"
+            placeholder="S"
+          />
+          <div className="flex min-w-0 items-center gap-1.5">
             <Input
               value={v.color}
               onChange={(e) => update(i, { color: e.target.value })}
               aria-label={`Variant ${i + 1} colour`}
-              className="h-9 border-line-strong"
+              className="h-9 min-w-0 flex-1 border-line-strong"
               placeholder="Ivory"
             />
-          ) : (
-            <p className="flex items-center gap-2 truncate text-sm">
-              <HexSwatch hex={v.colorHex} />
-              {v.color}
-              {(v.waitingCount ?? 0) > 0 ? (
-                <span
-                  className="shrink-0 border border-line px-1.5 py-0.5 font-mono text-[0.58rem] tracking-[0.08em] text-muted-foreground"
-                  aria-label={`${v.waitingCount} waitlist customer${v.waitingCount === 1 ? '' : 's'} waiting for ${v.color} ${v.size} to return`}
-                  title={`${v.waitingCount} waitlist signup${v.waitingCount === 1 ? '' : 's'} — notified when this size is restocked`}
-                >
-                  {v.waitingCount} waiting
-                </span>
-              ) : null}
-            </p>
-          )}
-          {editable ? (
-            <div className="flex items-center gap-1.5">
-              <HexSwatch hex={v.colorHex} />
-              <Input
-                value={v.colorHex}
-                onChange={(e) => update(i, { colorHex: e.target.value })}
-                aria-label={`Variant ${i + 1} colour hex`}
-                className="h-9 border-line-strong font-mono text-xs"
-                placeholder="#EDE7DC"
-              />
-            </div>
-          ) : null}
+            {(v.waitingCount ?? 0) > 0 ? (
+              <span
+                className="shrink-0 border border-line px-1.5 py-0.5 font-mono text-[0.58rem] tracking-[0.08em] text-muted-foreground"
+                aria-label={`${v.waitingCount} waitlist customer${v.waitingCount === 1 ? '' : 's'} waiting for ${v.color} ${v.size} to return`}
+                title={`${v.waitingCount} waitlist signup${v.waitingCount === 1 ? '' : 's'} — notified when this size is restocked`}
+              >
+                {v.waitingCount} waiting
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <HexSwatch hex={v.colorHex} />
+            <Input
+              value={v.colorHex}
+              onChange={(e) => update(i, { colorHex: e.target.value })}
+              aria-label={`Variant ${i + 1} colour hex`}
+              className="h-9 border-line-strong font-mono text-xs"
+              placeholder="#EDE7DC"
+            />
+          </div>
           <div className="flex justify-end">
             <Input
               type="number"
@@ -266,34 +249,28 @@ function VariantEditor({
               className="h-9 w-20 border-line-strong text-right font-mono tabular-nums"
             />
           </div>
-          {editable ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-7 text-muted-foreground hover:text-destructive"
-              onClick={() => onChange(variants.filter((_, idx) => idx !== i))}
-              aria-label={`Remove variant ${i + 1}`}
-            >
-              <X className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-            </Button>
-          ) : (
-            <span />
-          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-7 text-muted-foreground hover:text-destructive"
+            onClick={() => onChange(variants.filter((_, idx) => idx !== i))}
+            aria-label={`Remove variant ${i + 1}`}
+          >
+            <X className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+          </Button>
         </div>
       ))}
-      {editable ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="border-dashed border-line-strong text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground"
-          onClick={() => onChange([...variants, { size: '', color: '', colorHex: '', stock: '0' }])}
-        >
-          <Plus className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-          Add variant
-        </Button>
-      ) : null}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="border-dashed border-line-strong text-[0.62rem] uppercase tracking-[0.16em] text-muted-foreground"
+        onClick={() => onChange([...variants, { size: '', color: '', colorHex: '', stock: '0' }])}
+      >
+        <Plus className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+        Add variant
+      </Button>
     </div>
   )
 }
@@ -452,162 +429,206 @@ function RelatedPiecesEditor({
 }
 
 /* ------------------------------------------------------------------ *
- * Atelier image studio — AI-generated editorial imagery (create dialog)
- * ------------------------------------------------------------------ */
-const STUDIO_SIZES = [
-  { value: '864x1152', label: 'Portrait 3:4 — cards' },
-  { value: '1024x1024', label: 'Square 1:1' },
-  { value: '1152x864', label: 'Landscape 4:3 — editorial' },
-] as const
-
-function ImageStudio({ onGenerated }: { onGenerated: (url: string) => void }) {
-  const [prompt, setPrompt] = useState('')
-  const [size, setSize] = useState<string>('864x1152')
-  const [lastUrl, setLastUrl] = useState<string | null>(null)
-
-  const generate = useMutation({
-    mutationFn: async () => {
-      const res = await fetch('/api/admin/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), size }),
-      })
-      const body = (await res.json()) as { url?: string; error?: string }
-      if (!res.ok || !body.url) throw new Error(body.error ?? 'Image generation failed')
-      return body.url
-    },
-    onSuccess: (url) => {
-      setLastUrl(url)
-      onGenerated(url)
-      toast.success('Image generated and added to the list.')
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const onGenerate = () => {
-    if (prompt.trim().length < 8) {
-      toast.error('Describe the image first — at least a short phrase.')
-      return
-    }
-    generate.mutate()
-  }
-
-  return (
-    <div className="border border-dashed border-line-strong bg-secondary/40 p-3">
-      <p className="eyebrow flex items-center gap-1.5">
-        <Sparkles className="h-3 w-3 text-espresso" strokeWidth={1.5} aria-hidden />
-        Atelier image studio
-      </p>
-      <p className="mt-1 text-[0.62rem] leading-snug text-muted-foreground">
-        Describe the shot — the house style (ivory studio light, muted palette, editorial mood) is
-        applied automatically. Each image takes a few seconds.
-      </p>
-      <Textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="e.g. Full-length photograph of a model wearing a flowing ivory pleated maxi skirt in gentle motion"
-        className="mt-2.5 min-h-16 border-line-strong text-xs"
-        aria-label="Image description for the atelier studio"
-      />
-      <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
-        <Select value={size} onValueChange={setSize}>
-          <SelectTrigger
-            className="h-11 border-line-strong text-xs sm:w-52"
-            aria-label="Image proportions"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STUDIO_SIZES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          onClick={onGenerate}
-          disabled={generate.isPending}
-          className="h-11 flex-1 text-[0.66rem] uppercase tracking-[0.18em]"
-        >
-          {generate.isPending ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
-              Painting…
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-              Generate image
-            </>
-          )}
-        </Button>
-      </div>
-      {lastUrl ? (
-        <div className="mt-3 flex items-center gap-3 border-t border-line pt-3">
-          <img
-            src={lastUrl}
-            alt="Last generated image"
-            className="h-16 w-12 shrink-0 border border-line object-cover"
-          />
-          <div className="min-w-0">
-            <p className="truncate font-mono text-[0.62rem] text-muted-foreground">{lastUrl}</p>
-            <p className="mt-0.5 text-[0.62rem] text-muted-foreground">
-              Added to the image list above — generate as many as the piece needs.
-            </p>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ *
- * Media pipeline — editable product gallery (edit dialog)
+ * Media pipeline — editable product gallery (create + edit dialogs).
+ * Uploads accept every image format plus video, one or many files at a
+ * time. Large files go straight to Cloudinary with backend-signed
+ * credentials so they never transit the Vercel proxy or this server.
  * ------------------------------------------------------------------ */
 interface EditableImage {
   url: string
   alt: string
 }
 
-function ImagesEditor({
+/** Gallery cap per piece (position-ordered replace-set in the admin API). */
+const MAX_MEDIA = 12
+const MAX_IMAGE_MB = 10
+const MAX_VIDEO_MB = 100
+
+/** Video items: Cloudinary video deliveries, or any common video extension. */
+function isVideoUrl(url: string): boolean {
+  return /\/video\/upload\//.test(url) || /\.(mp4|webm|mov|m4v|ogv|avi|mkv)(\?|#|$)/i.test(url)
+}
+
+/** Signed-upload credentials issued by the backend (admin-only endpoint). */
+interface CloudinarySign {
+  cloudName: string
+  apiKey: string
+  timestamp: number
+  signature: string
+  folder: string
+  resourceType: 'image' | 'video'
+}
+
+/**
+ * Upload one file straight to Cloudinary with signed credentials — the
+ * browser talks to api.cloudinary.com directly, bypassing the Vercel proxy's
+ * 120s external-rewrite timeout and the server's base64 buffering, which is
+ * what makes large product videos feasible at all.
+ */
+function uploadDirect(
+  file: File,
+  sign: CloudinarySign,
+  onProgress: (pct: number) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('api_key', sign.apiKey)
+    form.append('timestamp', String(sign.timestamp))
+    form.append('signature', sign.signature)
+    form.append('folder', sign.folder)
+    form.append('use_filename', 'true')
+    form.append('unique_filename', 'true')
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${sign.cloudName}/${sign.resourceType}/upload`)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+    }
+    xhr.onload = () => {
+      let data: { secure_url?: string; error?: { message?: string } } = {}
+      try {
+        data = JSON.parse(xhr.responseText) as typeof data
+      } catch {
+        // Malformed body — handled by the status check below.
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
+        resolve(data.secure_url)
+      } else {
+        reject(new Error(data.error?.message || `Cloudinary rejected the upload (${xhr.status}).`))
+      }
+    }
+    xhr.onerror = () => reject(new Error('Could not reach Cloudinary — check the connection and try again.'))
+    xhr.send(form)
+  })
+}
+
+/** Fallback relay through /api/admin/upload (multipart → base64 via the server). */
+async function uploadRelay(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+  const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+  if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed')
+  return data.url
+}
+
+/** Filename → editable alt fallback ("IMG_2049.heic" → "IMG 2049"). */
+function nameToAlt(file: File): string {
+  return file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim()
+}
+
+/** Square catalogue thumbnail that also renders video first-frames. */
+function MediaThumb({ url, alt }: { url: string; alt: string }) {
+  if (isVideoUrl(url)) {
+    return (
+      <video
+        src={url}
+        muted
+        playsInline
+        preload="metadata"
+        className="h-10 w-10 shrink-0 border border-line object-cover"
+        aria-label={alt}
+      />
+    )
+  }
+  return <img src={url} alt={alt} className="h-10 w-10 shrink-0 border border-line object-cover" loading="lazy" />
+}
+
+function MediaEditor({
   images,
   onChange,
   nameHint,
+  allowEmpty = false,
 }: {
   images: EditableImage[]
   onChange: (images: EditableImage[]) => void
   nameHint: string
+  /** Create mode starts empty and may stay empty; edit always keeps one item. */
+  allowEmpty?: boolean
 }) {
   const [addUrl, setAddUrl] = useState('')
-  const [uploading, setUploading] = useState(false)
+  const [uploadState, setUploadState] = useState<{
+    done: number
+    total: number
+    pct: number
+    name: string
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploading = uploadState !== null
+  const atLimit = images.length >= MAX_MEDIA
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-    try {
-      const res = await fetch('/api/admin/upload', {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
-      add(data.url)
-      toast.success('Uploaded to Cloudinary successfully')
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Upload failed'
-      toast.error(msg)
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+    const picked = Array.from(e.target.files ?? [])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (picked.length === 0 || uploading) return
+
+    const media = picked.filter((f) => f.type.startsWith('image/') || f.type.startsWith('video/'))
+    const wrongType = picked.length - media.length
+    if (wrongType > 0) {
+      toast.error(
+        `${wrongType} file${wrongType === 1 ? '' : 's'} skipped — only image and video files can be uploaded.`,
+      )
     }
+    if (media.length === 0) return
+
+    setUploadState({ done: 0, total: media.length, pct: 0, name: media[0].name })
+    let added = 0
+    let failed = 0
+    let skipped = 0
+    let firstError = ''
+    // Local continuity for the limit check — `images` stays stale inside this
+    // loop because the parent state updates asynchronously.
+    let current = [...images]
+
+    for (let i = 0; i < media.length; i++) {
+      const file = media[i]
+      setUploadState({ done: i, total: media.length, pct: 0, name: file.name })
+      if (current.length >= MAX_MEDIA) {
+        skipped = media.length - i
+        break
+      }
+      const isVideo = file.type.startsWith('video/')
+      const maxMb = isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB
+      if (file.size > maxMb * 1024 * 1024) {
+        failed++
+        if (!firstError) firstError = `${file.name} is over the ${maxMb} MB ${isVideo ? 'video' : 'image'} limit`
+        continue
+      }
+      try {
+        const sign = await jsonFetch<CloudinarySign>('/api/admin/upload-sign', {
+          method: 'POST',
+          body: JSON.stringify({ resourceType: isVideo ? 'video' : 'image' }),
+        })
+        const url = await uploadDirect(file, sign, (pct) =>
+          setUploadState({ done: i, total: media.length, pct, name: file.name }),
+        )
+        current = [...current, { url, alt: nameToAlt(file) }]
+        added++
+        onChange(current)
+      } catch {
+        // Signing or the direct path failed — fall back to the server relay.
+        try {
+          const url = await uploadRelay(file)
+          current = [...current, { url, alt: nameToAlt(file) }]
+          added++
+          onChange(current)
+        } catch (err: unknown) {
+          failed++
+          const msg = err instanceof Error ? err.message : 'Upload failed'
+          if (!firstError) firstError = `${file.name}: ${msg}`
+        }
+      }
+    }
+
+    setUploadState(null)
+    if (added > 0) toast.success(`Uploaded ${added} file${added === 1 ? '' : 's'} to Cloudinary.`)
+    if (skipped > 0)
+      toast.error(
+        `Gallery is full (${MAX_MEDIA} items) — ${skipped} file${skipped === 1 ? '' : 's'} not added.`,
+      )
+    if (failed > 0)
+      toast.error(`${failed} upload${failed === 1 ? '' : 's'} failed${firstError ? ` — ${firstError}` : '.'}`)
   }
-  const atLimit = images.length >= 12
 
   const move = (index: number, delta: -1 | 1) => {
     const target = index + delta
@@ -621,15 +642,15 @@ function ImagesEditor({
   const add = (url: string) => {
     const trimmed = url.trim()
     if (!trimmed) {
-      toast.error('Paste an image URL first.')
+      toast.error('Paste an image or video URL first.')
       return
     }
     if (images.some((img) => img.url === trimmed)) {
-      toast.error('That image URL is already in the gallery.')
+      toast.error('That URL is already in the gallery.')
       return
     }
     if (atLimit) {
-      toast.error('Twelve images is the limit for one piece.')
+      toast.error(`The gallery holds up to ${MAX_MEDIA} items.`)
       return
     }
     onChange([...images, { url: trimmed, alt: '' }])
@@ -641,42 +662,62 @@ function ImagesEditor({
   }
 
   const remove = (index: number) => {
-    if (images.length <= 1) return // a piece always keeps at least one image
+    if (!allowEmpty && images.length <= 1) return // a piece always keeps at least one image
     onChange(images.filter((_, i) => i !== index))
   }
 
   return (
     <div className="space-y-3">
       <div>
-        <p className="eyebrow">Gallery — images, in order</p>
+        <p className="eyebrow">Gallery — images &amp; video, in order</p>
         <p className="mt-1.5 text-[0.62rem] leading-snug text-muted-foreground">
-          The first image is the shop card; the rest form the product gallery. Reorder with the
-          arrows, refine the alt text, or paint a new one below — a piece always keeps at least
-          one image.
+          The first item is the shop card; the rest form the product gallery. Upload picks up any
+          image format plus video (videos play on the piece’s page), one or many files at a time.
+          Reorder with the arrows or refine the alt text
+          {allowEmpty ? '.' : ' — a piece always keeps at least one image.'}
         </p>
       </div>
 
       {images.length === 0 ? (
         <p className="border border-dashed border-line-strong px-4 py-5 text-center text-sm italic text-muted-foreground">
-          No images yet — add a URL or paint one with the atelier studio below.
+          {allowEmpty
+            ? 'No media yet — upload images or video, or paste a URL below.'
+            : 'No images yet — add a URL or upload media below.'}
         </p>
       ) : (
         <ul className="max-h-72 divide-y divide-line overflow-y-auto border border-line scroll-elegant">
           {images.map((img, i) => {
             const rowLabel = img.url.split('/').pop() || img.url
+            const video = isVideoUrl(img.url)
             return (
               <li key={`${img.url}-${i}`} className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4">
                 <span className="w-6 shrink-0 font-mono text-[0.68rem] tabular-nums text-muted-foreground" aria-hidden>
                   {String(i + 1).padStart(2, '0')}
                 </span>
-                <img
-                  src={img.url}
-                  alt={img.alt || rowLabel}
-                  className="h-16 w-12 shrink-0 border border-line object-cover"
-                  loading="lazy"
-                />
+                {video ? (
+                  <video
+                    src={img.url}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="h-16 w-12 shrink-0 border border-line object-cover"
+                    aria-label={img.alt || rowLabel}
+                  />
+                ) : (
+                  <img
+                    src={img.url}
+                    alt={img.alt || rowLabel}
+                    className="h-16 w-12 shrink-0 border border-line object-cover"
+                    loading="lazy"
+                  />
+                )}
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <p className="truncate font-mono text-[0.68rem] text-muted-foreground" title={img.url}>
+                    {video ? (
+                      <span className="mr-1.5 border border-line px-1 py-0.5 text-[0.52rem] uppercase tracking-wider text-espresso">
+                        Video
+                      </span>
+                    ) : null}
                     {img.url}
                   </p>
                   <Input
@@ -684,7 +725,7 @@ function ImagesEditor({
                     onChange={(e) => setAlt(i, e.target.value)}
                     placeholder={`Alt text — describes “${nameHint}”`}
                     className="h-9 border-line text-xs"
-                    aria-label={`Alt text for image ${i + 1}`}
+                    aria-label={`Alt text for media ${i + 1}`}
                     maxLength={200}
                   />
                 </div>
@@ -696,7 +737,7 @@ function ImagesEditor({
                     className="h-11 w-11 border-line"
                     disabled={i === 0}
                     onClick={() => move(i, -1)}
-                    aria-label={`Move image ${i + 1} up in the gallery`}
+                    aria-label={`Move media ${i + 1} up in the gallery`}
                   >
                     <ChevronUp className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                   </Button>
@@ -707,7 +748,7 @@ function ImagesEditor({
                     className="h-11 w-11 border-line"
                     disabled={i === images.length - 1}
                     onClick={() => move(i, 1)}
-                    aria-label={`Move image ${i + 1} down in the gallery`}
+                    aria-label={`Move media ${i + 1} down in the gallery`}
                   >
                     <ChevronDown className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                   </Button>
@@ -716,10 +757,10 @@ function ImagesEditor({
                     variant="outline"
                     size="icon"
                     className="h-11 w-11 border-line hover:border-destructive hover:text-destructive"
-                    disabled={images.length <= 1}
+                    disabled={!allowEmpty && images.length <= 1}
                     onClick={() => remove(i)}
-                    aria-label={`Remove image ${i + 1} from the gallery`}
-                    title={images.length <= 1 ? 'A piece keeps at least one image' : undefined}
+                    aria-label={`Remove media ${i + 1} from the gallery`}
+                    title={!allowEmpty && images.length <= 1 ? 'A piece keeps at least one image' : undefined}
                   >
                     <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                   </Button>
@@ -735,6 +776,7 @@ function ImagesEditor({
           ref={fileInputRef}
           type="file"
           accept="image/*,video/*"
+          multiple
           className="hidden"
           onChange={handleFileUpload}
         />
@@ -744,13 +786,18 @@ function ImagesEditor({
           className="h-10 shrink-0 border-line-strong uppercase tracking-[0.16em] text-[0.62rem]"
           onClick={() => fileInputRef.current?.click()}
           disabled={atLimit || uploading}
+          title={`Any image format up to ${MAX_IMAGE_MB} MB · video up to ${MAX_VIDEO_MB} MB · select several at once`}
         >
           {uploading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
           ) : (
             <Upload className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
           )}
-          {uploading ? 'Uploading to Cloudinary...' : 'Upload Media to Cloudinary'}
+          {uploading
+            ? uploadState.total > 1
+              ? `Uploading ${uploadState.done + 1}/${uploadState.total} — ${uploadState.pct}%`
+              : `Uploading — ${uploadState.pct}%`
+            : 'Upload images or video'}
         </Button>
         <Input
           value={addUrl}
@@ -763,7 +810,7 @@ function ImagesEditor({
           }}
           placeholder="Or paste media URL (https://res.cloudinary.com/...)"
           className="h-10 border-line-strong font-mono text-xs"
-          aria-label="Add an image URL to the gallery"
+          aria-label="Add a media URL to the gallery"
           disabled={atLimit || uploading}
         />
         <Button
@@ -775,11 +822,9 @@ function ImagesEditor({
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
           Add
-          <span className="sr-only">image by URL</span>
+          <span className="sr-only">media by URL</span>
         </Button>
       </div>
-
-      <ImageStudio onGenerated={(url) => add(url)} />
     </div>
   )
 }
@@ -821,7 +866,7 @@ function ProductDialog({
   const [care, setCare] = useState(product?.care ?? '')
   const [isActive, setIsActive] = useState(product?.isActive ?? true)
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured ?? false)
-  const [images, setImages] = useState('')
+  const [newImages, setNewImages] = useState<EditableImage[]>([])
   const [editImages, setEditImages] = useState<EditableImage[]>(
     mode === 'edit' && product ? product.images.map((img) => ({ url: img.url, alt: img.alt ?? '' })) : [],
   )
@@ -855,6 +900,24 @@ function ProductDialog({
       return
     }
 
+    // Variant set — validated up front so a half-cleared row can never be
+    // silently dropped (a dropped row means deletion once the PATCH lands).
+    if (variants.length === 0) {
+      toast.error('A piece keeps at least one variant — add a size and colour.')
+      return
+    }
+    if (variants.some((v) => !v.size.trim() || !v.color.trim())) {
+      toast.error('Every variant needs a size and a colour — fill in or remove empty rows.')
+      return
+    }
+    const variantRows = variants.map((v) => ({
+      ...(v.id ? { id: v.id } : {}),
+      size: v.size.trim(),
+      color: v.color.trim(),
+      colorHex: v.colorHex.trim() || undefined,
+      stock: Math.max(0, Math.round(Number(v.stock) || 0)),
+    }))
+
     const body: Record<string, unknown> = { name: trimmedName, price: parsedPrice }
 
     if (mode === 'create') {
@@ -871,22 +934,13 @@ function ProductDialog({
       if (categoryId !== 'none') body.categoryId = categoryId
       body.isActive = isActive
       body.isFeatured = isFeatured
-      const urls = images
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean)
-      if (urls.length > 0) {
-        body.images = urls.map((url) => ({ url, alt: `${trimmedName} — ${subtitle.trim() || 'product'}` }))
-      }
-      const rows = variants
-        .filter((v) => v.size.trim() && v.color.trim())
-        .map((v) => ({
-          size: v.size.trim(),
-          color: v.color.trim(),
-          colorHex: v.colorHex.trim() || undefined,
-          stock: Math.max(0, Math.round(Number(v.stock) || 0)),
+      if (newImages.length > 0) {
+        body.images = newImages.map(({ url, alt }) => ({
+          url,
+          alt: alt.trim() || `${trimmedName} — ${subtitle.trim() || 'product'}`,
         }))
-      if (rows.length > 0) body.variants = rows
+      }
+      body.variants = variantRows
     } else {
       if (slug.trim() && product && slug.trim() !== product.slug) body.slug = slug.trim()
       body.subtitle = subtitle.trim() || null
@@ -905,10 +959,8 @@ function ProductDialog({
       if (editImages.length > 0) {
         body.images = editImages.map(({ url, alt }) => ({ url, alt: alt.trim() || undefined }))
       }
-      const stocks = variants
-        .filter((v) => v.id)
-        .map((v) => ({ id: v.id as string, stock: Math.max(0, Math.round(Number(v.stock) || 0)) }))
-      if (stocks.length > 0) body.variantStocks = stocks
+      // Full variant-set edit — rows with id update, new rows create, missing ones delete.
+      body.variants = variantRows
     }
 
     onSubmit(product?.id ?? null, body)
@@ -924,7 +976,7 @@ function ProductDialog({
           <DialogDescription>
             {mode === 'create'
               ? 'Add a new piece to the catalogue with its variants.'
-              : 'Adjust details, pricing, imagery, visibility and per-variant stock.'}
+              : 'Adjust details, pricing, imagery, variants and visibility.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -1071,22 +1123,14 @@ function ProductDialog({
           </div>
 
           {mode === 'create' ? (
-            <Field label="Images" htmlFor="pf-images" hint="One image URL per line — up to 12.">
-              <Textarea
-                id="pf-images"
-                value={images}
-                onChange={(e) => setImages(e.target.value)}
-                placeholder={'/images/products/your-piece-name.png\n/images/products/your-piece-name-detail.png'}
-                className="min-h-20 border-line-strong font-mono text-xs"
-              />
-              <ImageStudio
-                onGenerated={(url) =>
-                  setImages((prev) => (prev.trim() ? `${prev.trim()}\n${url}` : url))
-                }
-              />
-            </Field>
+            <MediaEditor
+              images={newImages}
+              onChange={setNewImages}
+              nameHint={name.trim() || 'the new piece'}
+              allowEmpty
+            />
           ) : (
-            <ImagesEditor
+            <MediaEditor
               images={editImages}
               onChange={setEditImages}
               nameHint={product?.name ?? 'the piece'}
@@ -1094,15 +1138,16 @@ function ProductDialog({
           )}
 
           <div className="space-y-3">
-            <p className="eyebrow">Variants {mode === 'edit' ? '— stock' : ''}</p>
+            <p className="eyebrow">Variants</p>
             {mode === 'edit' ? (
               <p className="text-[0.62rem] text-muted-foreground">
-                Sizes and colours are fixed after creation; adjust per-variant stock here. A “waiting”
-                tag marks sizes with customers on the back-in-stock list — they’re notified when
-                stock returns.
+                Sizes, colours and stock stay editable — add or remove variants at any time. A
+                “waiting” tag marks sizes with customers on the back-in-stock list; they’re notified
+                when stock returns. Removing a variant also clears it from customer carts and its
+                waitlist.
               </p>
             ) : null}
-            <VariantEditor variants={variants} onChange={setVariants} editable={mode === 'create'} />
+            <VariantEditor variants={variants} onChange={setVariants} />
           </div>
 
           {mode === 'edit' ? (
@@ -1365,12 +1410,7 @@ export function ProductsManager() {
                       <TableCell className="pl-4 sm:pl-5">
                         <div className="flex items-center gap-3 py-1">
                           {p.images[0] ? (
-                            <img
-                              src={p.images[0].url}
-                              alt={p.images[0].alt ?? p.name}
-                              className="h-10 w-10 shrink-0 border border-line object-cover"
-                              loading="lazy"
-                            />
+                            <MediaThumb url={p.images[0].url} alt={p.images[0].alt ?? p.name} />
                           ) : (
                             <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-line bg-secondary">
                               <Package className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} aria-hidden />
