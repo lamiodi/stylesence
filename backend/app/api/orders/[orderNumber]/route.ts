@@ -62,6 +62,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ orderNum
       phone: verified ? order.phone : null,
       notes: verified ? order.notes : null,
       shippingMethod: order.shippingMethod,
+      /** Payment rail — drives the retry-payment affordance on the order page. */
+      paymentMethod: order.paymentMethod,
       shipping: order.shipping,
       subtotal: order.subtotal,
       discount: order.discount,

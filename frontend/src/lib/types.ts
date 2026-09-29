@@ -149,6 +149,8 @@ export interface OrderView {
   /** Delivery notes captured at checkout. */
   notes: string | null
   shippingMethod: string
+  /** Payment rail — gateway orders ('paystack' | 'stripe') can retry payment while PENDING_PAYMENT. */
+  paymentMethod: string
   shipping: number
   subtotal: number
   discount: number

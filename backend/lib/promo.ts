@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 
 /**
@@ -127,5 +128,30 @@ export async function evaluatePromoStack(
     ok: true,
     promos,
     discount: promos.reduce((sum, p) => sum + p.discount, 0),
+  }
+}
+
+/**
+ * Refund the usage an order burned at checkout — called when an order is
+ * cancelled (admin cancel or the PENDING_PAYMENT reaper) so abandoned
+ * orders don't permanently consume a code's redemptions. Guarded on
+ * usageCount > 0 so it can never drive the counter negative.
+ */
+export async function refundPromoUsage(
+  tx: Prisma.TransactionClient,
+  promoCode: string | null,
+  promoCodes: string | null,
+): Promise<void> {
+  const codes = new Set(
+    [
+      ...(promoCodes ? promoCodes.split(',').map((c) => c.trim()) : []),
+      ...(promoCode ? [promoCode.trim()] : []),
+    ].filter(Boolean),
+  )
+  for (const code of codes) {
+    await tx.promoCode.updateMany({
+      where: { code, usageCount: { gt: 0 } },
+      data: { usageCount: { decrement: 1 } },
+    })
   }
 }

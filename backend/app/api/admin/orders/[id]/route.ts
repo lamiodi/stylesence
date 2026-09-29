@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { fail, ok, readValidated, toAdminOrder } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 import { orderPatchInput } from '@/lib/validators'
+import { refundPromoUsage } from '@/lib/promo'
 import { sendOrderStatusUpdateEmail } from '@/lib/email'
 
 const ORDER_STATUSES = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
@@ -25,7 +26,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const existing = await db.order.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, promoCode: true, promoCodes: true },
   })
   if (!existing) return fail(404, 'Order not found')
 
@@ -62,6 +63,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             }
             throw new Error('Insufficient stock to un-cancel this order')
           }
+        }
+        // A cancelled order returns its promo usage too — the checkout
+        // increment is only deserved by orders that stand.
+        if (crossingIntoCancelled) {
+          await refundPromoUsage(tx, existing.promoCode, existing.promoCodes)
         }
       }
       return tx.order.update({

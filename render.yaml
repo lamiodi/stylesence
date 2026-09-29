@@ -30,4 +30,13 @@ services:
         value: ngn
       - key: STRIPE_NAIRA_RATE
         value: "0.00065"
+      # PENDING_PAYMENT reaper (backend/instrumentation.ts) — arms only when
+      # REAPER_ENABLED=true. Keep REAPER_DRY_RUN unset for log-only passes;
+      # set "false" to arm live cancelling after verifying the dry-run logs.
+      - key: REAPER_ENABLED
+        sync: false
+      - key: REAPER_DRY_RUN
+        sync: false
+      - key: PENDING_TTL_DAYS
+        sync: false
 

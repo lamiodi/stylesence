@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Package, Truck, Home, ArrowRight, Printer, Copy } from 'lucide-react'
+import { Check, Package, Truck, Home, ArrowRight, Printer, Copy, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { navigate, Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
@@ -65,6 +65,7 @@ function CopyOrderNumber({ orderNumber }: { orderNumber: string }) {
 
 export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) {
   const qc = useQueryClient()
+  const [repaying, setRepaying] = useState(false)
 
   useEffect(() => {
     document.title = `Order ${orderNumber} — Style Sence`
@@ -164,6 +165,42 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
   const isPendingPayment = order.status === 'PENDING_PAYMENT'
   const currentStep = isPendingPayment ? 0 : STEPS.findIndex((s) => s.key === order.status)
   const firstName = order.fullName ? order.fullName.split(' ')[0] : null
+  // Gateway orders stuck on PENDING_PAYMENT can restart payment — but only
+  // for the verified viewer (the retry endpoint re-checks the email).
+  const canRetryPayment =
+    isPendingPayment &&
+    order.verified === true &&
+    (order.paymentMethod === 'paystack' || order.paymentMethod === 'stripe')
+
+  const onRetryPayment = async () => {
+    if (repaying) return
+    setRepaying(true)
+    try {
+      const searchParams = new URLSearchParams(window.location.search)
+      const hash = window.location.hash
+      const queryIdx = hash.indexOf('?')
+      const hashParams = queryIdx !== -1 ? new URLSearchParams(hash.slice(queryIdx + 1)) : new URLSearchParams()
+      const email = searchParams.get('email') ?? hashParams.get('email')
+      if (!email) {
+        toast.error('Open the payment link from your order email, then retry from here.')
+        return
+      }
+      const res = await fetch(
+        `/api/orders/${encodeURIComponent(orderNumber)}/pay?email=${encodeURIComponent(email)}`,
+        { method: 'POST' },
+      )
+      const body = await res.json()
+      if (res.ok && body.payment?.url) {
+        toast.success('Taking you to the secure payment page…')
+        window.location.href = body.payment.url as string
+        return // navigating away — keep the guard up
+      }
+      toast.error(body.error ?? 'Could not restart payment — WhatsApp the studio on +234 816 302 2233.')
+    } catch {
+      toast.error('Could not restart payment — check your connection and try again.')
+    }
+    setRepaying(false)
+  }
 
   return (
     <div className="container-site py-12 sm:py-16">
@@ -204,17 +241,36 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
             <div className="border border-espresso/40 bg-[color-mix(in_oklch,var(--espresso)_6%,transparent)] p-5 text-center">
               <p className="font-display text-lg">Awaiting Payment Confirmation</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                If paying by bank transfer or completing your card transaction, our atelier team is standing by to confirm your order.
+                {canRetryPayment
+                  ? 'Your payment session did not complete. Restart it below — or the atelier team is standing by to confirm a transfer.'
+                  : 'If paying by bank transfer or completing your card transaction, our atelier team is standing by to confirm your order.'}
               </p>
+              {canRetryPayment ? (
+                <button
+                  type="button"
+                  onClick={() => void onRetryPayment()}
+                  disabled={repaying}
+                  className="mt-4 inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.66rem] font-medium uppercase tracking-[0.2em] text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <CreditCard className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                  {repaying ? 'Preparing payment…' : `Complete payment — ${formatNaira(order.total)}`}
+                </button>
+              ) : null}
               <a
                 href={`https://wa.me/2348163022233?text=${encodeURIComponent(
                   `Hello Style Sence, I would like to confirm payment for order ${order.orderNumber}.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-2.5 text-[0.66rem] font-medium uppercase tracking-[0.2em] text-background transition-colors hover:bg-foreground/90"
+                className={cn(
+                  'mt-4 inline-flex items-center gap-2 border px-5 py-2.5 text-[0.66rem] font-medium uppercase tracking-[0.2em] transition-colors',
+                  canRetryPayment
+                    ? 'border-line-strong text-foreground hover:border-foreground'
+                    : 'border-foreground bg-foreground text-background hover:bg-foreground/90',
+                  canRetryPayment && repaying ? 'ml-4' : '',
+                )}
               >
-                Confirm on WhatsApp (+234 816 302 2233)
+                {canRetryPayment ? 'Prefer WhatsApp?' : 'Confirm on WhatsApp (+234 816 302 2233)'}
               </a>
             </div>
             {!isPaystackCountry(order.country) ? (

@@ -60,8 +60,17 @@ export async function initiatePaystack(params: {
   return { reference: body.data.reference, authorizationUrl: body.data.authorization_url }
 }
 
-/** Verify a Paystack transaction by reference. */
-export async function verifyPaystack(reference: string): Promise<{ paid: boolean; amountNaira: number | null }> {
+/**
+ * Verify a Paystack transaction by reference. `gatewayStatus` is the raw
+ * transaction status (success | failed | abandoned | ongoing | …) — the
+ * reaper only cancels orders on a definitive failure, never on a network
+ * error (which reads identically to `paid: false` here).
+ */
+export async function verifyPaystack(reference: string): Promise<{
+  paid: boolean
+  amountNaira: number | null
+  gatewayStatus?: string
+}> {
   const res = await fetch(`${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`, {
     headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
   })
@@ -72,6 +81,7 @@ export async function verifyPaystack(reference: string): Promise<{ paid: boolean
   return {
     paid: body.data?.status === 'success',
     amountNaira: typeof body.data?.amount === 'number' ? body.data.amount / 100 : null,
+    gatewayStatus: body.data?.status,
   }
 }
 
@@ -122,8 +132,12 @@ export async function initiateStripe(params: {
   return { reference: body.id, authorizationUrl: body.url }
 }
 
-/** Verify a Stripe Checkout Session by id. */
-export async function verifyStripe(sessionId: string): Promise<{ paid: boolean; amountNaira: number | null }> {
+/** Verify a Stripe Checkout Session by id. `gatewayStatus` is the session's payment_status. */
+export async function verifyStripe(sessionId: string): Promise<{
+  paid: boolean
+  amountNaira: number | null
+  gatewayStatus?: string
+}> {
   const res = await fetch(`${STRIPE_API}/checkout/sessions/${encodeURIComponent(sessionId)}`, {
     headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
   })
@@ -140,5 +154,5 @@ export async function verifyStripe(sessionId: string): Promise<{ paid: boolean; 
       amountNaira = rate > 0 ? body.amount_total / 100 / rate : null
     }
   }
-  return { paid: body.payment_status === 'paid', amountNaira }
+  return { paid: body.payment_status === 'paid', amountNaira, gatewayStatus: body.payment_status }
 }
