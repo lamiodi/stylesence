@@ -23,6 +23,7 @@
     "react-dom": "^19.0.0",
     "resend": "^6.28.1",
     "uuid": "^11.1.0",
+    "z-ai-web-dev-sdk": "^0.0.18",
     "zod": "^4.0.2"
   },
   "devDependencies": {
