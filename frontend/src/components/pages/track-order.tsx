@@ -8,7 +8,7 @@
  * adapted for a public lookup context.
  */
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Check, Home, Package, Truck, XCircle } from 'lucide-react'
 import { navigate, Link, useRoute } from '@/lib/router'
@@ -195,6 +195,24 @@ export function TrackOrderPage() {
     navigate(`/track?order=${encodeURIComponent(value)}`)
   }
 
+  // A completed lookup scrolls its results into view — on phones the result
+  // block renders well below the form, and a "nothing happened" moment loses
+  // people. Runs on arrivals from email links too (initial ?order= lookup).
+  const resultsRef = useRef<HTMLDivElement>(null)
+  const resultsReady =
+    mode === 'email'
+      ? emailQuery.data?.orders?.length
+        ? emailLookup
+        : null
+      : data
+        ? lookup
+        : null
+  useEffect(() => {
+    if (!resultsReady) return
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    resultsRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  }, [resultsReady])
+
   const onEmailSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const value = emailInput.trim().toLowerCase()
@@ -365,7 +383,7 @@ export function TrackOrderPage() {
       </div>
 
       {/* ————— lookup result ————— */}
-      <div role="status" aria-live="polite" className="mx-auto mt-14 max-w-3xl sm:mt-16">
+      <div ref={resultsRef} role="status" aria-live="polite" className="mx-auto mt-14 max-w-3xl scroll-mt-24 sm:mt-16">
         {mode === 'email' ? (
           <EmailResult
             email={emailLookup}
