@@ -8,7 +8,7 @@ export const resend = resendApiKey ? new Resend(resendApiKey) : null
 // Once a custom domain is verified in Resend, change EMAIL_FROM in backend/.env to e.g. "Style Sence <concierge@stylesence.com>".
 const DEFAULT_FROM = process.env.EMAIL_FROM || 'Style Sence <onboarding@resend.dev>'
 
-const PRODUCTION_FRONTEND_URL = 'https://stylesence.com'
+const PRODUCTION_FRONTEND_URL = 'https://www.stylesence.com'
 
 /** Missing/relative/loopback origins — never safe inside a customer-facing link. */
 function isLocalUrl(raw: string): boolean {
@@ -30,15 +30,17 @@ function isLocalUrl(raw: string): boolean {
 /**
  * Origin for links inside customer-facing email (and gateway callbacks).
  * An explicit non-local FRONTEND_URL always wins. A local/missing value is
- * only acceptable while mail is simulated — the moment RESEND_API_KEY is
- * live the message actually leaves the machine, so links must point at the
- * production site (dev and prod share the database, so orders and reset
- * tokens created locally resolve there too).
+ * only acceptable in local development — a deployed backend (NODE_ENV
+ * production) must never hand customers a localhost URL, because gateway
+ * callbacks and email buttons reach buyers, not developers. Production
+ * therefore always resolves to the live site, env var or no env var
+ * (dev and prod share the database, so orders and reset tokens created
+ * locally still resolve there too).
  */
 export function getFrontendUrl(): string {
   const raw = (process.env.FRONTEND_URL ?? '').trim().replace(/\/+$/, '')
   if (raw && !isLocalUrl(raw)) return raw
-  if (resend) return PRODUCTION_FRONTEND_URL
+  if (process.env.NODE_ENV === 'production' || resend) return PRODUCTION_FRONTEND_URL
   return raw || 'http://localhost:3000'
 }
 

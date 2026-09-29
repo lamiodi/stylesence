@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
           { key: "Access-Control-Allow-Credentials", value: "true" },
           // Wildcard origin + credentials is incoherent (browsers reject it) —
           // only ever emit a concrete origin.
-          { key: "Access-Control-Allow-Origin", value: process.env.FRONTEND_URL || "https://stylesence.com" },
+          { key: "Access-Control-Allow-Origin", value: process.env.FRONTEND_URL || "https://www.stylesence.com" },
           { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
           {
             key: "Access-Control-Allow-Headers",
