@@ -11,7 +11,7 @@ export const DELIVERY_ZONES = [
   { id: 'uk', label: 'United Kingdom', price: 55000, eta: '10–15 business days', method: 'international' },
   { id: 'europe', label: 'Europe and Middle East', price: 65000, eta: '7–15 business days', method: 'international' },
   { id: 'north-america', label: 'United States and Canada', price: 75000, eta: '7–15 business days', method: 'international' },
-  { id: 'other', label: 'Asia, Oceania, Brazil and Mexico', price: 85000, eta: '10–20 business days', method: 'international' },
+  { id: 'other', label: 'Rest of the world', price: 85000, eta: '10–20 business days', method: 'international' },
 ] as const
 const states = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT — Abuja','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']
 const southwest = ['Ogun','Oyo','Osun','Ondo','Ekiti']
@@ -28,7 +28,9 @@ export function deliveryZone(country: string, state: string) {
     return DELIVERY_ZONES.find(z => z.id === (state === 'Lagos' ? 'lagos' : southwest.includes(state) ? 'southwest' : 'nigeria'))!
   }
   const id = Object.keys(international).find(key => international[key].includes(country))
-  return DELIVERY_ZONES.find(z => z.id === id) ?? null
+  // Every country is orderable: destinations outside the mapped zones get the
+  // rest-of-the-world rate; the studio confirms the courier per order.
+  return DELIVERY_ZONES.find(z => z.id === id) ?? DELIVERY_ZONES.find(z => z.id === 'other')!
 }
 export function shippingError(country: string, state: string, method: ShippingMethod): string | null {
   const zone = deliveryZone(country, state)

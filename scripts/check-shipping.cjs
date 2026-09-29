@@ -21,14 +21,16 @@ const shipping = load('backend/lib/shipping.ts');
 const geo = load('frontend/src/lib/geo.ts');
 const cases=[['Nigeria','Lagos',5000,'local'],['Nigeria','Ogun',8000,'nationwide'],['Nigeria','Oyo',8000,'nationwide'],['Nigeria','FCT — Abuja',12500,'nationwide'],['Nigeria','Rivers',12500,'nationwide'],['Ghana','Greater Accra',35000,'international'],['Kenya','Nairobi',50000,'international'],['United Kingdom','England',55000,'international'],['Germany','Berlin',65000,'international'],['Canada','Ontario',75000,'international'],['Japan','Tokyo',85000,'international']];
 for(const [country,state,price,method] of cases){const zone=shipping.deliveryZone(country,state);assert.equal(zone.price,price);assert.equal(zone.method,method);assert.equal(shipping.shippingError(country,state,method),null);}
-for(const country of geo.COUNTRY_NAMES.filter(x=>x!=='Other (tell us in notes)')){
+for(const country of geo.COUNTRY_NAMES){
   for(const state of geo.provincesFor(country)??['Region'])assert.ok(shipping.deliveryZone(country,state),country+' '+state);
 }
 assert.ok(shipping.shippingError('Nigeria','Kano','local'));
 assert.ok(shipping.shippingError('Nigeria','Lagos','international'));
 assert.ok(shipping.shippingError('United Kingdom','England','nationwide'));
 assert.equal(shipping.deliveryZone('Nigeria','Made up'),null);
-assert.equal(shipping.deliveryZone('Other (tell us in notes)','Region'),null);
+// Unmapped destinations order at the rest-of-the-world rate — nobody is stranded.
+assert.equal(shipping.deliveryZone('Vanuatu','Region').price,85000);
+assert.equal(shipping.deliveryZone('Vanuatu','Region').method,'international');
 async function checkoutTest(country,state,method,expected){
   let saved,stockWrites=0,cartClears=0;
   const input={country,state,shippingMethod:method,email:'test@example.com',fullName:'Test Buyer',address:'12 Test Road',city:'City',paymentMethod:'confirmed',productionTier:'standard'};
@@ -64,6 +66,7 @@ async function verifyTest(status,reference,expectedStatus,expectedVerified){
   await checkoutTest('Nigeria','Lagos','international',null);
   await checkoutTest('United Kingdom','England','nationwide',null);
   await checkoutTest('Nigeria','Bogus','nationwide',null);
+  await checkoutTest('Vanuatu','Region','international',85000);
   await verifyTest('PENDING_PAYMENT','other-order',400);
   await verifyTest('CANCELLED','correct',200,false);
   await verifyTest('PAID','correct',200,true);

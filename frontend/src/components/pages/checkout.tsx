@@ -31,6 +31,7 @@ import {
 } from '@/lib/types'
 import {
   COUNTRY_NAMES,
+  POPULAR_COUNTRIES,
   dialFor,
   isPaystackCountry,
   provincesFor,
@@ -158,15 +159,41 @@ export function CheckoutPage() {
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice + productionFee
 
+  /** Single-field checks — shared by live blur validation and the submit pass. */
+  const validateField = (key: string): string => {
+    switch (key) {
+      case 'email': return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? '' : 'A valid email is required.'
+      case 'fullName': return fullName.trim().length >= 2 ? '' : 'Your full name is required.'
+      case 'phone': return phone.trim().length >= 7 ? '' : 'A reachable phone number is required.'
+      case 'address': return address.trim().length >= 5 ? '' : 'Your street address is required.'
+      case 'city': return city.trim().length >= 2 ? '' : 'Your city is required.'
+      case 'state': return state.trim().length >= 2 ? '' : (country === 'Nigeria' ? 'Select your state.' : 'Your state / region is required.')
+      default: return ''
+    }
+  }
+
+  /** Blur = a gentle check; typing clears the flag so a fixed answer stops
+   *  flashing red before the next submit. */
+  const checkField = (key: string) => {
+    const msg = validateField(key)
+    setErrors((prev) => (msg || prev[key] ? { ...prev, [key]: msg } : prev))
+  }
+  const clearError = (key: string) => {
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: '' } : prev))
+  }
+
+  /** Submission order — the first invalid field is focused and scrolled to. */
+  const FIELD_ORDER = ['email', 'fullName', 'phone', 'address', 'city', 'state'] as const
+  const FIELD_ID: Record<string, string> = {
+    email: 'ck-email', fullName: 'ck-name', phone: 'ck-phone',
+    address: 'ck-address', city: 'ck-city', state: 'ck-state',
+  }
+
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {}
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = 'A valid email is required.'
-    if (fullName.trim().length < 2) e.fullName = 'Your full name is required.'
-    if (phone.trim().length < 7) e.phone = 'A reachable phone number is required.'
-    if (address.trim().length < 5) e.address = 'Your street address is required.'
-    if (city.trim().length < 2) e.city = 'Your city is required.'
-    if (state.trim().length < 2) {
-      e.state = country === 'Nigeria' ? 'Select your state.' : 'Your state / region is required.'
+    for (const key of FIELD_ORDER) {
+      const msg = validateField(key)
+      if (msg) e[key] = msg
     }
     const deliveryError = shippingError(country, state, shipping)
     if (deliveryError) e.shipping = deliveryError
@@ -187,12 +214,18 @@ export function CheckoutPage() {
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length > 0) {
-      if (errs.confirmedProduction) {
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const firstField = FIELD_ORDER.find((k) => errs[k])
+      if (firstField) {
+        const el = document.getElementById(FIELD_ID[firstField])
+        el?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+        el?.focus({ preventScroll: true })
+        toast.error('Please review the highlighted fields.')
+      } else if (errs.confirmedProduction) {
         toast.error(errs.confirmedProduction)
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         confirmRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
       } else {
-        toast.error('Please review the highlighted fields.')
+        toast.error(errs.shipping ?? 'Please review the highlighted fields.')
       }
       return
     }
@@ -283,12 +316,14 @@ export function CheckoutPage() {
                     type="email"
                     autoComplete="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); clearError('email') }}
+                    onBlur={() => checkField('email')}
                     placeholder="you@example.com"
                     className={fieldCls('email')}
                     aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? 'ck-email-err' : undefined}
                   />
-                  {errors.email ? <p className="text-[0.7rem] text-destructive">{errors.email}</p> : null}
+                  {errors.email ? <p id="ck-email-err" className="text-[0.7rem] text-destructive">{errors.email}</p> : null}
                   {customer ? (
                     <p className="text-[0.66rem] leading-relaxed text-muted-foreground">
                       Signed in as{' '}
@@ -306,12 +341,14 @@ export function CheckoutPage() {
                     type="tel"
                     autoComplete="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => { setPhone(e.target.value); clearError('phone') }}
+                    onBlur={() => checkField('phone')}
                     placeholder={`${dialFor(country)} 801 234 5678`}
                     className={fieldCls('phone')}
                     aria-invalid={!!errors.phone}
+                    aria-describedby={errors.phone ? 'ck-phone-err' : undefined}
                   />
-                  {errors.phone ? <p className="text-[0.7rem] text-destructive">{errors.phone}</p> : null}
+                  {errors.phone ? <p id="ck-phone-err" className="text-[0.7rem] text-destructive">{errors.phone}</p> : null}
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="ck-name" className="eyebrow">Full name *</Label>
@@ -319,12 +356,14 @@ export function CheckoutPage() {
                     id="ck-name"
                     autoComplete="name"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => { setFullName(e.target.value); clearError('fullName') }}
+                    onBlur={() => checkField('fullName')}
                     placeholder="Adaeze Okonkwo"
                     className={fieldCls('fullName')}
                     aria-invalid={!!errors.fullName}
+                    aria-describedby={errors.fullName ? 'ck-name-err' : undefined}
                   />
-                  {errors.fullName ? <p className="text-[0.7rem] text-destructive">{errors.fullName}</p> : null}
+                  {errors.fullName ? <p id="ck-name-err" className="text-[0.7rem] text-destructive">{errors.fullName}</p> : null}
                 </div>
               </div>
             </section>
@@ -338,12 +377,14 @@ export function CheckoutPage() {
                     id="ck-address"
                     autoComplete="street-address"
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    onChange={(e) => { setAddress(e.target.value); clearError('address') }}
+                    onBlur={() => checkField('address')}
                     placeholder="14A Awolowo Road, Ikoyi"
                     className={fieldCls('address')}
                     aria-invalid={!!errors.address}
+                    aria-describedby={errors.address ? 'ck-address-err' : undefined}
                   />
-                  {errors.address ? <p className="text-[0.7rem] text-destructive">{errors.address}</p> : null}
+                  {errors.address ? <p id="ck-address-err" className="text-[0.7rem] text-destructive">{errors.address}</p> : null}
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="ck-country" className="eyebrow">Country *</Label>
@@ -354,10 +395,20 @@ export function CheckoutPage() {
                     autoComplete="country-name"
                     className={selectCls('country')}
                   >
-                    {COUNTRY_NAMES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    <optgroup label="Frequent destinations">
+                      {POPULAR_COUNTRIES.map((c) => (
+                        <option key={`popular-${c}`} value={c}>{c}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="All countries">
+                      {COUNTRY_NAMES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </optgroup>
                   </select>
+                  <p className="text-[0.66rem] leading-relaxed text-muted-foreground">
+                    Every country ships — the state / province list adapts to the country you pick.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ck-city" className="eyebrow">City *</Label>
@@ -365,12 +416,14 @@ export function CheckoutPage() {
                     id="ck-city"
                     autoComplete="address-level2"
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={(e) => { setCity(e.target.value); clearError('city') }}
+                    onBlur={() => checkField('city')}
                     placeholder="Lagos"
                     className={fieldCls('city')}
                     aria-invalid={!!errors.city}
+                    aria-describedby={errors.city ? 'ck-city-err' : undefined}
                   />
-                  {errors.city ? <p className="text-[0.7rem] text-destructive">{errors.city}</p> : null}
+                  {errors.city ? <p id="ck-city-err" className="text-[0.7rem] text-destructive">{errors.city}</p> : null}
                 </div>
                 <div className="space-y-1.5">
                   {provinces ? (
@@ -379,9 +432,11 @@ export function CheckoutPage() {
                       <select
                         id="ck-state"
                         value={state}
-                        onChange={(e) => setState(e.target.value)}
+                        onChange={(e) => { setState(e.target.value); clearError('state') }}
+                        onBlur={() => checkField('state')}
                         className={selectCls('state')}
                         aria-invalid={!!errors.state}
+                        aria-describedby={errors.state ? 'ck-state-err' : undefined}
                       >
                         <option value="">Select…</option>
                         {provinces.map((s) => (
@@ -396,14 +451,16 @@ export function CheckoutPage() {
                         id="ck-state"
                         autoComplete="address-level1"
                         value={state}
-                        onChange={(e) => setState(e.target.value)}
+                        onChange={(e) => { setState(e.target.value); clearError('state') }}
+                        onBlur={() => checkField('state')}
                         placeholder="Province or region"
                         className={fieldCls('state')}
                         aria-invalid={!!errors.state}
+                        aria-describedby={errors.state ? 'ck-state-err' : undefined}
                       />
                     </>
                   )}
-                  {errors.state ? <p className="text-[0.7rem] text-destructive">{errors.state}</p> : null}
+                  {errors.state ? <p id="ck-state-err" className="text-[0.7rem] text-destructive">{errors.state}</p> : null}
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="ck-notes" className="eyebrow">
