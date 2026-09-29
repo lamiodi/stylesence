@@ -21,9 +21,13 @@ export async function GET(req: Request) {
   })
   if (!order) return fail(404, 'Order not found')
 
+  // A successful transaction for a different order must never settle this one.
+  if (!order.paymentReference || reference !== order.paymentReference) {
+    return fail(400, 'Payment reference does not match this order.')
+  }
   if (order.status !== 'PENDING_PAYMENT') {
-    // Already settled (PAID / CANCELLED / …) — idempotent success.
-    return ok({ order: orderNumber, status: order.status, verified: true })
+    const verified = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status)
+    return ok({ order: orderNumber, status: order.status, verified })
   }
 
   try {
@@ -43,7 +47,10 @@ export async function GET(req: Request) {
       return fail(402, 'Payment amount does not match the order — contact the studio on WhatsApp +234 816 302 2233.')
     }
 
-    return ok({ order: orderNumber, status: 'PAID', verified: true })
+    // A cancellation can race the gateway lookup; report the stored result.
+    const current = await db.order.findUnique({ where: { id: order.id }, select: { status: true } })
+    const status = current?.status ?? order.status
+    return ok({ order: orderNumber, status, verified: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(status) })
   } catch (err) {
     console.error('[api/checkout/verify] verification failed:', err)
     return fail(502, 'Could not verify the payment. If you were charged, WhatsApp the studio on +234 816 302 2233.')
