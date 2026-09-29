@@ -15,6 +15,7 @@ import { ArrowRight } from 'lucide-react'
 import { Link, navigate, useRoute } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
+import { DELIVERY_ZONES } from '@/lib/shipping'
 import { Reveal } from '@/components/site/reveal'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -40,33 +41,14 @@ function asTopic(value: string | null): Topic | null {
 
 /* ————————————————— content ————————————————— */
 
-const SHIPPING_ROWS = [
-  {
-    method: 'Standard Delivery',
-    fee: 3_500,
-    eta: '3–5 business days',
-    note: 'Nationwide courier with tracking.',
-  },
-  {
-    method: 'Express Delivery',
-    fee: 7_500,
-    eta: '1–2 business days',
-    note: 'Lagos same-day dispatch before 11am.',
-  },
-] as const
-
+const SHIPPING_ROWS = DELIVERY_ZONES.map(zone => ({
+  method: zone.label, fee: zone.price, eta: zone.eta,
+  note: zone.method === 'international' ? 'Import duties and taxes paid separately by the recipient.' : 'Flat delivery fee per order.',
+}))
 const SHIPPING_FACTS: { label: string; body: ReactNode }[] = [
-  {
-    label: 'Delivery rates',
-    body: (
-      <>
-        Flat, insured rates — Lagos metro {formatNaira(2_500)}, nationwide{' '}
-        {formatNaira(3_500)}, international {formatNaira(25_000)}.
-      </>
-    ),
-  },
-  { label: 'Dispatch days', body: 'Tuesday – Saturday, from the Ikoyi atelier.' },
-  { label: 'Same-day Lagos', body: 'Express orders placed before 11am leave the atelier the same day.' },
+  { label: 'Delivery rates', body: 'One flat fee per order, based on your destination. Select your country and state at checkout for the exact fee.' },
+  { label: 'Production first', body: 'Delivery estimates begin after production and dispatch, not when the order is placed.' },
+  { label: 'International orders', body: 'Import duties and taxes are not included. Contact the studio for destinations not listed.' },
 ]
 
 const RETURN_TERMS = [
@@ -348,7 +330,7 @@ export function HelpPage() {
         label="Shipping and delivery"
         eyebrow="Shipping"
         title="Dispatch & delivery"
-        lede="Every parcel leaves the Ikoyi atelier tracked, and travels to your door anywhere in Nigeria."
+        lede="Delivery from the Ikoyi atelier across Nigeria and to selected international destinations."
         flash={topic === 'shipping'}
       >
         <Reveal delay={0.08} className="mt-10">
@@ -396,7 +378,7 @@ export function HelpPage() {
 
           <div className="mt-6">
             <p className="border border-line bg-secondary/50 px-4 py-3.5 text-sm leading-relaxed text-muted-foreground">
-              Every order is dispatched via insured nationwide courier. Tracking is added
+              Orders are dispatched by courier after production. Tracking is added
               to your order page and sent by email the moment your piece leaves the studio.
             </p>
           </div>

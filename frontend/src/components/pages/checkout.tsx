@@ -7,6 +7,7 @@ import { Lock, ArrowRight } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
+import { deliveryZone, shippingError } from '@/lib/shipping'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -96,7 +97,8 @@ export function CheckoutPage() {
   )
   const [country, setCountry] = useState('Nigeria')
   const [notes, setNotes] = useState('')
-  const [shipping, setShipping] = useState<ShippingMethod>('nationwide')
+  const delivery = deliveryZone(country, state)
+  const shipping: ShippingMethod = delivery?.method ?? (country === 'Nigeria' ? 'nationwide' : 'international')
   const [productionTier, setProductionTier] = useState<ProductionTier>('standard')
   const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -137,31 +139,6 @@ export function CheckoutPage() {
     if (state && list && !list.includes(state)) setState('')
   }, [country, state])
 
-  /** Round 13 geo rules, mirrored client-side (the server rejects mismatches
-   *  with a 400): local is Lagos metro only, nationwide is Nigeria-only,
-   *  international ships everywhere. */
-  const methodEnabled = (key: ShippingMethod) =>
-    key === 'international' || (country === 'Nigeria' && (key === 'nationwide' || state === 'Lagos'))
-
-  const disabledNote = (key: ShippingMethod): string | null =>
-    key === 'local' ? 'Lagos metro only — select Lagos as your state'
-      : key === 'nationwide' ? 'Within Nigeria only'
-        : null
-
-  // Keep the delivery selection valid as the address context changes — in
-  // lockstep with the disabled cards below and the server's geo rules. Both
-  // directions: leaving Nigeria forces international, returning to Nigeria
-  // snaps international back to nationwide (the cheaper applicable method).
-  useEffect(() => {
-    if (country !== 'Nigeria' && shipping !== 'international') {
-      setShipping('international')
-    } else if (country === 'Nigeria' && shipping === 'international') {
-      setShipping('nationwide')
-    } else if (country === 'Nigeria' && shipping === 'local' && state !== 'Lagos') {
-      setShipping('nationwide')
-    }
-  }, [country, state, shipping])
-
   // The checkout email participates in promo validation so single-use-per-customer
   // codes fail visibly here (the server re-checks authoritatively with this email).
   const { data: promoData } = usePromoValidation(promoCodes, cart?.subtotal ?? 0, email)
@@ -171,7 +148,7 @@ export function CheckoutPage() {
   const discount = promoData?.discount ?? 0
 
   /** Flat delivery rate for the picked method (server-authoritative mirror). */
-  const shippingPrice = SHIPPING_METHODS[shipping].price
+  const shippingPrice = delivery?.price ?? 0
   /** Express production add-on — 2–3 day production instead of standard 7–10. */
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice + productionFee
@@ -186,6 +163,8 @@ export function CheckoutPage() {
     if (state.trim().length < 2) {
       e.state = country === 'Nigeria' ? 'Select your state.' : 'Your state / region is required.'
     }
+    const deliveryError = shippingError(country, state, shipping)
+    if (deliveryError) e.shipping = deliveryError
     // Round 13: production cannot start until the customer confirms their
     // measurements/details — the checkbox is mandatory before payment.
     if (!confirmed) {
@@ -195,6 +174,7 @@ export function CheckoutPage() {
   }
 
   const placeOrder = async () => {
+    if (busy) return
     if (items.length === 0) {
       toast.error('Your bag is empty.')
       return navigate('/shop')
@@ -244,7 +224,7 @@ export function CheckoutPage() {
       }
       if (data.payment?.note) toast(data.payment.note as string)
       toast.success(`Order ${data.order.orderNumber} placed.`)
-      navigate(`/order/${data.order.orderNumber}`)
+      navigate(`/order/${data.order.orderNumber}?email=${encodeURIComponent(email.trim())}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed')
     } finally {
@@ -444,57 +424,20 @@ export function CheckoutPage() {
 
             <section aria-label="Delivery method">
               <h2 className="font-display text-xl tracking-tight">03 — Delivery</h2>
-              <RadioGroup
-                value={shipping}
-                onValueChange={(v) => setShipping(v as ShippingMethod)}
-                className="mt-4 grid gap-3 sm:grid-cols-2"
-              >
-                {(Object.keys(SHIPPING_METHODS) as ShippingMethod[]).map((key) => {
-                  const m = SHIPPING_METHODS[key]
-                  const enabled = methodEnabled(key)
-                  const note = disabledNote(key)
-                  return (
-                    <Label
-                      key={key}
-                      className={cn(
-                        'flex items-start gap-3 border p-4 transition-colors',
-                        enabled
-                          ? cn(
-                              'cursor-pointer',
-                              shipping === key
-                                ? 'border-foreground bg-secondary/60'
-                                : 'border-line-strong hover:border-foreground',
-                            )
-                          : 'cursor-not-allowed border-line-strong opacity-50',
-                      )}
-                    >
-                      <RadioGroupItem value={key} disabled={!enabled} className="mt-0.5" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-sm font-medium">{m.label}</span>
-                          <span className="font-mono text-sm tabular-nums">{formatNaira(m.price)}</span>
-                        </div>
-                        <p className="mt-1 text-[0.72rem] text-muted-foreground">
-                          {key === 'international'
-                            ? `${m.eta} · Door-to-door international courier`
-                            : `${m.eta} · ${m.note}`}
-                        </p>
-                        {key === 'international' ? (
-                          <p className="mt-1 text-[0.66rem] text-espresso">
-                            Duties and taxes handled at the door on arrival.
-                          </p>
-                        ) : null}
-                        {note ? (
-                          <p className="mt-1 text-[0.7rem] font-medium text-foreground">{note}</p>
-                        ) : null}
-                      </div>
-                    </Label>
-                  )
-                })}
-              </RadioGroup>
+              <div className="mt-4 border border-line-strong p-4" aria-live="polite">
+                {delivery ? <>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-medium">{SHIPPING_METHODS[shipping].label}</span>
+                    <span className="font-mono text-sm tabular-nums">{formatNaira(delivery.price)}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{delivery.label} · {delivery.eta} after dispatch</p>
+                </> : <p className="text-sm">{country === 'Nigeria' ? 'Select your state to see your flat delivery fee.' : 'Contact the studio for a delivery quote to this destination before ordering.'}</p>}
+              </div>
+              {errors.shipping ? <p role="alert" className="mt-2 text-xs text-destructive">{errors.shipping}</p> : null}
               <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
-                Rates shown cover insured nationwide courier delivery, and are confirmed
-                with your order summary before dispatch.
+                One flat delivery fee per order, based on your destination. Delivery times
+                start after production and dispatch. International import duties and taxes
+                are paid separately by the recipient.
               </p>
             </section>
 
@@ -761,7 +704,7 @@ export function CheckoutPage() {
                     <dt className="text-muted-foreground">
                       {SHIPPING_METHODS[shipping].label}
                     </dt>
-                    <dd className="font-mono tabular-nums">{formatNaira(shippingPrice)}</dd>
+                    <dd className="font-mono tabular-nums">{delivery ? formatNaira(shippingPrice) : 'Select destination'}</dd>
                   </div>
                   {productionFee > 0 ? (
                     <div className="flex justify-between">
@@ -772,11 +715,11 @@ export function CheckoutPage() {
                 </dl>
                 <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
                   <span className="font-display text-lg">Total</span>
-                  <span className="font-mono text-xl font-medium tabular-nums">{formatNaira(total)}</span>
+                  <span className="font-mono text-xl font-medium tabular-nums">{delivery ? formatNaira(total) : 'Select destination'}</span>
                 </div>
                 <Button
                   className="mt-5 h-12 w-full uppercase tracking-[0.2em] text-[0.66rem]"
-                  disabled={busy}
+                  disabled={busy || !delivery}
                   onClick={placeOrder}
                 >
                   {busy ? 'Placing order…' : 'Place order'}

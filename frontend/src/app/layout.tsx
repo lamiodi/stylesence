@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "/stylesence-favicon.png",
+    shortcut: "/stylesence-favicon.png",
+    apple: "/stylesence-favicon.png",
   },
   openGraph: {
     title: "Style Sence by SKR — Made-to-Order Womenswear",
@@ -106,7 +106,7 @@ const JSON_LD = {
       "@id": `${SITE_URL}/#store`,
       name: "Style Sence by SKR",
       url: SITE_URL,
-      logo: `${SITE_URL}/favicon.svg`,
+      logo: `${SITE_URL}/stylesence-logo.png`,
       image: OG_IMAGE,
       description:
         "Made-to-order womenswear from Lagos — polka-dot silk coordinates, fluid gowns and hand-woven Aso Oke, cut to your measurements.",

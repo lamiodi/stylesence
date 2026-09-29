@@ -233,12 +233,8 @@ export const PRODUCTION_TIERS = {
 } as const
 export type ProductionTier = keyof typeof PRODUCTION_TIERS
 
-export const SHIPPING_METHODS = {
-  local: { label: 'Local Delivery', price: 2500, eta: '1–2 business days', note: 'Lagos metro courier — same-day dispatch before 11am.' },
-  nationwide: { label: 'Nationwide Delivery', price: 3500, eta: '3–5 business days', note: 'Nationwide courier with tracking.' },
-  international: { label: 'International Delivery', price: 25000, eta: '7–14 business days', note: 'Door-to-door international courier, duties handled at the door.' },
-} as const
-export type ShippingMethod = keyof typeof SHIPPING_METHODS
+import { SHIPPING_METHODS } from './shipping'
+export { SHIPPING_METHODS, type ShippingMethod } from './shipping'
 
 /** Display label for a stored shippingMethod — current keys plus legacy
  *  pre-Round-13 orders ('standard'/'express'). */

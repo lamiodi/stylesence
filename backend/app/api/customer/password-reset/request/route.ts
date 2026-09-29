@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { checkCustomerLoginRateLimit, generateResetToken, recordCustomerLoginFailure } from '@/lib/auth'
 import { passwordResetRequestInput } from '@/lib/validators'
-import { sendPasswordResetEmail } from '@/lib/email'
+import { sendPasswordResetEmail, getFrontendUrl } from '@/lib/email'
 
 /**
  * POST /api/customer/password-reset/request — ask for a reset link by email.
@@ -42,13 +42,7 @@ export async function POST(req: Request) {
     data: { resetTokenHash: hash, resetTokenAt: new Date() },
   })
 
-  const frontendUrl =
-    process.env.FRONTEND_URL && process.env.FRONTEND_URL !== 'http://localhost:3000'
-      ? process.env.FRONTEND_URL.replace(/\/+$/, '')
-      : process.env.NODE_ENV === 'production'
-        ? 'https://stylesence.com'
-        : (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')
-  const resetUrl = `${frontendUrl}/account?mode=reset&token=${plain}`
+  const resetUrl = `${getFrontendUrl()}/account?mode=reset&token=${plain}`
 
   // Non-blocking password reset email dispatch via Resend
   sendPasswordResetEmail(email, resetUrl).catch((err) =>
@@ -61,6 +55,6 @@ export async function POST(req: Request) {
   const isDevPreview = process.env.NODE_ENV !== 'production'
   return ok({
     ok: true,
-    ...(isDevPreview ? { devResetUrl: `/#/account?mode=reset&token=${plain}` } : {}),
+    ...(isDevPreview ? { devResetUrl: `/account?mode=reset&token=${plain}` } : {}),
   })
 }

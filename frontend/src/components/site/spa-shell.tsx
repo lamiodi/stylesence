@@ -32,6 +32,7 @@ import { TrackOrderPage } from '@/components/pages/track-order'
 import { AccountPage } from '@/components/pages/account-page'
 import { NotFoundPage } from '@/components/pages/not-found'
 import { AdminApp } from '@/components/admin/admin-app'
+import StyleSencePreloader from '@/components/site/StyleSencePreloader'
 import { WishlistSync } from '@/lib/wishlist-sync'
 
 function Router() {
@@ -126,6 +127,8 @@ function Router() {
 }
 
 export function SpaShell() {
+  const mounted = useMounted()
+  const [entranceDone, setEntranceDone] = useState(false)
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -142,7 +145,9 @@ export function SpaShell() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
-        <div className="flex min-h-screen flex-col">
+        <StyleSencePreloader ready={mounted} onExit={() => setEntranceDone(true)} />
+        <noscript><style>{`.ss-loader { display: none; }`}</style></noscript>
+        <div className="flex min-h-screen flex-col" inert={mounted && !entranceDone} aria-busy={!mounted}>
           <AnnouncementBar />
           <Header />
           <Router />

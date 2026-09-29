@@ -8,13 +8,38 @@ export const resend = resendApiKey ? new Resend(resendApiKey) : null
 // Once a custom domain is verified in Resend, change EMAIL_FROM in backend/.env to e.g. "Style Sence <concierge@stylesence.com>".
 const DEFAULT_FROM = process.env.EMAIL_FROM || 'Style Sence <onboarding@resend.dev>'
 
-function getFrontendUrl(): string {
-  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL !== 'http://localhost:3000') {
-    return process.env.FRONTEND_URL.replace(/\/+$/, '')
+const PRODUCTION_FRONTEND_URL = 'https://stylesence.com'
+
+/** Missing/relative/loopback origins — never safe inside a customer-facing link. */
+function isLocalUrl(raw: string): boolean {
+  try {
+    const { hostname } = new URL(raw)
+    return (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '[::1]' ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.lan')
+    )
+  } catch {
+    return true
   }
-  return process.env.NODE_ENV === 'production'
-    ? 'https://stylesence.com'
-    : (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')
+}
+
+/**
+ * Origin for links inside customer-facing email (and gateway callbacks).
+ * An explicit non-local FRONTEND_URL always wins. A local/missing value is
+ * only acceptable while mail is simulated — the moment RESEND_API_KEY is
+ * live the message actually leaves the machine, so links must point at the
+ * production site (dev and prod share the database, so orders and reset
+ * tokens created locally resolve there too).
+ */
+export function getFrontendUrl(): string {
+  const raw = (process.env.FRONTEND_URL ?? '').trim().replace(/\/+$/, '')
+  if (raw && !isLocalUrl(raw)) return raw
+  if (resend) return PRODUCTION_FRONTEND_URL
+  return raw || 'http://localhost:3000'
 }
 
 function formatNaira(amount: number): string {
@@ -127,7 +152,8 @@ export interface OrderEmailData {
 
 export async function sendOrderConfirmationEmail(order: OrderEmailData) {
   const siteUrl = getFrontendUrl()
-  const trackUrl = `${siteUrl}/track-order?lookup=${encodeURIComponent(order.orderNumber)}`
+  // The tracking page lives at /track and pre-fills from ?order= (not ?lookup=).
+  const trackUrl = `${siteUrl}/track?order=${encodeURIComponent(order.orderNumber)}`
 
   const itemsHtml = order.items
     .map(
@@ -225,7 +251,7 @@ export async function sendOrderStatusUpdateEmail(order: {
   status: string
 }) {
   const siteUrl = getFrontendUrl()
-  const trackUrl = `${siteUrl}/track-order?lookup=${encodeURIComponent(order.orderNumber)}`
+  const trackUrl = `${siteUrl}/track?order=${encodeURIComponent(order.orderNumber)}`
 
   const statusLabels: Record<string, { title: string; desc: string }> = {
     PROCESSING: {

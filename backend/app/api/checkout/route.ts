@@ -4,7 +4,9 @@ import { getCartFromCookie } from '@/lib/cart'
 import { checkoutInput } from '@/lib/validators'
 import { evaluatePromoStack } from '@/lib/promo'
 import { PRODUCTION_TIERS } from '@/lib/types'
+import { deliveryZone, shippingError } from '@/lib/shipping'
 import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured } from '@/lib/payments'
+import { getFrontendUrl } from '@/lib/email'
 
 /**
  * POST /api/checkout
@@ -19,14 +21,6 @@ import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured 
  * and usage-incremented.
  * → 201 `{ order: { orderNumber, total, discount } }`.
  */
-
-/** Flat delivery rates — mirrored in frontend/src/lib/types.ts
- *  (SHIPPING_METHODS). Change both together. */
-const SHIPPING_RATES: Record<'local' | 'nationwide' | 'international', number> = {
-  local: 2500,
-  nationwide: 3500,
-  international: 25000,
-}
 
 class StockError extends Error {}
 
@@ -83,14 +77,10 @@ export async function POST(req: Request) {
     promoIds = rows.map((r) => r.id)
   }
 
-  // Round 13 delivery tiers: local + nationwide are Nigeria-only; international
-  // is the only method for addresses outside Nigeria.
-  if (input.country !== 'Nigeria' && (input.shippingMethod === 'local' || input.shippingMethod === 'nationwide')) {
-    return fail(400, 'Local and nationwide delivery are only available within Nigeria — choose international delivery.')
-  }
-
-  // Delivery is charged on every order — flat rate by method.
-  const shipping = SHIPPING_RATES[input.shippingMethod]
+  // Resolve the price from the address, never from a client-supplied amount.
+  const deliveryError = shippingError(input.country, input.state, input.shippingMethod)
+  if (deliveryError) return fail(400, deliveryError)
+  const shipping = deliveryZone(input.country, input.state)!.price
   // Round 13 production timeline — express is contact-priced (surcharge
   // arranged by the studio after ordering; never charged here).
   const productionTier = input.productionTier ?? 'standard'
@@ -197,12 +187,7 @@ export async function POST(req: Request) {
   // Gateway payment — initialize and hand back the hosted payment URL. A
   // failed initialization leaves the order placed (PENDING_PAYMENT) and the
     if (gatewayLive) {
-    const frontendUrl =
-      process.env.FRONTEND_URL && process.env.FRONTEND_URL !== 'http://localhost:3000'
-        ? process.env.FRONTEND_URL.replace(/\/+$/, '')
-        : process.env.NODE_ENV === 'production'
-          ? 'https://stylesence.com'
-          : (process.env.FRONTEND_URL ?? 'http://localhost:3000').replace(/\/+$/, '')
+    const frontendUrl = getFrontendUrl()
     try {
       const payment =
         input.paymentMethod === 'paystack'
