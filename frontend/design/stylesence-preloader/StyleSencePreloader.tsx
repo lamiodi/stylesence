@@ -38,9 +38,9 @@ export default function StyleSencePreloader({
     return () => window.clearTimeout(timeout);
   }, [visible, maxWaitMs]);
 
-  useEffect(() => {
-    if (ready || expired) setLeaving(true);
-  }, [ready, expired]);
+  // Leaving derives from ready/expired — adjusted during render (guarded
+  // setState in the component body) instead of a cascading effect.
+  if ((ready || expired) && !leaving) setLeaving(true);
 
   useEffect(() => {
     if (!visible || !leaving) return;

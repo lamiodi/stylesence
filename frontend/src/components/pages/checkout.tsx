@@ -117,9 +117,14 @@ export function CheckoutPage() {
     return payConfig?.stripe ? 'stripe' : 'confirmed'
   })()
   const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'stripe' | 'confirmed'>('confirmed')
-  useEffect(() => {
+  // Keep the picked rail in step with the country's recommended rail —
+  // adjusted during render (the React-endorsed pattern) rather than via a
+  // cascading effect.
+  const [prevRecommended, setPrevRecommended] = useState(recommendedMethod)
+  if (prevRecommended !== recommendedMethod) {
+    setPrevRecommended(recommendedMethod)
     setPaymentMethod(recommendedMethod)
-  }, [recommendedMethod])
+  }
 
   /** Changing country invalidates a picked province — clear it whenever the
    *  new country's list (or lack of one) no longer contains it. The stale
@@ -219,7 +224,7 @@ export function CheckoutPage() {
       // Live gateway — off to the hosted payment page, back to the order after.
       if (data.payment?.url) {
         toast.success(`Order ${data.order.orderNumber} placed — completing payment…`)
-        window.location.href = data.payment.url as string
+        window.location.assign(data.payment.url as string)
         return
       }
       if (data.payment?.note) toast(data.payment.note as string)

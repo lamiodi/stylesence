@@ -55,7 +55,6 @@ function Router() {
       const qs = params.toString()
       navigate(`/order/${encodeURIComponent(orderNum)}${qs ? `?${qs}` : ''}`, { replace: true })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   let page: React.ReactNode

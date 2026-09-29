@@ -141,9 +141,9 @@ export default function RootLayout({
         <link rel="preload" as="image" fetchPriority="high" href={HERO_POSTER_URL} />
         {/* entrance overlay signature — racing the first paint, not chasing it */}
         <link rel="preload" as="image" fetchPriority="high" href="/stylesence-logo.png" />
+        {/* Static structured data, no user input — safe for dangerouslySetInnerHTML. */}
         <script
           type="application/ld+json"
-          // eslint-disable-next-line react/no-danger -- static structured data, no user input
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
         />
       </head>
