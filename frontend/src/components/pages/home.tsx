@@ -202,7 +202,7 @@ export function HomePage() {
           <SectionHead eyebrow="Just in" title="New arrivals" href="/shop" hrefLabel="Shop all pieces" />
         </Reveal>
         <Reveal delay={0.1} className="mt-8">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 md:gap-x-6">
+          <div className="grid grid-cols-1 gap-y-8 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-4 md:gap-x-6">
             {loadingNew
               ? Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)
               : (newArrivals?.products ?? []).map((p, i) => (
@@ -321,7 +321,7 @@ export function HomePage() {
           <SectionHead eyebrow="Most loved" title="Bestsellers" href="/shop" hrefLabel="Shop all" />
         </Reveal>
         <Reveal delay={0.1} className="mt-8">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 md:gap-x-6">
+          <div className="grid grid-cols-1 gap-y-8 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-4 md:gap-x-6">
             {loadingBest
               ? Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)
               : (bestsellers?.products ?? []).map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}

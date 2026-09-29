@@ -487,7 +487,7 @@ export function ShopPage() {
         {/* grid */}
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-y-8 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
@@ -510,7 +510,7 @@ export function ShopPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-y-10 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
                 {items.map((p, i) => (
                   <ProductCard key={p.id} product={p} index={i} eager={i < 8} />
                 ))}

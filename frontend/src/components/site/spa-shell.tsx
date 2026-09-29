@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
+import { HERO_POSTER_URL } from '@/lib/site'
 import { useRoute, useScrollTop, navigate } from '@/lib/router'
 import { useMounted } from '@/hooks/use-mounted'
 import { AnnouncementBar } from '@/components/site/announcement-bar'
@@ -129,6 +130,29 @@ function Router() {
 export function SpaShell() {
   const mounted = useMounted()
   const [entranceDone, setEntranceDone] = useState(false)
+  const [heroReady, setHeroReady] = useState(false)
+
+  // The entrance may only lift once the first screen can actually paint:
+  // the hero poster (preloaded in <head>) decoded — or failed. Fails open
+  // after 4s so a stalled CDN can never hold the storefront hostage; the
+  // preloader's own maxWaitMs is the second belt.
+  useEffect(() => {
+    let settled = false
+    const markReady = () => {
+      if (!settled) {
+        settled = true
+        setHeroReady(true)
+      }
+    }
+    const hero = new Image()
+    hero.onload = hero.onerror = markReady
+    hero.src = HERO_POSTER_URL
+    const failOpen = window.setTimeout(markReady, 4000)
+    return () => {
+      window.clearTimeout(failOpen)
+    }
+  }, [])
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -145,7 +169,7 @@ export function SpaShell() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
-        <StyleSencePreloader ready={mounted} onExit={() => setEntranceDone(true)} />
+        <StyleSencePreloader ready={mounted && heroReady} onExit={() => setEntranceDone(true)} />
         <noscript><style>{`.ss-loader { display: none; }`}</style></noscript>
         <div className="flex min-h-screen flex-col" inert={mounted && !entranceDone} aria-busy={!mounted}>
           <AnnouncementBar />

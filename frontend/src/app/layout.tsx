@@ -1,14 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { SITE_URL } from "@/lib/site";
+import { HERO_POSTER_URL, SITE_URL } from "@/lib/site";
 
 /** Social preview — a real collection photo. */
 const OG_IMAGE =
   "https://res.cloudinary.com/qaruxkhf/image/upload/w_1200,c_limit,ar_1.91,q_auto,f_jpg/v1790056402/stylesence/products/camille-duo-cafe.jpg";
-/** Hero LCP — the poster frame of the homepage film. */
-const HERO_POSTER =
-  "https://res.cloudinary.com/qaruxkhf/video/upload/so_1,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -141,7 +138,9 @@ export default function RootLayout({
       <head>
         {/* CDN warm-up + hero LCP — the storefront's imagery lives on Cloudinary */}
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
-        <link rel="preload" as="image" fetchPriority="high" href={HERO_POSTER} />
+        <link rel="preload" as="image" fetchPriority="high" href={HERO_POSTER_URL} />
+        {/* entrance overlay signature — racing the first paint, not chasing it */}
+        <link rel="preload" as="image" fetchPriority="high" href="/stylesence-logo.png" />
         <script
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger -- static structured data, no user input

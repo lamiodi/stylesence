@@ -98,7 +98,13 @@ function luxuryEmailLayout(title: string, preheader: string, contentHtml: string
         <table class="container" width="600" cellpadding="0" cellspacing="0">
           <tr>
             <td class="header">
-              <h1 class="brand-title">STYLE SENCE</h1>
+              <img
+                src="${siteUrl}/stylesence-email-crest.jpg"
+                alt="Style Sence"
+                width="132"
+                height="132"
+                style="display: block; margin: 0 auto 12px; border: 0;"
+              />
               <div class="brand-sub">ATELIER DU LUXE &bull; NIGERIA</div>
             </td>
           </tr>

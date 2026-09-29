@@ -260,7 +260,7 @@ function BestsellerSuggestions() {
           </Link>
         </div>
       </Reveal>
-      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 md:gap-x-6">
+      <div className="mt-8 grid grid-cols-1 gap-y-8 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-4 md:gap-x-6">
         {products.map((p, i) => (
           <Reveal key={p.slug} delay={i * 0.06}>
             <ProductCard product={p} />

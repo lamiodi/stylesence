@@ -31,12 +31,17 @@ const CATEGORIES = [
 function Wordmark({ className }: { className?: string }) {
   return (
     <Link to="/" className={cn('group block text-center', className)} ariaLabel="Style Sence — home">
-      <span className="font-display text-[0.9rem] font-light uppercase leading-none tracking-[0.08em] text-foreground transition-opacity group-hover:opacity-70 min-[400px]:text-[1.15rem] min-[400px]:tracking-[0.22em] sm:text-[1.5rem] sm:tracking-[0.4em]">
-        Style&nbsp;Sence
-      </span>
-      <span className="mt-1 block text-[0.5rem] font-medium uppercase tracking-[0.5em] text-muted-foreground">
-        by SKR
-      </span>
+      {/* the transparent cursive signature (same lockup as the entrance) —
+          720×240 source stays crisp at every navbar size */}
+      <img
+        src="/stylesence-logo.png"
+        alt="Style Sence by SKR"
+        width={720}
+        height={240}
+        decoding="async"
+        fetchPriority="high"
+        className="mx-auto h-8 w-auto transition-opacity group-hover:opacity-70 min-[400px]:h-9 sm:h-11"
+      />
     </Link>
   )
 }
