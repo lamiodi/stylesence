@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { X, ArrowRight } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { Button } from '@/components/ui/button'
 import { ProductImage } from '@/components/site/price'
 import { QuantityStepper } from '@/components/site/quantity-stepper'
@@ -37,6 +37,7 @@ export function CartPage() {
   const items = cart?.items ?? []
   const subtotal = cart?.subtotal ?? 0
   const discount = promoData?.discount ?? 0
+  const { format, currency } = useMoney()
 
   return (
     <div className="container-site py-10 sm:py-14">
@@ -129,7 +130,7 @@ export function CartPage() {
                           </div>
                         ) : null}
                         <p className="mt-1 font-mono text-[0.72rem] text-muted-foreground/80 tabular-nums">
-                          {formatNaira(item.product.price)} each
+                          {format(item.product.price)} each
                         </p>
                       </div>
                       <button
@@ -152,7 +153,7 @@ export function CartPage() {
                         disabled={update.isPending}
                       />
                       <span className="ml-auto font-mono text-base font-medium tabular-nums">
-                        {formatNaira(item.product.price * item.qty)}
+                        {format(item.product.price * item.qty)}
                       </span>
                     </div>
                   </div>
@@ -181,7 +182,7 @@ export function CartPage() {
               <dl className="mt-4 space-y-2.5 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Subtotal ({cart?.itemCount ?? 0} items)</dt>
-                  <dd className="font-mono tabular-nums">{formatNaira(subtotal)}</dd>
+                  <dd className="font-mono tabular-nums">{format(subtotal)}</dd>
                 </div>
                 {promos
                   .filter((p) => p.discount > 0)
@@ -191,7 +192,7 @@ export function CartPage() {
                         <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
                         {p.code}
                       </dt>
-                      <dd className="font-mono tabular-nums">−{formatNaira(p.discount)}</dd>
+                      <dd className="font-mono tabular-nums">−{format(p.discount)}</dd>
                     </div>
                   ))}
                 <div className="flex justify-between">
@@ -203,10 +204,12 @@ export function CartPage() {
                 <div className="flex items-baseline justify-between">
                   <span className="font-display text-lg">Total</span>
                   <span className="font-mono text-xl font-medium tabular-nums">
-                    {formatNaira(Math.max(0, subtotal - discount))}
+                    {format(Math.max(0, subtotal - discount))}
                   </span>
                 </div>
-                <p className="mt-1 text-right text-[0.66rem] text-muted-foreground/70">excl. shipping</p>
+                <p className="mt-1 text-right text-[0.66rem] text-muted-foreground/70">
+                  excl. shipping{currency !== 'NGN' ? ' · charged in ₦ (NGN) at checkout' : ''}
+                </p>
               </div>
               <Button
                 className="mt-6 h-12 w-full uppercase tracking-[0.2em] text-[0.66rem]"

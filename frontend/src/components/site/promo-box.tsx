@@ -5,7 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Check, X, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { type PromoInfo, type PromoStackInfo } from '@/lib/types'
 import { usePromoStore } from '@/lib/store/promo'
 
@@ -37,9 +37,9 @@ export function usePromoValidation(codes: string[], subtotal: number, email?: st
   })
 }
 
-function chipNote(promo: PromoInfo): string {
-  if (promo.type === 'PERCENT') return `${promo.value}% off — −${formatNaira(promo.discount)}`
-  return `−${formatNaira(promo.discount)}`
+function chipNote(promo: PromoInfo, format: (n: number) => string): string {
+  if (promo.type === 'PERCENT') return `${promo.value}% off — −${format(promo.discount)}`
+  return `−${format(promo.discount)}`
 }
 
 /**
@@ -52,6 +52,7 @@ export function PromoInput({ subtotal, email }: { subtotal: number; email?: stri
   const codes = usePromoStore((s) => s.codes)
   const setCodes = usePromoStore((s) => s.setCodes)
   const [input, setInput] = useState('')
+  const { format } = useMoney()
 
   const emailForCheck = email && email.includes('@') ? email.trim().toLowerCase() : undefined
   const { data, isError } = usePromoValidation(codes, subtotal, email)
@@ -117,7 +118,7 @@ export function PromoInput({ subtotal, email }: { subtotal: number; email?: stri
                       {isError
                         ? 'No longer valid for this bag — remove to continue.'
                         : info
-                          ? `${chipNote(info)} — verified at checkout.`
+                          ? `${chipNote(info, format)} — verified at checkout.`
                           : 'Applied — verified at checkout.'}
                     </p>
                   </div>

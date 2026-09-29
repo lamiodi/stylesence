@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { History } from 'lucide-react'
 import { Link } from '@/lib/router'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { useMounted } from '@/hooks/use-mounted'
 import { useRecentlyViewed } from '@/lib/store/recently-viewed'
 import { ProductImage } from './price'
@@ -24,6 +24,7 @@ export function RecentlyViewedStrip({
 }) {
   const mounted = useMounted()
   const items = useRecentlyViewed((s) => s.items)
+  const { format } = useMoney()
 
   const visible = useMemo(
     () => items.filter((i) => i.slug !== excludeSlug).slice(0, 8),
@@ -73,7 +74,7 @@ export function RecentlyViewedStrip({
                   {item.name}
                 </p>
                 <p className="mt-1 font-mono text-[0.75rem] text-muted-foreground tabular-nums">
-                  {formatNaira(item.price)}
+                  {format(item.price)}
                 </p>
               </Link>
             </li>

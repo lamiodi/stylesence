@@ -4,7 +4,7 @@ import { X, ShoppingBag } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { navigate } from '@/lib/router'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { useCart, useUpdateCartItem, useRemoveCartItem } from '@/lib/cart-client'
 import { useUi } from '@/lib/store/wishlist'
 import { formatMeasurements } from '@/lib/types'
@@ -17,6 +17,7 @@ export function CartSheet() {
   const { data: cart, isLoading } = useCart()
   const update = useUpdateCartItem()
   const remove = useRemoveCartItem()
+  const { format, currency } = useMoney()
 
   const items = cart?.items ?? []
 
@@ -137,7 +138,7 @@ export function CartSheet() {
                         disabled={update.isPending}
                       />
                       <span className="font-mono text-[0.8rem] font-medium tabular-nums">
-                        {formatNaira(item.product.price * item.qty)}
+                        {format(item.product.price * item.qty)}
                       </span>
                     </div>
                   </div>
@@ -152,11 +153,12 @@ export function CartSheet() {
             <div className="flex items-baseline justify-between">
               <span className="eyebrow">Subtotal</span>
               <span className="font-mono text-base font-medium tabular-nums">
-                {formatNaira(cart?.subtotal ?? 0)}
+                {format(cart?.subtotal ?? 0)}
               </span>
             </div>
             <p className="mt-1 text-[0.7rem] text-muted-foreground">
               Shipping calculated at checkout.
+              {currency !== 'NGN' ? ' Charged in ₦ (NGN) — figures here are estimates.' : ''}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Button

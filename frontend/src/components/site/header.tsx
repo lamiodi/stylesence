@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Search, Heart, ShoppingBag, Menu, X, Sun, Moon, User, Clock3 } from 'lucide-react'
+import { Search, Heart, ShoppingBag, Menu, X, Sun, Moon, User, Clock3, Globe } from 'lucide-react'
 import { Link, navigate, useRoute } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/lib/cart-client'
 import { useWishlist, useUi } from '@/lib/store/wishlist'
+import { CURRENCIES } from '@/lib/fx'
+import { useCurrency } from '@/lib/store/currency'
 import { useRecentSearches } from '@/lib/store/recent-searches'
 import { useCustomer } from '@/hooks/use-customer'
 import { useMounted } from '@/hooks/use-mounted'
@@ -71,6 +73,8 @@ export function Header() {
   const clearSearches = useRecentSearches((s) => s.clear)
   const { theme, setTheme } = useTheme()
   const mounted = useMounted()
+  const setCurrencyModalOpen = useCurrency((s) => s.setModalOpen)
+  const currencyLabel = useCurrency((s) => CURRENCIES[s.currency].label)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -181,6 +185,17 @@ export function Header() {
                   <div className="border-t border-line px-6 py-4">
                     <button
                       type="button"
+                      onClick={() => {
+                        setNavOpen(false)
+                        setCurrencyModalOpen(true)
+                      }}
+                      className="flex w-full items-center gap-2.5 py-2 text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      <Globe className="h-4 w-4" />
+                      Currency &amp; country — {mounted ? currencyLabel : '₦ NGN'}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                       className="flex items-center gap-2.5 py-2 text-sm text-muted-foreground hover:text-foreground"
                     >
@@ -241,8 +256,20 @@ export function Header() {
           {/* ——— centre: wordmark ——— */}
           <Wordmark />
 
-          {/* ——— right: icons ——— */}
+          {/* ——— right: currency + icons ——— */}
           <div className="flex items-center justify-end gap-0.5">
+            <button
+              type="button"
+              onClick={() => setCurrencyModalOpen(true)}
+              aria-label={`Currency and country — currently ${mounted ? currencyLabel : '₦ NGN'}`}
+              className={cn(
+                'mr-1 hidden h-9 items-center gap-1.5 border border-line px-2.5 font-mono text-[0.62rem] tracking-[0.08em] text-foreground/80 transition-colors hover:border-espresso hover:text-espresso',
+                'min-[420px]:flex',
+              )}
+            >
+              <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />
+              {mounted ? currencyLabel : '₦ NGN'}
+            </button>
             <button
               type="button"
               className={iconBtn}

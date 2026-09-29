@@ -7,6 +7,7 @@ import { Lock, ArrowRight } from 'lucide-react'
 import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { deliveryZone, shippingError, zonePrice } from '@/lib/shipping'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -98,6 +99,9 @@ export function CheckoutPage() {
   )
   const [country, setCountry] = useState('Nigeria')
   const [notes, setNotes] = useState('')
+  // Display currency (estimates only) — the order itself is charged in naira.
+  const { format, currency } = useMoney()
+  const estimate = (naira: number) => (currency !== 'NGN' ? `≈ ${format(naira)}` : format(naira))
   const delivery = deliveryZone(country, state)
   const shipping: ShippingMethod = delivery?.method ?? (country === 'Nigeria' ? 'nationwide' : 'international')
   const [productionTier, setProductionTier] = useState<ProductionTier>('standard')
@@ -491,7 +495,7 @@ export function CheckoutPage() {
                 {delivery ? <>
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-sm font-medium">{SHIPPING_METHODS[shipping].label}</span>
-                    <span className="font-mono text-sm tabular-nums">{formatNaira(shippingPrice)}</span>
+                    <span className="font-mono text-sm tabular-nums">{estimate(shippingPrice)}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {delivery.label} · {delivery.eta} after dispatch
@@ -747,7 +751,7 @@ export function CheckoutPage() {
                       ) : null}
                     </div>
                     <span className="font-mono text-[0.78rem] tabular-nums">
-                      {formatNaira(item.product.price * item.qty)}
+                      {estimate(item.product.price * item.qty)}
                     </span>
                   </li>
                 ))}
@@ -756,7 +760,7 @@ export function CheckoutPage() {
                 <dl className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Subtotal</dt>
-                    <dd className="font-mono tabular-nums">{formatNaira(subtotal)}</dd>
+                    <dd className="font-mono tabular-nums">{estimate(subtotal)}</dd>
                   </div>
                   {promos
                     .filter((p) => p.discount > 0)
@@ -766,25 +770,38 @@ export function CheckoutPage() {
                           <span className="h-[3px] w-[3px] rounded-full bg-espresso" aria-hidden />
                           {p.code}
                         </dt>
-                        <dd className="font-mono tabular-nums">−{formatNaira(p.discount)}</dd>
+                        <dd className="font-mono tabular-nums">−{estimate(p.discount)}</dd>
                       </div>
                     ))}
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">
                       {SHIPPING_METHODS[shipping].label}
                     </dt>
-                    <dd className="font-mono tabular-nums">{delivery ? formatNaira(shippingPrice) : 'Select destination'}</dd>
+                    <dd className="font-mono tabular-nums">{delivery ? estimate(shippingPrice) : 'Select destination'}</dd>
                   </div>
                   {productionFee > 0 ? (
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">Express production</dt>
-                      <dd className="font-mono tabular-nums">+{formatNaira(productionFee)}</dd>
+                      <dd className="font-mono tabular-nums">+{estimate(productionFee)}</dd>
                     </div>
                   ) : null}
                 </dl>
-                <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
-                  <span className="font-display text-lg">Total</span>
-                  <span className="font-mono text-xl font-medium tabular-nums">{delivery ? formatNaira(total) : 'Select destination'}</span>
+                <div className="mt-4 border-t border-line pt-4">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-display text-lg">Total</span>
+                    <span className="text-right">
+                      <span className="block font-mono text-xl font-medium tabular-nums">{delivery ? formatNaira(total) : 'Select destination'}</span>
+                      {delivery && currency !== 'NGN' ? (
+                        <span className="block font-mono text-[0.72rem] text-muted-foreground tabular-nums">≈ {format(total)}</span>
+                      ) : null}
+                    </span>
+                  </div>
+                  {currency !== 'NGN' ? (
+                    <p className="mt-2 text-[0.68rem] leading-relaxed text-muted-foreground">
+                      Figures in {currency} are estimates at the studio&apos;s rate — you will be
+                      charged in Nigerian Naira (₦).
+                    </p>
+                  ) : null}
                 </div>
                 <Button
                   className="mt-5 h-12 w-full uppercase tracking-[0.2em] text-[0.66rem]"

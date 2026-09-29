@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 
 /**
- * Price display with optional struck-through compare-at price.
+ * Price display with optional struck-through compare-at price. Naira stays
+ * canonical; the selected display currency (NGN/USD/GBP) is applied here.
  */
 export function Price({
   price,
@@ -18,13 +19,14 @@ export function Price({
   className?: string
   size?: 'sm' | 'md' | 'lg'
 }) {
+  const { format } = useMoney()
   const sizeCls = size === 'lg' ? 'text-lg' : size === 'sm' ? 'text-[0.8rem]' : 'text-sm'
   return (
     <span className={cn('inline-flex items-baseline gap-2 font-mono', sizeCls, className)}>
-      <span className="font-medium tabular-nums">{formatNaira(price)}</span>
+      <span className="font-medium tabular-nums">{format(price)}</span>
       {compareAtPrice && compareAtPrice > price ? (
         <span className="text-muted-foreground/70 line-through decoration-[1px] tabular-nums">
-          {formatNaira(compareAtPrice)}
+          {format(compareAtPrice)}
         </span>
       ) : null}
     </span>

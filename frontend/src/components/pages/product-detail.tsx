@@ -6,7 +6,8 @@ import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail, 
 import { toast } from 'sonner'
 import { Link, navigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
-import { formatDate, formatNaira } from '@/lib/money'
+import { formatDate } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { Button } from '@/components/ui/button'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
@@ -29,20 +30,26 @@ import { MEASUREMENT_FIELDS, type CustomMeasurements, type MeasurementKey, type 
 import { DELIVERY_ZONES } from '@/lib/shipping'
 
 /** Fee range across the zones of one method — from the reviewed table, never hand-copied. */
-const zoneFee = (method: 'local' | 'nationwide') => {
+const zoneFee = (method: 'local' | 'nationwide', format: (n: number) => string) => {
   const fees = DELIVERY_ZONES.filter((z) => z.method === method).map((z) => z.price)
   const lo = Math.min(...fees)
   const hi = Math.max(...fees)
-  return lo === hi ? formatNaira(lo) : `${formatNaira(lo)}–${formatNaira(hi)}`
+  return lo === hi ? format(lo) : `${format(lo)}–${format(hi)}`
 }
 
 /** Cheapest single-piece DHL rate on the card (each piece counts as up to 2kg). */
-const internationalFrom = formatNaira(
-  Math.min(...DELIVERY_ZONES.filter((z) => z.method === 'international').map((z) => z.price)),
+const internationalFromNaira = Math.min(
+  ...DELIVERY_ZONES.filter((z) => z.method === 'international').map((z) => z.price),
 )
 
-/** Delivery tiers quoted on the PDP — matches checkout exactly. */
-const DELIVERY_TIERS = `Lagos ${zoneFee('local')} · 1–3 days · Nationwide ${zoneFee('nationwide')} by state · 2–7 days · International DHL Express from ${internationalFrom} by destination & weight · 3–7 days`
+/**
+ * Delivery tiers quoted on the PDP — matches checkout exactly, rendered in
+ * the display currency (naira stays canonical).
+ */
+function useDeliveryTiers(): string {
+  const { format } = useMoney()
+  return `Lagos ${zoneFee('local', format)} · 1–3 days · Nationwide ${zoneFee('nationwide', format)} by state · 2–7 days · International DHL Express from ${format(internationalFromNaira)} by destination & weight · 3–7 days`
+}
 
 const SIZE_GUIDE = [
   ['XS', '32–34', '84', '66', '92'],
@@ -372,6 +379,8 @@ export function ProductDetailPage({ slug }: { slug: string }) {
   })
 
   const product = data?.product
+  const { format } = useMoney()
+  const deliveryTiers = useDeliveryTiers()
 
   useEffect(() => {
     if (product) document.title = `${product.name} — Style Sence`
@@ -720,6 +729,11 @@ function ProductInner({ product }: { product: ProductDetail }) {
 
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Price price={product.price} compareAtPrice={product.compareAtPrice} size="lg" />
+            {currency !== 'NGN' ? (
+              <span className="font-mono text-[0.66rem] tracking-[0.06em] text-muted-foreground/80">
+                estimate — billed in ₦ (NGN)
+              </span>
+            ) : null}
             {product.rating ? (
               <a
                 href="#reviews"
@@ -1025,7 +1039,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                 the studio will contact you).
               </p>
               <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
-                {DELIVERY_TIERS}
+                {deliveryTiers}
               </p>
             </div>
           </div>
@@ -1079,7 +1093,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                   <ul className="space-y-2.5 text-sm text-muted-foreground">
                     <li className="flex gap-2.5">
                       <Truck className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
-                      {DELIVERY_TIERS}
+                      {deliveryTiers}
                     </li>
                     <li className="flex gap-2.5">
                       <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-espresso" strokeWidth={1.5} aria-hidden />
@@ -1223,7 +1237,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
               <div className="flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
-                    The look — {lookPieces.length} pieces · {formatNaira(lookTotal)}
+                    The look — {lookPieces.length} pieces · {format(lookTotal)}
                   </p>
                   {soldOutLookPieces > 0 ? (
                     <p className="mt-1 text-[0.72rem] leading-relaxed text-muted-foreground">
@@ -1253,7 +1267,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
           ) : null}
 
           <p className="mt-6 font-mono text-[0.68rem] text-muted-foreground/70">
-            {formatNaira(product.price)} · in {product.category?.name ?? 'the collection'}
+            {format(product.price)} · in {product.category?.name ?? 'the collection'}
           </p>
         </section>
       ) : null}
@@ -1281,7 +1295,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
               {product.name}
             </p>
             <p className="mt-0.5 truncate font-mono text-[0.74rem] text-muted-foreground tabular-nums">
-              {formatNaira(product.price)}
+              {format(product.price)}
               {selectedVariant ? (
                 <span className="text-foreground">
                   {' '}

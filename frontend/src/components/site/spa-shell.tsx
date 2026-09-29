@@ -15,6 +15,8 @@ import { AnnouncementBar } from '@/components/site/announcement-bar'
 import { Header } from '@/components/site/header'
 import { Footer } from '@/components/site/footer'
 import { CartSheet } from '@/components/site/cart-sheet'
+import { CurrencyModal } from '@/components/site/currency-modal'
+import { detectCurrency } from '@/lib/store/currency'
 import { ScrollToTop } from '@/components/site/scroll-to-top'
 import { WhatsAppWidget } from '@/components/site/whatsapp-widget'
 import { PageFade } from '@/components/site/reveal'
@@ -184,6 +186,21 @@ export function SpaShell() {
       }),
   )
 
+  // Display-currency detection — never blocks first paint. One idle-time run
+  // per visitor: cookie choice wins; else the geo route (once, then
+  // cookie-persisted); else a timezone hint. May suggest the selector modal.
+  useEffect(() => {
+    if (!mounted) return
+    const idle: number =
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(() => void detectCurrency(), { timeout: 4000 })
+        : window.setTimeout(() => void detectCurrency(), 2000)
+    return () => {
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle)
+      else window.clearTimeout(idle)
+    }
+  }, [mounted])
+
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
@@ -197,6 +214,7 @@ export function SpaShell() {
           <Router />
           <Footer />
           <CartSheet />
+          <CurrencyModal />
           <ScrollToTop />
           <WhatsAppWidget />
           <WishlistSync />

@@ -4,7 +4,7 @@ import { memo } from 'react'
 import { Heart, ArrowUpRight, Star } from 'lucide-react'
 import { Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
-import { formatNaira } from '@/lib/money'
+import { useMoney } from '@/lib/store/currency'
 import { ProductImage } from './price'
 import { QuickViewButton } from './quick-view'
 import { useWishlist } from '@/lib/store/wishlist'
@@ -23,6 +23,7 @@ export const ProductCard = memo(function ProductCard({
   const toggle = useWishlist((s) => s.toggle)
   const has = useWishlist((s) => s.has)
   const mounted = useMounted()
+  const { format } = useMoney()
 
   const wished = mounted && has(product.slug)
   const onSale = product.compareAtPrice && product.compareAtPrice > product.price
@@ -92,10 +93,10 @@ export const ProductCard = memo(function ProductCard({
               the row wraps instead of pushing the card wider than its grid track */}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <p className="font-mono text-[0.85rem] font-medium tabular-nums">
-              {formatNaira(product.price)}
+              {format(product.price)}
               {onSale ? (
                 <span className="ml-2 text-[0.75rem] text-muted-foreground/70 line-through">
-                  {formatNaira(product.compareAtPrice!)}
+                  {format(product.compareAtPrice!)}
                 </span>
               ) : null}
             </p>

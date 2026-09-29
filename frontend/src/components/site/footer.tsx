@@ -7,6 +7,8 @@ import { ArrowRight, Check, Lock, Sun, Moon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from '@/lib/router'
 import { PaystackMark } from '@/components/site/paystack-mark'
+import { CURRENCIES } from '@/lib/fx'
+import { useMoney } from '@/lib/store/currency'
 import type { Category } from '@/lib/types'
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -145,6 +147,7 @@ function PaymentMarks() {
 /** Fine-print band — trust, currency, studio and payment details above the
  *  bottom line. Hairline grid; mono labels; quiet copy. */
 function FinePrint() {
+  const { currency } = useMoney()
   return (
     <div className="border-t border-line py-6">
       <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -165,8 +168,9 @@ function FinePrint() {
             Prices &amp; tax
           </dt>
           <dd className="mt-2.5 text-[0.72rem] leading-relaxed text-muted-foreground">
-            All prices in <span className="text-foreground">₦ — Nigerian Naira</span>, shown
-            incl. VAT.
+            Shown in <span className="text-foreground">{CURRENCIES[currency].label}</span>
+            {currency !== 'NGN' ? ' (estimates)' : ''} — checkout is always charged in{' '}
+            <span className="text-foreground">₦ — Nigerian Naira</span>.
           </dd>
         </div>
         <div>
@@ -174,8 +178,7 @@ function FinePrint() {
             The studio
           </dt>
           <dd className="mt-2.5 text-[0.72rem] leading-relaxed text-muted-foreground">
-            14A Awolowo Road, Ikoyi, Lagos
-            <span className="mt-1 block">Tue – Sat · 10:00 – 18:00 WAT</span>
+            <span className="block">Tue – Sat · 10:00 – 18:00 WAT</span>
             <span className="mt-1 block text-[0.64rem] text-muted-foreground/70">
               Private fittings by appointment — or order online from anywhere.
               We deliver worldwide.
@@ -202,6 +205,7 @@ function FinePrint() {
 
 export function Footer() {
   const { theme, setTheme } = useTheme()
+  const { currency } = useMoney()
   const { data } = useQuery({
     queryKey: ['categories'],
     queryFn: () => fetchJson<{ categories: Category[] }>('/api/categories'),
@@ -283,15 +287,9 @@ export function Footer() {
           </div>
           <div>
             <p className="eyebrow mb-4">Visit</p>
-            <address className="text-sm not-italic leading-relaxed text-muted-foreground">
-              14A Awolowo Road
-              <br />
-              Ikoyi, Lagos, Nigeria
-              <br />
-              <span className="mt-2 block">
-                Tue – Sat · 10:00 – 18:00 WAT
-              </span>
-            </address>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Tue – Sat · 10:00 – 18:00 WAT
+            </p>
             <p className="mt-2 text-[0.72rem] leading-relaxed text-muted-foreground/80">
               Private fittings by appointment — or order online from anywhere.
               We deliver worldwide.
