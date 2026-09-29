@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueries, keepPreviousData } from '@tanstack/react-query'
-import { SlidersHorizontal, X, Search, Truck, Check } from 'lucide-react'
+import { SlidersHorizontal, X, Search, Truck, Check, Rows3, Columns2 } from 'lucide-react'
 import { useRoute, navigate, Link } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { formatNaira } from '@/lib/money'
@@ -347,6 +347,23 @@ export function ShopPage() {
   const categories = (catsData?.categories ?? []).filter((c) => c.productCount > 0)
 
   const [mobileFilters, setMobileFilters] = useState(false)
+  // one large card per row, or two — remembered between visits
+  const [denseGrid, setDenseGrid] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem('ss-shop-density') === 'dense',
+  )
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('ss-shop-density', denseGrid ? 'dense' : 'comfort')
+    } catch {
+      // private-browsing storage denial is fine — the toggle still works per visit
+    }
+  }, [denseGrid])
+  const gridCls = cn(
+    'grid gap-y-10 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4',
+    denseGrid
+      ? 'grid-cols-2 gap-x-3 gap-y-8'
+      : 'grid-cols-1 min-[540px]:grid-cols-2 min-[540px]:gap-x-4',
+  )
   const categoryMeta = categories.find((c) => c.slug === params.category)
 
   const activeChips: { label: string; clear: () => void }[] = []
@@ -403,7 +420,7 @@ export function ShopPage() {
 
       {/* toolbar */}
       <div className="sticky top-16 z-30 -mx-4 mt-8 border-y border-line bg-background/92 px-4 py-3 backdrop-blur-md sm:top-[4.5rem] sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Sheet open={mobileFilters} onOpenChange={setMobileFilters}>
               <SheetTrigger asChild>
@@ -454,12 +471,43 @@ export function ShopPage() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {/* density switch — one card per row, or two (phones and phablets) */}
+            <div
+              role="group"
+              aria-label="Cards per row"
+              className="flex items-center border border-line-strong md:hidden"
+            >
+              <button
+                type="button"
+                onClick={() => setDenseGrid(false)}
+                aria-pressed={!denseGrid}
+                aria-label="One card per row"
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                  denseGrid ? 'text-muted-foreground hover:text-foreground' : 'bg-foreground text-background',
+                )}
+              >
+                <Rows3 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDenseGrid(true)}
+                aria-pressed={denseGrid}
+                aria-label="Two cards per row"
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center border-l border-line-strong transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                  denseGrid ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Columns2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              </button>
+            </div>
             <Select
               value={params.sort}
               onValueChange={(v) => setParam({ sort: v === 'featured' ? null : v })}
             >
               <SelectTrigger
-                className="h-9 w-[11.5rem] border-line-strong text-[0.68rem] uppercase tracking-[0.12em]"
+                className="h-9 w-[9rem] border-line-strong text-[0.68rem] uppercase tracking-[0.12em] min-[480px]:w-[11.5rem]"
                 aria-label="Sort products"
               >
                 <SelectValue />
@@ -487,7 +535,7 @@ export function ShopPage() {
         {/* grid */}
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-y-8 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
+            <div className={gridCls}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
@@ -510,7 +558,7 @@ export function ShopPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-y-10 min-[540px]:grid-cols-2 min-[540px]:gap-x-4 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
+              <div className={gridCls}>
                 {items.map((p, i) => (
                   <ProductCard key={p.id} product={p} index={i} eager={i < 8} />
                 ))}

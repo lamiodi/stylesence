@@ -637,7 +637,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
             ) : null}
             {product.images.length > 1 ? (
               <span
-                className="absolute right-4 top-4 border border-line bg-background/85 px-2.5 py-1 font-mono text-[0.62rem] tracking-[0.12em] text-muted-foreground tabular-nums backdrop-blur-sm"
+                className="absolute right-4 top-4 border border-line bg-background/95 px-2.5 py-1 font-mono text-[0.62rem] tracking-[0.12em] text-muted-foreground tabular-nums"
                 aria-hidden
               >
                 {String(imgIndex + 1).padStart(2, '0')} / {String(product.images.length).padStart(2, '0')}
@@ -649,7 +649,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                 aria-label="Expand image"
                 aria-haspopup="dialog"
                 onClick={() => setLightboxOpen(true)}
-                className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center border border-line bg-background/85 text-muted-foreground backdrop-blur-sm transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center border border-line bg-background/95 text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
               </button>
@@ -671,7 +671,7 @@ function ProductInner({ product }: { product: ProductDetail }) {
                 >
                   <ProductImage src={img.url} alt={img.alt ?? product.name} label="" ratio="aspect-[3/4]" />
                   {img.url.endsWith('.mp4') || img.url.endsWith('.webm') ? (
-                    <span className="absolute bottom-1 right-1 border border-line bg-background/90 px-1 py-0.5 font-mono text-[0.52rem] uppercase tracking-wider text-foreground backdrop-blur-xs">
+                    <span className="absolute bottom-1 right-1 border border-line bg-background/95 px-1 py-0.5 font-mono text-[0.52rem] uppercase tracking-wider text-foreground">
                       Video
                     </span>
                   ) : null}

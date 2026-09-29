@@ -146,7 +146,7 @@ export function JournalPage() {
                     className="transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-safe:group-hover:scale-[1.03]"
                   />
                   {filter === 'all' ? (
-                    <span className="eyebrow absolute left-4 top-4 bg-background/90 px-3 py-1.5 !text-[0.55rem] backdrop-blur-sm">
+                    <span className="eyebrow absolute left-4 top-4 bg-background/95 px-3 py-1.5 !text-[0.55rem]">
                       Featured
                     </span>
                   ) : null}

@@ -46,7 +46,7 @@ export function QuickViewButton({
         aria-haspopup="dialog"
         aria-label={`Quick view ${name}`}
         className={cn(
-          'pointer-events-auto absolute bottom-3 left-3 flex items-center gap-1.5 bg-background/90 px-3 py-2 backdrop-blur-sm transition-all duration-500',
+          'pointer-events-auto absolute bottom-3 left-3 flex items-center gap-1.5 bg-background/95 px-3 py-2 transition-all duration-500',
           'text-[0.58rem] font-medium uppercase tracking-[0.18em] text-foreground/85 hover:text-espresso',
           'focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring',
           'translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100',

@@ -136,7 +136,7 @@ export function HomePage() {
               playsInline
               aria-label="The Àrẹ̀wà Set — hand-woven Aso Oke, worn in motion"
               style={{ objectPosition: 'center 80%' }}
-              className="h-full w-full object-cover [filter:brightness(.86)_contrast(1.1)]"
+              className="h-full w-full object-cover"
             />
           )}
           <div
@@ -169,29 +169,7 @@ export function HomePage() {
                   Read the edit
                 </button>
               </div>
-              {/* house meta line — quiet mono sign-off under the hero actions */}
-              <p className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.6rem] uppercase tracking-[0.26em] text-primary-foreground/65">
-                <span>Est. 2026</span>
-                <span className="text-primary-foreground/40" aria-hidden>
-                  ·
-                </span>
-                <span>Lagos Atelier</span>
-                <span className="text-primary-foreground/40" aria-hidden>
-                  ·
-                </span>
-                <span>Worldwide Delivery</span>
-              </p>
             </Reveal>
-          </div>
-          {/* scroll cue — a quiet invitation (static; honours reduced-motion by design) */}
-          <div
-            aria-hidden
-            className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2.5 md:flex"
-          >
-            <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-primary-foreground/60">
-              Scroll
-            </span>
-            <span className="h-10 w-px bg-primary-foreground/35" />
           </div>
         </div>
       </section>

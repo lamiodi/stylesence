@@ -64,7 +64,7 @@ export const ProductCard = memo(function ProductCard({
           {/* editorial tags */}
           <div className="pointer-events-none absolute left-3 top-3 flex flex-col gap-1.5">
             {product.isNew ? (
-              <span className="eyebrow-ink bg-background/90 px-2.5 py-1 !text-[0.55rem] backdrop-blur-sm">
+              <span className="eyebrow-ink bg-background/95 px-2.5 py-1 !text-[0.55rem]">
                 New
               </span>
             ) : null}
@@ -76,7 +76,7 @@ export const ProductCard = memo(function ProductCard({
           </div>
 
           {/* hover cue */}
-          <div className="pointer-events-none absolute bottom-3 right-3 flex h-9 w-9 translate-y-2 items-center justify-center bg-background/90 opacity-0 backdrop-blur-sm transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+          <div className="pointer-events-none absolute bottom-3 right-3 flex h-9 w-9 translate-y-2 items-center justify-center bg-background/95 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
             <ArrowUpRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
           </div>
         </div>
@@ -152,11 +152,11 @@ export const ProductCard = memo(function ProductCard({
         aria-pressed={wished}
         aria-label={wished ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
         className={cn(
-          'absolute right-3 top-3 flex h-9 w-9 items-center justify-center backdrop-blur-sm transition-all duration-300',
+          'absolute right-3 top-3 flex h-9 w-9 items-center justify-center transition-all duration-300',
           'focus-visible:outline-2 focus-visible:outline-ring',
           wished
             ? 'bg-background/95 text-espresso opacity-100'
-            : 'bg-background/85 text-foreground/80 opacity-0 hover:text-espresso group-hover:opacity-100 focus-visible:opacity-100',
+            : 'bg-background/90 text-foreground/80 opacity-0 hover:text-espresso group-hover:opacity-100 focus-visible:opacity-100',
           '[@media(hover:none)]:opacity-100',
         )}
       >
