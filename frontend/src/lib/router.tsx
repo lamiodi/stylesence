@@ -10,6 +10,18 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode, type MouseEvent } from 'react'
 
+// The app owns scrolling (useScrollTop pins every path change to the top), so
+// the browser's scroll restoration must be off: with html{scroll-behavior:
+// smooth} a restored position on reload/session-restore animates visibly down
+// the page — the "homepage loads scrolled to the footer" effect. Also pins
+// bfcache restores (pageshow with persisted=true) back to the top.
+if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+  history.scrollRestoration = 'manual'
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  })
+}
+
 export interface Route {
   /** normalised path, always starts with '/', e.g. '/shop' */
   path: string
