@@ -20,12 +20,13 @@ export async function settleGatewayPayment(
   reference: string,
   amountNaira: number | null,
 ): Promise<SettleOutcome> {
-  // Same-currency gateway amounts must match the order total exactly (no
-  // percentage tolerance: it invites deliberate underpayment). Null amount
-  // (gateway didn't report one) still passes.
-  if (amountNaira !== null && amountNaira !== order.total) {
+  // Settlement requires proof of the amount: a gateway-reported figure that
+  // matches the order total exactly (no percentage tolerance — it invites
+  // deliberate underpayment). A missing amount is NOT proof: refuse to settle
+  // and leave the order pending for manual review.
+  if (amountNaira === null || amountNaira !== order.total) {
     console.error(
-      `[order-settle] amount mismatch for ${order.orderNumber}: expected ${order.total}, got ${amountNaira}`,
+      `[order-settle] amount mismatch for ${order.orderNumber}: expected ${order.total}, got ${amountNaira ?? 'nothing reported'}`,
     )
     return 'amount-mismatch'
   }

@@ -128,6 +128,8 @@ export type Order = {
   status: string
   paymentMethod: string
   paymentReference: string | null
+  /** Client-generated checkout-attempt key — unique index makes retried checkouts return the first order. */
+  idempotencyKey: string | null
   createdAt: Date
   updatedAt: Date
 }

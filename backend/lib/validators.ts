@@ -92,6 +92,9 @@ export const checkoutInput = z.object({
     .max(1, 'One promo code per order')
     .optional()
     .transform((v) => (v === undefined || v.length === 0 ? undefined : v)),
+  /** Client-generated attempt key (UUID) — a retried checkout returns the
+   *  first order instead of creating a duplicate (unique index backstop). */
+  idempotencyKey: z.string().trim().min(8, 'idempotencyKey is invalid').max(100, 'idempotencyKey is invalid').optional(),
 })
 
 /** POST /api/promo/validate — the applied promo code. */

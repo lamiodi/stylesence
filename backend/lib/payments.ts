@@ -13,6 +13,8 @@
  *                           (e.g. 0.00065 for USD at ₦1,540/$)
  */
 
+import crypto from 'node:crypto'
+
 const PAYSTACK_API = 'https://api.paystack.co'
 const STRIPE_API = 'https://api.stripe.com/v1'
 
@@ -29,6 +31,16 @@ export interface InitiatedPayment {
   authorizationUrl: string
 }
 
+/**
+ * Transaction reference — Paystack only accepts alphanumerics, hyphens, dots
+ * and equals signs (no underscores). Time + a short random suffix keep
+ * same-millisecond retries (checkout racing the pay endpoint) unique.
+ */
+export function paystackReference(orderNumber: string): string {
+  const random = crypto.randomBytes(3).toString('hex')
+  return `${orderNumber}-${Date.now().toString(36)}-${random}`
+}
+
 /** Nigerian-market checkout — Paystack transaction initialize (amounts in kobo). */
 export async function initiatePaystack(params: {
   orderNumber: string
@@ -36,7 +48,7 @@ export async function initiatePaystack(params: {
   amountNaira: number
   callbackUrl: string
 }): Promise<InitiatedPayment> {
-  const reference = `${params.orderNumber}_${Date.now().toString(36)}`
+  const reference = paystackReference(params.orderNumber)
   const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
     method: 'POST',
     headers: {
@@ -46,6 +58,7 @@ export async function initiatePaystack(params: {
     body: JSON.stringify({
       email: params.email,
       amount: params.amountNaira * 100,
+      currency: 'NGN',
       reference,
       callback_url: params.callbackUrl,
       metadata: { orderNumber: params.orderNumber, custom_fields: [] },
@@ -65,6 +78,9 @@ export async function initiatePaystack(params: {
  * transaction status (success | failed | abandoned | ongoing | …) — the
  * reaper only cancels orders on a definitive failure, never on a network
  * error (which reads identically to `paid: false` here).
+ *
+ * A transaction only counts as paid in the currency we charge (NGN): a
+ * success in anything else is refused loudly and left for manual review.
  */
 export async function verifyPaystack(reference: string): Promise<{
   paid: boolean
@@ -75,13 +91,20 @@ export async function verifyPaystack(reference: string): Promise<{
     headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
   })
   const body = await res.json().catch(() => null) as
-    | { status?: boolean; data?: { status?: string; amount?: number } }
+    | { status?: boolean; data?: { status?: string; amount?: number; currency?: string } }
     | null
   if (!res.ok || !body?.status) return { paid: false, amountNaira: null }
+  const gatewayStatus = body.data?.status
+  const paid = gatewayStatus === 'success' && body.data?.currency === 'NGN'
+  if (gatewayStatus === 'success' && !paid) {
+    console.error(
+      `[payments] Paystack ${reference} succeeded in ${body.data?.currency ?? 'an unknown currency'} — NGN only, not settling`,
+    )
+  }
   return {
-    paid: body.data?.status === 'success',
+    paid,
     amountNaira: typeof body.data?.amount === 'number' ? body.data.amount / 100 : null,
-    gatewayStatus: body.data?.status,
+    gatewayStatus,
   }
 }
 

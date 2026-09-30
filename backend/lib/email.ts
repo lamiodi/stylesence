@@ -395,6 +395,204 @@ export async function sendWelcomeCustomerEmail(email: string, name: string) {
 }
 
 /* ------------------------------------------------------------------ *
+ * 6. Manual-rail acknowledgement — order received, payment pending the
+ *    studio (pay-after-confirmation / gateway down at checkout).
+ *    Unlike the paid receipt, "Total Due" is honest: nothing has been paid.
+ * ------------------------------------------------------------------ */
+export async function sendManualOrderReceivedEmail(order: OrderEmailData) {
+  const siteUrl = getFrontendUrl()
+  const trackUrl = `${siteUrl}/track?order=${encodeURIComponent(order.orderNumber)}`
+
+  const itemsHtml = order.items
+    .map(
+      (item) => `
+    <tr class="item-row">
+      <td width="55" valign="top" style="padding-right: 12px;">
+        ${
+          item.imageUrl
+            ? `<img src="${item.imageUrl}" alt="${item.productName}" width="50" height="65" style="object-fit: cover; border: 1px solid #e5e3dc; display: block;" />`
+            : `<div style="width: 50px; height: 65px; background: #f0eee6;"></div>`
+        }
+      </td>
+      <td valign="top">
+        <strong style="font-size: 13px; color: #1a1a1a;">${esc(item.productName)}</strong><br>
+        <span style="font-size: 11px; color: #777368;">Size: ${item.size} &bull; Color: ${item.color}</span><br>
+        <span style="font-size: 11px; color: #777368;">Qty: ${item.qty}</span>
+      </td>
+      <td align="right" valign="top" style="font-family: 'Times New Roman', Georgia, serif; font-size: 14px; font-weight: 600;">
+        ${formatNaira(item.unitPrice * item.qty)}
+      </td>
+    </tr>
+  `
+    )
+    .join('')
+
+  const contentHtml = `
+    <h2 style="font-family: 'Times New Roman', Georgia, serif; font-size: 20px; font-weight: 400; margin: 0 0 12px; color: #1a1a1a;">
+      Order Received
+    </h2>
+    <p style="margin: 0 0 20px; color: #666257;">
+      Dear ${esc(order.fullName)}, thank you for your order. We have received order <strong>#${order.orderNumber}</strong> and reserved your pieces.
+    </p>
+
+    <div style="background-color: #faf9f5; border: 1px solid #f0eee6; padding: 16px 20px; margin-bottom: 28px;">
+      <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: #888478; margin-bottom: 4px;">Order Reference</div>
+      <div style="font-family: monospace; font-size: 16px; font-weight: 600; color: #1a1a1a;">${order.orderNumber}</div>
+    </div>
+
+    <div style="background-color: #faf9f5; border-left: 3px solid #1a1a1a; padding: 16px 20px; margin-bottom: 28px;">
+      <p style="margin: 0; font-size: 13px; color: #2e2d29; line-height: 1.7;">
+        <strong>What happens next</strong><br>
+        1. The studio will contact you shortly with payment details — bank transfer or card link.<br>
+        2. Once your payment is confirmed, production begins.<br>
+        3. You will receive a confirmation email with your receipt at that point.
+      </p>
+    </div>
+
+    <h3 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: #888478; margin: 0 0 12px;">Order Summary</h3>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+      ${itemsHtml}
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px; margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 4px 0; color: #777368;">Subtotal</td>
+        <td align="right" style="padding: 4px 0;">${formatNaira(order.subtotal)}</td>
+      </tr>
+      ${
+        order.discount > 0
+          ? `<tr>
+        <td style="padding: 4px 0; color: #2e6930;">Privilege Discount</td>
+        <td align="right" style="padding: 4px 0; color: #2e6930;">-${formatNaira(order.discount)}</td>
+      </tr>`
+          : ''
+      }
+      <tr>
+        <td style="padding: 4px 0; color: #777368;">Shipping (${shippingLabel(order.shippingMethod)})</td>
+        <td align="right" style="padding: 4px 0;">${formatNaira(order.shipping)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 0 4px; font-weight: 600; font-size: 15px; border-top: 1px solid #e5e3dc;">Total Due</td>
+        <td align="right" style="padding: 12px 0 4px; font-weight: 700; font-size: 17px; font-family: 'Times New Roman', Georgia, serif; border-top: 1px solid #e5e3dc;">${formatNaira(order.total)}</td>
+      </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <h3 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: #888478; margin: 0 0 8px;">Delivery Address</h3>
+    <p style="margin: 0 0 24px; color: #555248; font-size: 13px; line-height: 1.5;">
+      ${esc(order.address)}<br>
+      ${esc(order.city)}, ${esc(order.state)}
+      ${order.phone ? `<br>Phone: ${esc(order.phone)}` : ''}
+    </p>
+
+    <div style="text-align: center;">
+      <a href="${trackUrl}" class="button" target="_blank">View Order Status</a>
+    </div>
+  `
+
+  return sendEmail({
+    to: order.email,
+    subject: `Order Received #${order.orderNumber} — the studio will be in touch`,
+    html: luxuryEmailLayout(`Order Received #${order.orderNumber}`, `Your Style Sence order #${order.orderNumber} is received — payment details to follow`, contentHtml),
+  })
+}
+
+/* ------------------------------------------------------------------ *
+ * 7. Studio new-order notification — internal heads-up on every placed
+ *    order. Manual-rail orders (pay-after-confirmation / gateway failure)
+ *    arrive flagged "Action Needed" — that note is the studio's trigger to
+ *    contact the buyer; gateway orders are informational only.
+ * ------------------------------------------------------------------ */
+export type StudioOrderEmailData = OrderEmailData & {
+  paymentMethod: string
+  country: string
+  notes: string | null
+  productionTier: string
+}
+
+/** Where studio-facing notifications land. STUDIO_NOTIFY_EMAIL wins; without
+ *  it the bare address of EMAIL_FROM (the concierge inbox) is used, so the
+ *  notification works with zero configuration. Read at send time — a Render
+ *  env edit applies without a redeploy. */
+function studioNotifyAddress(): string {
+  const explicit = process.env.STUDIO_NOTIFY_EMAIL?.trim()
+  if (explicit) return explicit
+  const bracket = (process.env.EMAIL_FROM ?? '').match(/<([^>]+)>/)
+  return bracket?.[1] ?? process.env.EMAIL_FROM ?? 'onboarding@resend.dev'
+}
+
+export async function sendStudioNewOrderEmail(order: StudioOrderEmailData, studioNote: string) {
+  const to = studioNotifyAddress()
+  // Manual rails need a human to send payment details; gateway orders
+  // confirm automatically and are reported for the record only.
+  const needsAction = order.paymentMethod === 'confirmed'
+
+  const methodLabel =
+    order.paymentMethod === 'paystack'
+      ? 'Paystack (gateway)'
+      : order.paymentMethod === 'stripe'
+        ? 'Stripe (gateway)'
+        : 'Pay after studio confirmation'
+
+  const rowsHtml = order.items
+    .map(
+      (item) => `
+    <tr>
+      <td style="padding: 6px 0; border-bottom: 1px solid #f0eee6; font-size: 13px;">
+        ${esc(item.productName)} — ${esc(item.size)} / ${esc(item.color)} × ${item.qty}
+      </td>
+      <td align="right" style="padding: 6px 0; border-bottom: 1px solid #f0eee6; font-size: 13px; white-space: nowrap;">
+        ${formatNaira(item.unitPrice * item.qty)}
+      </td>
+    </tr>
+  `,
+    )
+    .join('')
+
+  const contentHtml = `
+    <h2 style="font-family: 'Times New Roman', Georgia, serif; font-size: 20px; font-weight: 400; margin: 0 0 12px; color: #1a1a1a;">
+      ${needsAction ? 'New Order — Action Needed' : 'New Order'}
+    </h2>
+    <p style="margin: 0 0 20px; color: #666257;">
+      Order <strong>#${order.orderNumber}</strong> was placed${needsAction ? ' and is awaiting payment confirmation' : ''}.
+    </p>
+
+    <div style="background-color: #faf9f5; border-left: 3px solid #1a1a1a; padding: 16px 20px; margin-bottom: 24px;">
+      <p style="margin: 0; font-size: 13px; color: #2e2d29; line-height: 1.6;">${esc(studioNote)}</p>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px; margin-bottom: 24px;">
+      <tr><td style="padding: 4px 0; color: #777368; width: 130px;">Customer</td><td style="padding: 4px 0;">${esc(order.fullName)}</td></tr>
+      <tr><td style="padding: 4px 0; color: #777368;">Email</td><td style="padding: 4px 0;">${esc(order.email)}</td></tr>
+      ${order.phone ? `<tr><td style="padding: 4px 0; color: #777368;">Phone</td><td style="padding: 4px 0;">${esc(order.phone)}</td></tr>` : ''}
+      <tr><td style="padding: 4px 0; color: #777368;">Deliver to</td><td style="padding: 4px 0;">${esc(order.address)}, ${esc(order.city)}, ${esc(order.state)}, ${esc(order.country)}</td></tr>
+      <tr><td style="padding: 4px 0; color: #777368;">Payment</td><td style="padding: 4px 0;">${methodLabel}</td></tr>
+      <tr><td style="padding: 4px 0; color: #777368;">Production</td><td style="padding: 4px 0;">${esc(order.productionTier)}</td></tr>
+    </table>
+
+    ${order.notes ? `<p style="margin: 0 0 20px; font-size: 13px; color: #2e2d29;"><strong>Customer notes:</strong> ${esc(order.notes)}</p>` : ''}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+      ${rowsHtml}
+    </table>
+    <p style="margin: 12px 0 0; font-size: 15px; text-align: right;">
+      <strong>Total: ${formatNaira(order.total)}</strong>
+    </p>
+
+    <div style="text-align: center;">
+      <a href="${getFrontendUrl()}/admin" class="button" target="_blank">Open Admin Console</a>
+    </div>
+  `
+
+  return sendEmail({
+    to,
+    subject: `New order #${order.orderNumber} — ${formatNaira(order.total)} · ${needsAction ? 'contact buyer' : 'gateway payment pending'}`,
+    html: luxuryEmailLayout(`New Order #${order.orderNumber}`, 'New Style Sence order', contentHtml),
+  })
+}
+
+/* ------------------------------------------------------------------ *
  * Core Dispatch Helper
  * ------------------------------------------------------------------ */
 async function sendEmail({

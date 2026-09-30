@@ -99,24 +99,16 @@ export async function reapPendingOrders(dryRun: boolean, ttlDays = DEFAULT_TTL_D
         continue
       }
 
-      await sql.begin(async (tx) => {
-        // Same restock contract as an admin cancel (legacy rows without a
-        // variant link are skipped, not failed).
-        for (const item of order.items) {
-          if (!item.variantId) continue
-          await tx`
-            UPDATE "ProductVariant" SET stock = stock + ${item.qty}
-            WHERE id = ${item.variantId}
-          `
-        }
-        await refundPromoUsage(tx, order.promoCode, order.promoCodes)
-        await tx`
-          UPDATE "Order" SET status = 'CANCELLED', "updatedAt" = now()
-          WHERE id = ${order.id} AND status = 'PENDING_PAYMENT'
-        `
-      })
-      summary.cancelled++
-      console.log(`[reaper] cancelled + restocked ${order.orderNumber} (${gatewayStatus})`)
+      const claimed = await cancelAndRestock(order)
+      if (claimed) {
+        summary.cancelled++
+        console.log(`[reaper] cancelled + restocked ${order.orderNumber} (${gatewayStatus})`)
+      } else {
+        // Lost the race — a webhook/verify path or another reaper settled or
+        // cancelled it first; its stock was already handled correctly.
+        summary.skipped++
+        console.log(`[reaper] ${order.orderNumber} was claimed by another path — not restocking`)
+      }
     } catch (err) {
       summary.skipped++
       console.error(`[reaper] error processing ${order.orderNumber} — left untouched:`, err)
@@ -128,6 +120,36 @@ export async function reapPendingOrders(dryRun: boolean, ttlDays = DEFAULT_TTL_D
     `${summary.cancelled} cancelled, ${summary.skipped} skipped${dryRun ? ' (dry-run)' : ''}`,
   )
   return summary
+}
+
+/**
+ * Cancel one stale order and release what it reserved — claim FIRST, restore
+ * AFTER. The conditional UPDATE (guarded on status) is the only gate: if a
+ * concurrent reaper, the verify path or a webhook already flipped the order
+ * out of PENDING_PAYMENT, zero rows come back and stock/promo are untouched.
+ * Everything runs in one transaction, so a failed restock rolls the claim
+ * back too (the next pass retries cleanly).
+ */
+export async function cancelAndRestock(order: Order & { items: OrderItem[] }): Promise<boolean> {
+  return sql.begin(async (tx) => {
+    const claimed = await tx<{ id: string }[]>`
+      UPDATE "Order" SET status = 'CANCELLED', "updatedAt" = now()
+      WHERE id = ${order.id} AND status = 'PENDING_PAYMENT'
+      RETURNING id
+    `
+    if (claimed.length === 0) return false
+    // Same restock contract as an admin cancel (legacy rows without a
+    // variant link are skipped, not failed).
+    for (const item of order.items) {
+      if (!item.variantId) continue
+      await tx`
+        UPDATE "ProductVariant" SET stock = stock + ${item.qty}
+        WHERE id = ${item.variantId}
+      `
+    }
+    await refundPromoUsage(tx, order.promoCode, order.promoCodes)
+    return true
+  })
 }
 
 // CLI entry — direct execution only (instrumentation imports the function).

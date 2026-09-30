@@ -65,6 +65,17 @@ export function CheckoutPage() {
   const { data: customer } = useCustomer()
   const items = cart?.items ?? []
 
+  // Checkout idempotency — one attempt key per distinct bag. A retried submit
+  // (double click, flaky network, a timeout that actually placed the order)
+  // replays the same key so the server returns the first order instead of
+  // creating a duplicate. Changing the bag (qty/lines, incl. a fresh bag
+  // after a completed order) starts a new attempt.
+  const cartSignature = items.map((i) => `${i.variant.id}:${i.qty}`).join('|')
+  const idemRef = useRef({ sig: '', key: '' })
+  if (idemRef.current.sig !== cartSignature) {
+    idemRef.current = { sig: cartSignature, key: crypto.randomUUID() }
+  }
+
   const promoCodes = usePromoStore((s) => s.codes)
   const clearPromo = usePromoStore((s) => s.clear)
 
@@ -121,7 +132,11 @@ export function CheckoutPage() {
     if (isPaystackCountry(country)) return payConfig?.paystack ? 'paystack' : 'confirmed'
     return payConfig?.stripe ? 'stripe' : 'confirmed'
   })()
-  const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'stripe' | 'confirmed'>('confirmed')
+  // Initialize from the CURRENT recommendation, not a hardcoded default: with
+  // a cached pay-config the first render already knows the live rail —
+  // starting on 'confirmed' left "pay after confirmation" silently selected
+  // for returning visitors on a Paystack-ready checkout.
+  const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'stripe' | 'confirmed'>(() => recommendedMethod)
   // Keep the picked rail in step with the country's recommended rail —
   // adjusted during render (the React-endorsed pattern) rather than via a
   // cascading effect.
@@ -130,6 +145,9 @@ export function CheckoutPage() {
     setPrevRecommended(recommendedMethod)
     setPaymentMethod(recommendedMethod)
   }
+  // The submit button stays locked until the rails resolve — submitting on
+  // the default would silently drop a customer onto the manual rail.
+  const payOptionsPending = payConfigLoading && !payConfig
 
   /** Changing country invalidates a picked province — clear it whenever the
    *  new country's list (or lack of one) no longer contains it. The stale
@@ -164,6 +182,15 @@ export function CheckoutPage() {
   /** Express production add-on — 2–3 day production instead of standard 7–10. */
   const productionFee = PRODUCTION_TIERS[productionTier].fee
   const total = subtotal === 0 ? 0 : subtotal - discount + shippingPrice + productionFee
+
+  /** Rail-specific submit label — the Paystack path says where you're going
+   *  and what you'll pay; the manual path says what happens next. */
+  const submitLabel =
+    paymentMethod === 'paystack'
+      ? `Continue to Paystack — ${formatNaira(total)}`
+      : paymentMethod === 'stripe'
+        ? `Continue to Stripe — ${formatNaira(total)}`
+        : 'Place order — pay after confirmation'
 
   /** Single-field checks — shared by live blur validation and the submit pass. */
   const validateField = (key: string): string => {
@@ -212,7 +239,7 @@ export function CheckoutPage() {
   }
 
   const placeOrder = async () => {
-    if (busy) return
+    if (busy || payOptionsPending) return
     if (items.length === 0) {
       toast.error('Your bag is empty.')
       return navigate('/shop')
@@ -254,6 +281,7 @@ export function CheckoutPage() {
           confirmedProduction: true,
           paymentMethod,
           promoCodes: promoCodes.length > 0 ? promoCodes : undefined,
+          idempotencyKey: idemRef.current.key,
         }),
       })
       const data = await res.json()
@@ -266,8 +294,13 @@ export function CheckoutPage() {
         window.location.assign(data.payment.url as string)
         return
       }
-      if (data.payment?.note) toast(data.payment.note as string)
-      toast.success(`Order ${data.order.orderNumber} placed.`)
+      if (data.replayed) {
+        // The server recognized this attempt — the order already exists.
+        toast('Your order was already placed — showing its latest status.')
+      } else {
+        if (data.payment?.note) toast(data.payment.note as string)
+        toast.success(`Order ${data.order.orderNumber} placed.`)
+      }
       navigate(`/order/${data.order.orderNumber}?email=${encodeURIComponent(email.trim())}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed')
@@ -579,7 +612,7 @@ export function CheckoutPage() {
             </section>
 
             <section aria-label="Payment">
-              <h2 className="font-display text-xl tracking-tight">05 — Payment</h2>
+              <h2 className="font-display text-xl tracking-tight">05 — Payment method</h2>
               {/* Round 13 pre-production confirmation — mandatory before payment. */}
               <div
                 ref={confirmRef}
@@ -649,7 +682,7 @@ export function CheckoutPage() {
                     className="mt-3 gap-2.5"
                   >
                     {(payConfig?.paystack && isPaystackCountry(country)
-                      ? [{ value: 'paystack', label: 'Pay now with Paystack', hint: 'Card, bank transfer, USSD — Naira', disabled: false }]
+                      ? [{ value: 'paystack', label: 'Pay now with Paystack', hint: 'Card, bank transfer or USSD · Charged in NGN', disabled: false }]
                       : []
                     )
                       .concat(
@@ -662,7 +695,12 @@ export function CheckoutPage() {
                           : [],
                       )
                       .concat([
-                        { value: 'confirmed', label: 'Pay on confirmation', hint: 'The studio sends payment details', disabled: false },
+                        {
+                          value: 'confirmed',
+                          label: 'Order now, pay after studio confirmation',
+                          hint: 'The studio will contact you with payment details. Production starts after payment.',
+                          disabled: false,
+                        },
                       ])
                       .map((opt) => (
                         <label
@@ -694,9 +732,8 @@ export function CheckoutPage() {
                     </p>
                   ) : isPaystackCountry(country) ? (
                     <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
-                      Place your order and the studio sends payment details — bank transfer or card link — with your
-                      confirmation.{' '}
-                      <span className="font-medium text-foreground">Production begins the moment payment lands.</span>
+                      The studio will contact you with payment details.{' '}
+                      <span className="font-medium text-foreground">Production starts after payment.</span>
                     </p>
                   ) : (
                     <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
@@ -717,10 +754,10 @@ export function CheckoutPage() {
                     <p className="eyebrow !text-espresso !text-[0.6rem]">Payment — confirmed by the studio</p>
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Place your order and the studio sends payment details — bank transfer or
-                    card link — with your confirmation. Nothing is charged automatically, and{' '}
-                    <span className="font-medium text-foreground">production begins the moment
-                    payment lands</span>. Need to talk it through first? WhatsApp{' '}
+                    Place your order and the studio will contact you with payment details — bank
+                    transfer or card link. Nothing is charged automatically, and{' '}
+                    <span className="font-medium text-foreground">production starts after payment</span>.
+                    Need to talk it through first? WhatsApp{' '}
                     <span className="font-medium text-foreground">+234 816 302 2233</span>.
                   </p>
                 </div>
@@ -825,10 +862,10 @@ export function CheckoutPage() {
                 </div>
                 <Button
                   className="mt-5 h-12 w-full uppercase tracking-[0.2em] text-[0.66rem]"
-                  disabled={busy || !delivery}
+                  disabled={busy || !delivery || payOptionsPending}
                   onClick={placeOrder}
                 >
-                  {busy ? 'Placing order…' : 'Place order'}
+                  {busy ? 'Placing order…' : payOptionsPending ? 'Preparing payment options…' : submitLabel}
                   <ArrowRight className="ml-2 h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                 </Button>
                 <p className="mt-3 text-center text-[0.64rem] leading-relaxed text-muted-foreground/80">

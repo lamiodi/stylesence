@@ -6,7 +6,12 @@ import { evaluatePromoStack } from '@/lib/promo'
 import { PRODUCTION_TIERS } from '@/lib/types'
 import { deliveryZone, shippingError, zonePrice } from '@/lib/shipping'
 import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured } from '@/lib/payments'
-import { getFrontendUrl } from '@/lib/email'
+import {
+  getFrontendUrl,
+  sendManualOrderReceivedEmail,
+  sendStudioNewOrderEmail,
+  type OrderEmailData,
+} from '@/lib/email'
 
 /**
  * POST /api/checkout
@@ -24,17 +29,61 @@ import { getFrontendUrl } from '@/lib/email'
 
 class StockError extends Error {}
 
+/** A concurrent request with the same idempotency key created the order —
+ *  this transaction rolls back and the first order is returned instead. */
+class DuplicateCheckoutError extends Error {}
+
 function stockMessage(name: string, size: string, color: string, stock: number): string {
   return `Only ${stock} left in stock for ${name} (${size}, ${color})`
 }
 
+type IdempotentOrder = { orderNumber: string; total: number; discount: number }
+
+async function fetchIdempotentOrder(key: string): Promise<IdempotentOrder | null> {
+  const rows = await sql<IdempotentOrder[]>`
+    SELECT "orderNumber", total, discount FROM "Order"
+    WHERE "idempotencyKey" = ${key}
+    ORDER BY id ASC LIMIT 1
+  `
+  return rows[0] ?? null
+}
+
+/** Replay response for a retried checkout: the first order, never a new one. */
+function replayResponse(order: IdempotentOrder) {
+  return ok(
+    {
+      order,
+      replayed: true,
+      payment: { url: null, note: 'Your order was already placed — showing its latest status.' },
+    },
+    { status: 200 },
+  )
+}
 export async function POST(req: Request) {
   const parsed = await readValidated(req, checkoutInput)
   if (!parsed.ok) return parsed.response
   const input = parsed.data
 
+  // Idempotent replay — a retried checkout (double submit, flaky network, a
+  // timeout that actually placed the order) must return the first order. This
+  // runs before the cart lookup so a retry still resolves after the first
+  // attempt cleared the cart; the unique index on "Order"."idempotencyKey"
+  // backstops concurrent requests that both pass this check.
+  if (input.idempotencyKey) {
+    const existing = await fetchIdempotentOrder(input.idempotencyKey)
+    if (existing) return replayResponse(existing)
+  }
+
   const cart = await getCartFromCookie()
-  if (!cart) return fail(404, 'Your cart is empty')
+  if (!cart) {
+    // The first attempt of THIS key may have placed the order and cleared the
+    // cart between the early check and here — replay instead of 404.
+    if (input.idempotencyKey) {
+      const existing = await fetchIdempotentOrder(input.idempotencyKey)
+      if (existing) return replayResponse(existing)
+    }
+    return fail(404, 'Your cart is empty')
+  }
 
   type ItemRow = {
     id: string
@@ -76,7 +125,13 @@ export async function POST(req: Request) {
       images: r.pImage ? [{ url: r.pImage }] : [],
     },
   }))
-  if (items.length === 0) return fail(404, 'Your cart is empty')
+  if (items.length === 0) {
+    if (input.idempotencyKey) {
+      const existing = await fetchIdempotentOrder(input.idempotencyKey)
+      if (existing) return replayResponse(existing)
+    }
+    return fail(404, 'Your cart is empty')
+  }
 
   // Pre-flight stock check (fail fast with the offending item).
   for (const item of items) {
@@ -163,19 +218,26 @@ export async function POST(req: Request) {
               id, "orderNumber", email, "fullName", phone, address, city, state, country, notes,
               "shippingMethod", shipping, subtotal, discount, "promoCode", "promoCodes",
               "productionTier", "productionFee", "confirmedProduction", total, status, "paymentMethod",
-              "createdAt", "updatedAt"
+              "idempotencyKey", "createdAt", "updatedAt"
             ) VALUES (
               ${cuid()}, ${candidate}, ${input.email}, ${input.fullName}, ${input.phone ?? null},
               ${input.address}, ${input.city}, ${input.state}, ${input.country}, ${input.notes ?? null},
               ${input.shippingMethod}, ${shipping}, ${subtotal}, ${discount}, ${promoCode}, ${promoCodes},
               ${productionTier}, ${productionFee}, true, ${total}, ${initialStatus}, ${input.paymentMethod},
-              now(), now()
+              ${input.idempotencyKey ?? null}, now(), now()
             )
             RETURNING "orderNumber", id
           `
           created = inserted[0]
         } catch (err) {
-          if ((err as { code?: string }).code === '23505') continue // order-number clash — next candidate
+          const pg = err as { code?: string; constraint_name?: string }
+          if (pg.code === '23505') {
+            // Same checkout attempt won the race — roll everything back and
+            // replay the first order below. (postgres.js exposes the violated
+            // constraint as constraint_name.)
+            if (pg.constraint_name === 'Order_idempotencyKey_key') throw new DuplicateCheckoutError()
+            continue // order-number clash — next candidate
+          }
           throw err
         }
         if (created) {
@@ -205,9 +267,67 @@ export async function POST(req: Request) {
       return created.orderNumber
     })
   } catch (err) {
-    if (err instanceof StockError) return fail(400, err.message)
+    if (err instanceof StockError) {
+      // A stock failure right after this key's first attempt succeeded means
+      // the first request already reserved the stock — replay, don't scold.
+      if (input.idempotencyKey) {
+        const existing = await fetchIdempotentOrder(input.idempotencyKey)
+        if (existing) return replayResponse(existing)
+      }
+      return fail(400, err.message)
+    }
+    if (err instanceof DuplicateCheckoutError && input.idempotencyKey) {
+      const existing = await fetchIdempotentOrder(input.idempotencyKey)
+      if (existing) return replayResponse(existing)
+    }
     console.error('[api/checkout] transaction failed:', err)
     return fail(500, 'Checkout failed. Please try again.')
+  }
+
+  // Shared receipt fields for the manual-rail acknowledgement emails below.
+  const orderEmailData: OrderEmailData = {
+    orderNumber,
+    fullName: input.fullName,
+    email: input.email,
+    phone: input.phone ?? null,
+    address: input.address,
+    city: input.city,
+    state: input.state,
+    shippingMethod: input.shippingMethod,
+    shipping,
+    subtotal,
+    discount,
+    total,
+    items: items.map((item) => ({
+      productName: item.product.name,
+      size: item.sizeMode === 'custom' ? `${item.variant.size} (custom)` : item.variant.size,
+      color: item.variant.color,
+      qty: item.qty,
+      unitPrice: item.product.price,
+      imageUrl: item.product.images[0]?.url ?? null,
+    })),
+  }
+
+  /** Manual-rail acknowledgement — the customer chose pay-after-confirmation
+   *  (or the gateway was unreachable at checkout). Without these the order
+   *  exists only in the database: no customer receipt, no studio signal.
+   *  Fire-and-forget — an email outage must never fail a placed order. */
+  const notifyManualRail = (studioNote: string) => {
+    void sendManualOrderReceivedEmail(orderEmailData).catch((err) =>
+      console.error(`[api/checkout] customer acknowledgement failed for ${orderNumber}:`, err),
+    )
+    void sendStudioNewOrderEmail(
+      {
+        ...orderEmailData,
+        paymentMethod: input.paymentMethod,
+        country: input.country,
+        notes: input.notes ?? null,
+        productionTier,
+      },
+      studioNote,
+    ).catch((err) =>
+      console.error(`[api/checkout] studio notification failed for ${orderNumber}:`, err),
+    )
   }
 
   // Gateway payment — initialize and hand back the hosted payment URL. A
@@ -236,12 +356,30 @@ export async function POST(req: Request) {
         UPDATE "Order" SET "paymentReference" = ${payment.reference}, "updatedAt" = now()
         WHERE id = ${orderId}
       `
+      // Gateway order — the customer is off to the hosted payment page (their
+      // receipt comes on settlement), but the studio still gets a heads-up
+      // for the record. Informational only: payment confirms automatically.
+      void sendStudioNewOrderEmail(
+        {
+          ...orderEmailData,
+          paymentMethod: input.paymentMethod,
+          country: input.country,
+          notes: input.notes ?? null,
+          productionTier,
+        },
+        'Gateway order — payment confirms automatically and the customer is emailed a receipt. No action needed unless the customer reports a problem.',
+      ).catch((err) =>
+        console.error(`[api/checkout] studio notification failed for ${orderNumber}:`, err),
+      )
       return ok(
         { order: { orderNumber, total, discount }, payment: { url: payment.authorizationUrl } },
         { status: 201 },
       )
     } catch (err) {
       console.error(`[api/checkout] payment initialization failed for ${orderNumber}:`, err)
+      // The order is saved but unpayable online — the customer was told the
+      // studio will send payment details, so acknowledge + alert the studio.
+      notifyManualRail('Card payment initialization failed at checkout — contact the customer with payment details.')
       return ok(
         {
           order: { orderNumber, total, discount },
@@ -255,8 +393,10 @@ export async function POST(req: Request) {
   // Studio-confirmed rail: no automatic receipt — the receipt template reads
   // "Total Paid", which would be false until the studio verifies the transfer
   // and marks the order PAID (that transition sends the customer an update).
-  // The studio contacts the buyer with payment details directly.
+  // The customer gets an unpaid-order acknowledgement with next steps, and
+  // the studio gets a notification to follow up with payment details.
   console.log(`[api/checkout] order ${orderNumber} placed via studio-confirmed rail`)
+  notifyManualRail('Pay-after-confirmation order — contact the customer with payment details.')
 
   return ok({ order: { orderNumber, total, discount } }, { status: 201 })
 }

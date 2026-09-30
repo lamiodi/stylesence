@@ -35,15 +35,31 @@ export async function POST(req: Request) {
     return new Response('Invalid signature', { status: 400 })
   }
 
-  let event: { event?: string; data?: { reference?: string; amount?: number; metadata?: { orderNumber?: string } } } | null = null
+  let event: {
+    event?: string
+    data?: { reference?: string; amount?: number; currency?: string; metadata?: { orderNumber?: string } }
+  } | null = null
   try {
     event = JSON.parse(rawBody)
-  } catch (err) {
+  } catch {
     return new Response('Invalid JSON payload', { status: 400 })
   }
 
   if (event?.event === 'charge.success') {
     const data = event.data
+    // NGN-only settlement: a charge in any other currency is not this store's
+    // pricing and must never flip an order PAID. Leave it logged for review.
+    const currency = typeof data?.currency === 'string' ? data.currency.toUpperCase() : null
+    if (currency !== 'NGN') {
+      console.error(
+        `[webhook/paystack] ${data?.reference ?? 'unknown reference'} succeeded in ${currency ?? 'an unknown currency'} — NGN only, not settling`,
+      )
+      return new Response(JSON.stringify({ received: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     const reference = data?.reference
     const orderNumber = data?.metadata?.orderNumber
 

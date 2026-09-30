@@ -134,6 +134,25 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
       query.state.data?.order.status === 'PENDING_PAYMENT' ? 10_000 : false,
   })
 
+  // Gateway orders stuck on PENDING_PAYMENT can restart payment — but only
+  // for the verified viewer (the retry endpoint re-checks the email).
+  const canRetryPayment =
+    data?.order.status === 'PENDING_PAYMENT' &&
+    data?.order.verified === true &&
+    (data?.order.paymentMethod === 'paystack' || data?.order.paymentMethod === 'stripe')
+
+  // While a payment sits pending, the page re-verifies with the gateway every
+  // 10s. Show "Checking your payment" first and only offer a restart after a
+  // full checking window — a customer with a bank transfer in flight must
+  // never be invited to pay a second time.
+  const [checkingPayment, setCheckingPayment] = useState(true)
+  useEffect(() => {
+    if (!canRetryPayment) return
+    setCheckingPayment(true)
+    const timer = window.setTimeout(() => setCheckingPayment(false), 60_000)
+    return () => window.clearTimeout(timer)
+  }, [canRetryPayment])
+
   if (isLoading) {
     return (
       <div className="container-site py-24" aria-busy>
@@ -165,12 +184,6 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
   const isPendingPayment = order.status === 'PENDING_PAYMENT'
   const currentStep = isPendingPayment ? 0 : STEPS.findIndex((s) => s.key === order.status)
   const firstName = order.fullName ? order.fullName.split(' ')[0] : null
-  // Gateway orders stuck on PENDING_PAYMENT can restart payment — but only
-  // for the verified viewer (the retry endpoint re-checks the email).
-  const canRetryPayment =
-    isPendingPayment &&
-    order.verified === true &&
-    (order.paymentMethod === 'paystack' || order.paymentMethod === 'stripe')
 
   const onRetryPayment = async () => {
     if (repaying) return
@@ -194,6 +207,13 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
         toast.success('Taking you to the secure payment page…')
         window.location.href = body.payment.url as string
         return // navigating away — keep the guard up
+      }
+      if (res.ok && body.settled) {
+        // The "stuck" session had actually completed — verify settled it.
+        toast.success('Payment confirmed — thank you.')
+        qc.invalidateQueries({ queryKey: ['order', orderNumber] })
+        setRepaying(false)
+        return
       }
       toast.error(body.error ?? 'Could not restart payment — WhatsApp the studio on +234 816 302 2233.')
     } catch {
@@ -239,13 +259,19 @@ export function OrderConfirmationPage({ orderNumber }: { orderNumber: string }) 
         {isPendingPayment ? (
           <Reveal delay={0.05} className="no-print mt-8">
             <div className="border border-espresso/40 bg-[color-mix(in_oklch,var(--espresso)_6%,transparent)] p-5 text-center">
-              <p className="font-display text-lg">Awaiting Payment Confirmation</p>
+              <p className="font-display text-lg">{checkingPayment && canRetryPayment ? 'Checking your payment…' : 'Awaiting Payment Confirmation'}</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {canRetryPayment
-                  ? 'Your payment session did not complete. Restart it below — or the atelier team is standing by to confirm a transfer.'
-                  : 'If paying by bank transfer or completing your card transaction, our atelier team is standing by to confirm your order.'}
+                {canRetryPayment ? (
+                  checkingPayment ? (
+                    'Checking whether your payment has landed — bank transfers and USSD can take a few minutes. This page updates itself, so you can safely wait here.'
+                  ) : (
+                    'Your payment did not go through yet. Restart it below — or the atelier team is standing by to confirm a transfer.'
+                  )
+                ) : (
+                  'If paying by bank transfer or completing your card transaction, our atelier team is standing by to confirm your order.'
+                )}
               </p>
-              {canRetryPayment ? (
+              {canRetryPayment && !checkingPayment ? (
                 <button
                   type="button"
                   onClick={() => void onRetryPayment()}
