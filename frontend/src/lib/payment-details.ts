@@ -17,20 +17,21 @@ export interface ForeignAccountDetails {
   swift: string
   /** Transfer currency the account settles in, e.g. 'USD'. */
   currency: string
+  /** UK sort code, when the account is identified by sort code + number. */
+  sortCode?: string
   /** Optional IBAN, when the account number is not already one. */
   iban?: string
   /** Optional extra line, e.g. 'Reference your order number'. */
   note?: string
 }
 
-// ── Fill in the studio's real details and the block goes live everywhere ──
-export const FOREIGN_ACCOUNT: ForeignAccountDetails | null = null
-// Example:
-// export const FOREIGN_ACCOUNT: ForeignAccountDetails | null = {
-//   bankName: 'Guaranty Trust Bank — Domiciliary',
-//   accountName: 'Style Sence by SKR',
-//   accountNumber: '0123456789',
-//   swift: 'GTBINGLA',
-//   currency: 'USD',
-//   note: 'Reference your order number as the transfer narration.',
-// }
+// ── Studio's GBP receiving account (owner-supplied 2026-09-30) ──
+export const FOREIGN_ACCOUNT: ForeignAccountDetails | null = {
+  bankName: 'Monzo Bank',
+  accountName: 'Aderonke Ayanmo',
+  accountNumber: '21465802',
+  sortCode: '04-00-03',
+  swift: 'MONZGB21',
+  currency: 'GBP',
+  note: 'Reference your order number as the transfer narration.',
+}

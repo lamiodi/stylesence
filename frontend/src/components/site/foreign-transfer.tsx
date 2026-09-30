@@ -28,6 +28,7 @@ export function ForeignTransferBlock({ compact = false }: { compact?: boolean })
     ['Bank', FOREIGN_ACCOUNT.bankName],
     ['Account name', FOREIGN_ACCOUNT.accountName],
     [FOREIGN_ACCOUNT.iban ? 'Account number' : `Account number (${FOREIGN_ACCOUNT.currency})`, FOREIGN_ACCOUNT.accountNumber],
+    ...(FOREIGN_ACCOUNT.sortCode ? [['Sort code', FOREIGN_ACCOUNT.sortCode] as [string, string]] : []),
     ...(FOREIGN_ACCOUNT.iban ? [['IBAN', FOREIGN_ACCOUNT.iban] as [string, string]] : []),
     ['SWIFT/BIC', FOREIGN_ACCOUNT.swift],
   ]
