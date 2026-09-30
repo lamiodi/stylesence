@@ -61,7 +61,7 @@ export function CheckoutPage() {
   }, [])
 
   const qc = useQueryClient()
-  const { data: cart, isLoading } = useCart()
+  const { data: cart, isLoading, isError, refetch } = useCart()
   const { data: customer } = useCustomer()
   const items = cart?.items ?? []
 
@@ -133,12 +133,13 @@ export function CheckoutPage() {
 
   /** Changing country invalidates a picked province — clear it whenever the
    *  new country's list (or lack of one) no longer contains it. The stale
-   *  state error goes with it (free-text countries accept any value). */
+   *  state error goes with it (free-text countries accept any value), and so
+   *  does any delivery error — the destination it complained about is gone. */
   const changeCountry = (next: string) => {
     setCountry(next)
     const list = provincesFor(next)
     if (state && (!list || !list.includes(state))) setState('')
-    setErrors((prev) => (prev.state ? { ...prev, state: '' } : prev))
+    setErrors((prev) => (prev.state || prev.shipping ? { ...prev, state: '', shipping: '' } : prev))
   }
 
   // Saved-customer prefill resolves asynchronously — a state saved for
@@ -276,11 +277,11 @@ export function CheckoutPage() {
   }
 
   const fieldCls = (k: string) =>
-    cn('h-11 border-line-strong bg-background focus-visible:ring-0', errors[k] && 'border-destructive')
+    cn('h-11 border-line-strong bg-background text-base sm:text-sm focus-visible:ring-0', errors[k] && 'border-destructive')
 
   const selectCls = (k: string) =>
     cn(
-      'h-11 w-full rounded-(--radius) border border-line-strong bg-background px-3 text-sm focus:outline-none focus-visible:outline-2 focus-visible:outline-ring',
+      'h-11 w-full rounded-(--radius) border border-line-strong bg-background px-3 text-base sm:text-sm focus:outline-none focus-visible:outline-2 focus-visible:outline-ring',
       errors[k] && 'border-destructive',
     )
 
@@ -295,6 +296,21 @@ export function CheckoutPage() {
         <div className="mt-10 animate-pulse" aria-busy>
           <div className="h-96 w-full bg-secondary" />
         </div>
+      ) : isError ? (
+        <Reveal className="mt-10">
+          <div className="flex flex-col items-center border border-dashed border-line-strong px-6 py-24 text-center">
+            <p className="font-display text-3xl font-light italic">Your bag could not be reached.</p>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+              This is on our side, not yours — nothing in your bag is lost. Try again in a moment.
+            </p>
+            <Button
+              className="mt-8 h-12 px-8 uppercase tracking-[0.2em] text-[0.66rem]"
+              onClick={() => refetch()}
+            >
+              Try again
+            </Button>
+          </div>
+        </Reveal>
       ) : items.length === 0 ? (
         <Reveal className="mt-10">
           <div className="flex flex-col items-center border border-dashed border-line-strong px-6 py-24 text-center">
@@ -437,7 +453,7 @@ export function CheckoutPage() {
                       <select
                         id="ck-state"
                         value={state}
-                        onChange={(e) => { setState(e.target.value); clearError('state') }}
+                        onChange={(e) => { setState(e.target.value); clearError('state'); clearError('shipping') }}
                         onBlur={() => checkField('state')}
                         className={selectCls('state')}
                         aria-invalid={!!errors.state}
@@ -456,7 +472,7 @@ export function CheckoutPage() {
                         id="ck-state"
                         autoComplete="address-level1"
                         value={state}
-                        onChange={(e) => { setState(e.target.value); clearError('state') }}
+                        onChange={(e) => { setState(e.target.value); clearError('state'); clearError('shipping') }}
                         onBlur={() => checkField('state')}
                         placeholder="Province or region"
                         className={fieldCls('state')}
@@ -483,7 +499,7 @@ export function CheckoutPage() {
                     onChange={(e) => setNotes(e.target.value)}
                     maxLength={500}
                     placeholder="e.g. Call on arrival — gate 2, deliver after 4pm weekdays. This is a gift, please omit the invoice."
-                    className="min-h-[88px] resize-y border-line-strong bg-background text-sm leading-relaxed"
+                    className="min-h-[88px] resize-y border-line-strong bg-background text-base sm:text-sm leading-relaxed"
                   />
                 </div>
               </div>
@@ -617,7 +633,11 @@ export function CheckoutPage() {
                   <div className="flex items-center gap-2.5">
                     <Lock className="h-4 w-4 text-espresso" strokeWidth={1.5} aria-hidden />
                     <p className="eyebrow !text-espresso !text-[0.6rem]">
-                      {isPaystackCountry(country) ? 'Paystack — cards, bank transfer & USSD' : 'Card payment — Stripe · Coming soon'}
+                      {isPaystackCountry(country)
+                        ? payConfig?.paystack
+                          ? 'Paystack — cards, bank transfer & USSD'
+                          : 'Payment — confirmed by the studio'
+                        : 'Card payment — Stripe · Coming soon'}
                     </p>
                     {isPaystackCountry(country) && payConfig?.paystack ? (
                       <PaystackMark className="ml-auto h-4 w-auto" aria-label="Paystack" />
