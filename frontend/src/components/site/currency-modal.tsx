@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Globe } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { COUNTRIES, POPULAR_COUNTRIES, type CountryEntry } from '@/lib/geo'
@@ -24,13 +24,18 @@ export function CurrencyModal() {
   const [currency, setCurrency] = useState<CurrencyCode>(savedCurrency)
 
   // Re-seed from the store each time it opens (auto-suggest may have just
-  // written a detected country).
-  useEffect(() => {
+  // written a detected country). Render-phase adjustment on the open
+  // transition — the sanctioned no-effect pattern (react.dev "adjusting state
+  // when a prop changes"); React discards the partial render and re-renders
+  // immediately, with no cascading effect pass.
+  const [seededOpen, setSeededOpen] = useState(open)
+  if (open !== seededOpen) {
+    setSeededOpen(open)
     if (open) {
       setCountry(savedCountry ?? 'Nigeria')
       setCurrency(savedCurrency)
     }
-  }, [open, savedCountry, savedCurrency])
+  }
 
   const options = useMemo(() => {
     const byName = new Map(COUNTRIES.map((c) => [c.name, c]))

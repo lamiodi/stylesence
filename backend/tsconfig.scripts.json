@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "lib/**/*.ts",
+    "scripts/import-uploaded-products.ts",
+    "scripts/reap-pending-orders.ts"
+  ],
+  "exclude": ["node_modules"]
+}

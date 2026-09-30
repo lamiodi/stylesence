@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { db } from '../lib/db'
+import { sql, cuid, sqlJoin } from '../lib/db'
 import { uploadToCloudinary } from '../lib/cloudinary'
 
 interface ParsedProduct {
@@ -306,68 +306,64 @@ async function main() {
 
     const allMediaUrls = productMediaList
 
-    // 2. Find or create Category in DB
-    const category = await db.category.findUnique({
-      where: { slug: p.categorySlug },
-    })
+    // 2. Find Category in DB
+    const catRows = await sql<{ id: string }[]>`
+      SELECT id FROM "Category" WHERE slug = ${p.categorySlug} LIMIT 1
+    `
+    const category = catRows[0] ?? null
 
     if (!category) {
       console.warn(`  Warning: Category ${p.categorySlug} not found in DB!`)
     }
 
-    // 3. Upsert Product
-    const upserted = await db.product.upsert({
-      where: { slug: p.slug },
-      update: {
-        name: p.name,
-        subtitle: p.subtitle || undefined,
-        description: p.description,
-        details: p.details.join('\n'),
-        material: p.material || undefined,
-        care: p.care || undefined,
-        price: p.price,
-        compareAtPrice: p.compareAtPrice || null,
-        categoryId: category ? category.id : undefined,
-        isActive: true,
-        isFeatured: true,
-      },
-      create: {
-        slug: p.slug,
-        name: p.name,
-        subtitle: p.subtitle || undefined,
-        description: p.description,
-        details: p.details.join('\n'),
-        material: p.material || undefined,
-        care: p.care || undefined,
-        price: p.price,
-        compareAtPrice: p.compareAtPrice || null,
-        categoryId: category ? category.id : undefined,
-        isActive: true,
-        isFeatured: true,
-      },
-    })
+    // 3. Upsert Product (insert-or-update on the unique slug). Empty optional
+    //    fields are omitted from the update branch (Prisma `undefined` parity)
+    //    and stored as NULL on create.
+    const updateSets = [
+      sql`name = ${p.name}`,
+      sql`description = ${p.description}`,
+      sql`details = ${p.details.join('\n')}`,
+      sql`price = ${p.price}`,
+      sql`"compareAtPrice" = ${p.compareAtPrice ?? null}`,
+      sql`"isActive" = true`,
+      sql`"isFeatured" = true`,
+      sql`"updatedAt" = now()`,
+    ]
+    if (p.subtitle) updateSets.push(sql`subtitle = ${p.subtitle}`)
+    if (p.material) updateSets.push(sql`material = ${p.material}`)
+    if (p.care) updateSets.push(sql`care = ${p.care}`)
+    if (category) updateSets.push(sql`"categoryId" = ${category.id}`)
+
+    const upsertedRows = await sql<{ id: string }[]>`
+      INSERT INTO "Product" (
+        id, slug, name, subtitle, description, details, material, care,
+        price, "compareAtPrice", "categoryId", "isActive", "isFeatured", "createdAt", "updatedAt"
+      ) VALUES (
+        ${cuid()}, ${p.slug}, ${p.name}, ${p.subtitle || null}, ${p.description}, ${p.details.join('\n')},
+        ${p.material || null}, ${p.care || null}, ${p.price}, ${p.compareAtPrice ?? null},
+        ${category ? category.id : null}, true, true, now(), now()
+      )
+      ON CONFLICT (slug) DO UPDATE SET ${sqlJoin(updateSets, ', ')}
+      RETURNING id
+    `
+    const upsertedId = upsertedRows[0].id
 
     // 4. Update Images in DB
-    await db.productImage.deleteMany({
-      where: { productId: upserted.id },
-    })
+    await sql`DELETE FROM "ProductImage" WHERE "productId" = ${upsertedId}`
 
     if (allMediaUrls.length > 0) {
-      await db.productImage.createMany({
-        data: allMediaUrls.map((m) => ({
-          productId: upserted.id,
-          url: m.url,
-          alt: m.alt,
-          position: m.position,
-        })),
-      })
+      const imageRows = allMediaUrls.map(
+        (m) => sql`(${cuid()}, ${upsertedId}, ${m.url}, ${m.alt}, ${m.position})`,
+      )
+      await sql`
+        INSERT INTO "ProductImage" (id, "productId", url, alt, position)
+        VALUES ${sqlJoin(imageRows)}
+      `
       console.log(`  Saved ${allMediaUrls.length} media records in DB.`)
     }
 
     // 5. Update Variants in DB
-    await db.productVariant.deleteMany({
-      where: { productId: upserted.id },
-    })
+    await sql`DELETE FROM "ProductVariant" WHERE "productId" = ${upsertedId}`
 
     const folderPrefix = p.folder.toUpperCase().replace(/[^A-Z0-9]/g, '')
     const variantData = []
@@ -377,7 +373,6 @@ async function main() {
       for (const size of p.sizes) {
         const sku = `${folderPrefix}-${colorCode}-${size}`
         variantData.push({
-          productId: upserted.id,
           size,
           color: color.name,
           colorHex: color.hex,
@@ -387,9 +382,13 @@ async function main() {
       }
     }
 
-    await db.productVariant.createMany({
-      data: variantData,
-    })
+    const variantRows = variantData.map(
+      (v) => sql`(${cuid()}, ${upsertedId}, ${v.size}, ${v.color}, ${v.colorHex}, ${v.sku}, ${v.stock})`,
+    )
+    await sql`
+      INSERT INTO "ProductVariant" (id, "productId", size, color, "colorHex", sku, stock)
+      VALUES ${sqlJoin(variantRows)}
+    `
     console.log(`  Saved ${variantData.length} variant records (${p.sizes.join(', ')}) in DB.`)
   }
 
@@ -402,5 +401,5 @@ main()
     process.exit(1)
   })
   .finally(async () => {
-    await db.$disconnect()
+    await sql.end({ timeout: 5 })
   })

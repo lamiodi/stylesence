@@ -26,6 +26,19 @@ export const sql = globalForSql.__ss_sql ?? postgres(rawUrl, {
   connect_timeout: 10,
   prepare: false,
   ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+  // Prisma's DateTime columns are `timestamp without time zone` storing UTC
+  // wall-clock (Prisma reads them as UTC). Parse naive values as UTC and
+  // serialize Dates to UTC wall-clock so round-trips match the Prisma era
+  // regardless of the server's local timezone.
+  types: {
+    date: {
+      to: 1184,
+      from: [1082, 1114, 1184],
+      serialize: (x: Date | string) =>
+        (x instanceof Date ? x : new Date(x)).toISOString().replace('Z', ''),
+      parse: (x: string) => new Date(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(x) ? x : x + 'Z'),
+    },
+  },
 })
 
 globalForSql.__ss_sql = sql
