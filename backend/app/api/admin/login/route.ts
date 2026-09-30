@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
+import type { AdminUser } from '@/lib/db-types'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import {
   ADMIN_COOKIE,
@@ -25,7 +26,10 @@ export async function POST(req: Request) {
     return fail(429, 'Too many login attempts. Please wait a few minutes and try again.')
   }
 
-  const admin = await db.adminUser.findUnique({ where: { email } })
+  const rows = await sql<AdminUser[]>`
+    SELECT * FROM "AdminUser" WHERE email = ${email} LIMIT 1
+  `
+  const admin = rows[0]
   if (!admin || !verifyPassword(password, admin.passwordHash)) {
     recordLoginFailure(email)
     return fail(401, 'Invalid email or password')

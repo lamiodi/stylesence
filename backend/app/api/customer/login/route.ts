@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import {
   CUSTOMER_COOKIE,
@@ -25,7 +25,10 @@ export async function POST(req: Request) {
     return fail(429, 'Too many attempts — try again in a few minutes.')
   }
 
-  const customer = await db.customer.findUnique({ where: { email } })
+  const rows = await sql<{ id: string; name: string; email: string; passwordHash: string }[]>`
+    SELECT id, name, email, "passwordHash" FROM "Customer" WHERE email = ${email} LIMIT 1
+  `
+  const customer = rows[0]
   if (!customer || !verifyPassword(password, customer.passwordHash)) {
     recordCustomerLoginFailure(email)
     return fail(401, 'Incorrect email or password.')

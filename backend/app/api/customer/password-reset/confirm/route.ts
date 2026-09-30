@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import type { Customer } from '@/lib/db-types'
+import { sql } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import {
   RESET_TOKEN_TTL_MS,
@@ -23,9 +24,12 @@ export async function POST(req: Request) {
   if (!parsed.ok) return parsed.response
   const { token, password } = parsed.data
 
-  // resetTokenHash is not unique-indexed — findFirst, not findUnique.
+  // resetTokenHash is not unique-indexed — plain SELECT LIMIT 1, not a unique lookup.
   const hash = hashResetToken(token)
-  const customer = await db.customer.findFirst({ where: { resetTokenHash: hash } })
+  const rows = await sql<Customer[]>`
+    SELECT * FROM "Customer" WHERE "resetTokenHash" = ${hash} LIMIT 1
+  `
+  const customer = rows[0]
   if (!customer) {
     return fail(400, 'This reset link is invalid or has already been used.')
   }
@@ -35,18 +39,22 @@ export async function POST(req: Request) {
 
   // scrypt is sync-CPU work — hash BEFORE the transaction, not inside it.
   const passwordHash = hashPassword(password)
-  const [deletedSessions] = await db.$transaction([
+  const deletedSessions = await sql.begin(async (tx) => {
     // Security: a completed reset invalidates every signed-in device.
-    db.customerSession.deleteMany({ where: { customerId: customer.id } }),
-    db.customer.update({
-      where: { id: customer.id },
-      data: { passwordHash, resetTokenHash: null, resetTokenAt: null },
-    }),
-  ])
+    const deleted = await tx<{ id: string }[]>`
+      DELETE FROM "CustomerSession" WHERE "customerId" = ${customer.id} RETURNING id
+    `
+    await tx`
+      UPDATE "Customer"
+      SET "passwordHash" = ${passwordHash}, "resetTokenHash" = NULL, "resetTokenAt" = NULL, "updatedAt" = now()
+      WHERE id = ${customer.id}
+    `
+    return deleted.length
+  })
   clearCustomerLoginFailures(customer.email)
 
   console.log(
-    `[api/customer/password-reset] password updated for ${customer.email} — ${deletedSessions.count} session(s) invalidated`,
+    `[api/customer/password-reset] password updated for ${customer.email} — ${deletedSessions} session(s) invalidated`,
   )
 
   return ok({ ok: true })

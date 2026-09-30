@@ -131,16 +131,20 @@ function Router() {
 export function SpaShell() {
   const mounted = useMounted()
   const [entranceDone, setEntranceDone] = useState(false)
-  // Once per browser session: a return visit in the same tab skips the
-  // entrance overlay. Resolved AFTER hydration (an effect, like useMounted)
-  // so the server render and first client paint always match — reading
-  // storage in a render-time initializer would mismatch on every reload.
+  // Once per 7 days per browser (not per tab session): return visits skip
+  // the entrance overlay entirely. Resolved AFTER hydration (an effect, like
+  // useMounted) so the server render and first client paint always match —
+  // reading storage in a render-time initializer would mismatch on every
+  // reload. The pre-paint script in layout.tsx applies the same check as a
+  // class before first paint.
+  const ENTRANCE_TTL_MS = 7 * 24 * 60 * 60 * 1000
   const [entranceSkipped, setEntranceSkipped] = useState(false)
   useEffect(() => {
     let skip = false
     try {
-      skip = sessionStorage.getItem('ss-entrance') === '1'
-      if (!skip) sessionStorage.setItem('ss-entrance', '1')
+      const seenAt = Number(localStorage.getItem('ss-entrance'))
+      skip = Number.isFinite(seenAt) && Date.now() - seenAt < ENTRANCE_TTL_MS
+      localStorage.setItem('ss-entrance', String(Date.now()))
     } catch {
       // Private mode — the entrance simply shows every visit.
     }

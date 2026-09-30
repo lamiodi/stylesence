@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { checkCustomerLoginRateLimit, generateResetToken, recordCustomerLoginFailure } from '@/lib/auth'
 import { passwordResetRequestInput } from '@/lib/validators'
@@ -30,17 +30,21 @@ export async function POST(req: Request) {
     return fail(429, 'Too many attempts — try again in a few minutes.')
   }
 
-  const customer = await db.customer.findUnique({ where: { email }, select: { id: true } })
+  const rows = await sql<{ id: string }[]>`
+    SELECT id FROM "Customer" WHERE email = ${email} LIMIT 1
+  `
+  const customer = rows[0]
   if (!customer) {
     recordCustomerLoginFailure(email)
     return ok({ ok: true })
   }
 
   const { plain, hash } = generateResetToken()
-  await db.customer.update({
-    where: { id: customer.id },
-    data: { resetTokenHash: hash, resetTokenAt: new Date() },
-  })
+  await sql`
+    UPDATE "Customer"
+    SET "resetTokenHash" = ${hash}, "resetTokenAt" = ${new Date()}, "updatedAt" = now()
+    WHERE id = ${customer.id}
+  `
 
   const resetUrl = `${getFrontendUrl()}/account?mode=reset&token=${plain}`
 

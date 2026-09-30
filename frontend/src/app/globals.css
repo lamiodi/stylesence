@@ -1,15 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Geist+Mono&family=Geist:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* Fonts are self-hosted via next/font in app/layout.tsx (Fraunces, Geist,
+   Geist Mono) — no render-blocking Google Fonts request. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-fraunces), Georgia, serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,9 +53,6 @@
 
 :root {
   --radius: 0.25rem;
-  --font-geist-sans: "Geist", system-ui, -apple-system, sans-serif;
-  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
-  --font-fraunces: "Fraunces", Georgia, serif;
 
   /* ——— Style Sence ivory / charcoal system ——— */
   --background: oklch(0.968 0.012 88);        /* warm ivory paper */

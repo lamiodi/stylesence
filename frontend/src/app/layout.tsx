@@ -1,8 +1,29 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { OG_IMAGE, OG_IMAGE_ALT } from "@/lib/seo";
 import { HERO_POSTER_URL, SITE_URL } from "@/lib/site";
+
+/* Self-hosted fonts (next/font) — same families the Google Fonts @import
+   shipped, minus the render-blocking request and the third-party round trip. */
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+});
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -132,15 +153,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable}`}
+    >
       <head>
-        {/* Return visits in the same tab skip the entrance overlay. Decided
+        {/* Return visits within 7 days skip the entrance overlay. Decided
             pre-paint, before hydration — otherwise slow phones render the
             overlay for a few hundred ms and then yank it away. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{if(sessionStorage.getItem('ss-entrance')==='1')document.documentElement.classList.add('ss-entrance-done')}catch(e){}",
+              "try{var t=localStorage.getItem('ss-entrance');if(t&&Date.now()-(+t)<6048e5)document.documentElement.classList.add('ss-entrance-done')}catch(e){}",
           }}
         />
         {/* CDN warm-up + hero LCP — the storefront's imagery lives on Cloudinary */}

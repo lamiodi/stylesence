@@ -78,6 +78,7 @@ model ProductImage {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
   alt       String?
+  color     String?
   position  Int     @default(0)
 }
 

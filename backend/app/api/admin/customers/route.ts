@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 
@@ -11,10 +11,13 @@ export async function GET() {
   const admin = await requireAdmin()
   if (!admin) return fail(401, 'Unauthorized')
 
-  const orders = await db.order.findMany({
-    orderBy: { createdAt: 'asc' }, // ascending → last write wins = most recent
-    select: { email: true, fullName: true, total: true, status: true, createdAt: true },
-  })
+  const orders = await sql<
+    { email: string; fullName: string; total: number; status: string; createdAt: Date }[]
+  >`
+    SELECT email, "fullName", total, status, "createdAt"
+    FROM "Order"
+    ORDER BY "createdAt" ASC
+  `
 
   const map = new Map<
     string,

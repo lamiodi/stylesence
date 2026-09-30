@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { getFrontendUrl } from '@/lib/email'
 import { initiatePaystack, initiateStripe, paystackConfigured, stripeConfigured } from '@/lib/payments'
@@ -17,10 +17,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderNu
   const { orderNumber } = await params
   const email = new URL(req.url).searchParams.get('email')?.trim().toLowerCase() || ''
 
-  const order = await db.order.findUnique({
-    where: { orderNumber },
-    select: { id: true, email: true, total: true, status: true, paymentMethod: true },
-  })
+  const rows = await sql<
+    { id: string; email: string; total: number; status: string; paymentMethod: string }[]
+  >`
+    SELECT id, email, total, status, "paymentMethod"
+    FROM "Order" WHERE "orderNumber" = ${orderNumber} LIMIT 1
+  `
+  const order = rows[0]
   if (!order) return fail(404, 'Order not found')
 
   if (!email || email !== order.email.toLowerCase()) {
@@ -57,10 +60,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderNu
             successUrl: `${callbackBase}&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: callbackBase,
           })
-    await db.order.update({
-      where: { id: order.id },
-      data: { paymentReference: payment.reference },
-    })
+    await sql`
+      UPDATE "Order" SET "paymentReference" = ${payment.reference}, "updatedAt" = now()
+      WHERE id = ${order.id}
+    `
     return ok({ payment: { url: payment.authorizationUrl } })
   } catch (err) {
     console.error(`[api/orders/pay] gateway initialization failed for ${orderNumber}:`, err)

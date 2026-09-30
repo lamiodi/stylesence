@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { sendOrderConfirmationEmail, type OrderEmailData } from '@/lib/email'
 
 /**
@@ -7,13 +7,14 @@ import { sendOrderConfirmationEmail, type OrderEmailData } from '@/lib/email'
  * path races in first (Paystack webhook, /api/checkout/verify on the redirect,
  * or the self-heal re-check on order views).
  *
- * The transition is a conditional updateMany guarded on status, so concurrent
- * callers can't both claim it — the loser sees count 0 and sends no email.
+ * The transition is a conditional UPDATE guarded on status, so concurrent
+ * callers can't both claim it — the loser sees zero returned rows and sends
+ * no email.
  */
 
 export type SettleOutcome = 'settled' | 'already-settled' | 'amount-mismatch'
 
-/** Accepts a Prisma order (with items included); only the receipt fields are read. */
+/** Accepts an order row (with items); only the receipt fields are read. */
 export async function settleGatewayPayment(
   order: OrderEmailData & { id: string; status: string },
   reference: string,
@@ -29,11 +30,13 @@ export async function settleGatewayPayment(
     return 'amount-mismatch'
   }
 
-  const updated = await db.order.updateMany({
-    where: { id: order.id, status: 'PENDING_PAYMENT' },
-    data: { status: 'PAID', paymentReference: reference },
-  })
-  if (updated.count === 0) return 'already-settled'
+  const updated = await sql<{ id: string }[]>`
+    UPDATE "Order"
+    SET status = 'PAID', "paymentReference" = ${reference}, "updatedAt" = now()
+    WHERE id = ${order.id} AND status = 'PENDING_PAYMENT'
+    RETURNING id
+  `
+  if (updated.length === 0) return 'already-settled'
 
   sendOrderConfirmationEmail({
     orderNumber: order.orderNumber,

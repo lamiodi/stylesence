@@ -1,5 +1,4 @@
-import { Prisma } from '@prisma/client'
-import { db } from '@/lib/db'
+import { sql, cuid } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { CUSTOMER_COOKIE, createCustomerSession, customerCookieOptions, hashPassword } from '@/lib/auth'
 import { customerRegisterInput } from '@/lib/validators'
@@ -15,18 +14,22 @@ export async function POST(req: Request) {
   if (!parsed.ok) return parsed.response
   const { name, email, password } = parsed.data
 
-  const existing = await db.customer.findUnique({ where: { email }, select: { id: true } })
-  if (existing) return fail(409, 'An account with this email already exists.')
+  const existingRows = await sql<{ id: string }[]>`
+    SELECT id FROM "Customer" WHERE email = ${email} LIMIT 1
+  `
+  if (existingRows[0]) return fail(409, 'An account with this email already exists.')
 
   let customer: { id: string; name: string; email: string }
   try {
-    customer = await db.customer.create({
-      data: { name, email, passwordHash: hashPassword(password) },
-      select: { id: true, name: true, email: true },
-    })
+    const rows = await sql<{ id: string; name: string; email: string }[]>`
+      INSERT INTO "Customer" (id, name, email, "passwordHash", "createdAt", "updatedAt")
+      VALUES (${cuid()}, ${name}, ${email}, ${hashPassword(password)}, now(), now())
+      RETURNING id, name, email
+    `
+    customer = rows[0]
   } catch (e) {
     // Unique-race between the check above and the insert — same answer, no extra detail.
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+    if ((e as { code?: string }).code === '23505') {
       return fail(409, 'An account with this email already exists.')
     }
     throw e

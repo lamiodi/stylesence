@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { getCustomerFromCookies } from '@/lib/auth'
 
@@ -11,25 +11,28 @@ export async function GET() {
   const customer = await getCustomerFromCookies()
   if (!customer) return fail(401, 'Unauthorized')
 
-  const orders = await db.order.findMany({
-    where: { email: customer.email },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-    select: {
-      orderNumber: true,
-      status: true,
-      total: true,
-      createdAt: true,
-      items: { select: { qty: true } },
-    },
-  })
+  const orders = await sql<{
+    orderNumber: string
+    status: string
+    total: number
+    createdAt: Date
+    /** Per-order line quantities (json_agg → null when the order has no items). */
+    itemQtys: number[] | null
+  }[]>`
+    SELECT o."orderNumber", o.status, o.total, o."createdAt",
+      (SELECT json_agg(oi.qty) FROM "OrderItem" oi WHERE oi."orderId" = o.id) AS "itemQtys"
+    FROM "Order" o
+    WHERE o.email = ${customer.email}
+    ORDER BY o."createdAt" DESC
+    LIMIT 20
+  `
 
   return ok({
     orders: orders.map((o) => ({
       orderNumber: o.orderNumber,
       status: o.status,
       total: o.total,
-      itemCount: o.items.reduce((sum, i) => sum + i.qty, 0),
+      itemCount: (o.itemQtys ?? []).reduce((sum, qty) => sum + qty, 0),
       createdAt: o.createdAt,
     })),
   })

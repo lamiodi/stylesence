@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql, cuid } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { reviewInput } from '@/lib/validators'
 import { checkIpRateLimit, clientKey } from '@/lib/rate-limit'
@@ -18,23 +18,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!parsed.ok) return parsed.response
   const input = parsed.data
 
-  const product = await db.product.findUnique({
-    where: { slug },
-    select: { id: true, isActive: true },
-  })
+  const products = await sql<{ id: string; isActive: boolean }[]>`
+    SELECT id, "isActive" FROM "Product" WHERE slug = ${slug} LIMIT 1
+  `
+  const product = products[0]
   if (!product || !product.isActive) return fail(404, 'Product not found')
 
-  const review = await db.review.create({
-    data: {
-      productId: product.id,
-      author: input.author,
-      email: input.email ?? null,
-      rating: input.rating,
-      title: input.title ?? null,
-      body: input.body,
-      status: 'PENDING',
-    },
-  })
+  const reviews = await sql<{ id: string; author: string; rating: number; title: string | null; body: string; createdAt: Date }[]>`
+    INSERT INTO "Review" (id, "productId", author, email, rating, title, body, status, "createdAt")
+    VALUES (${cuid()}, ${product.id}, ${input.author}, ${input.email ?? null}, ${input.rating},
+            ${input.title ?? null}, ${input.body}, 'PENDING', now())
+    RETURNING id, author, rating, title, body, "createdAt"
+  `
+  const review = reviews[0]
 
   return ok(
     {

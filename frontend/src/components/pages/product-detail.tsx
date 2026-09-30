@@ -1,5 +1,7 @@
 'use client'
 
+import { imagesForColor } from '@/lib/product-gallery'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Heart, Truck, RefreshCcw, Ruler, ChevronRight, ArrowLeft, Check, Mail, ShoppingBag, Maximize2 } from 'lucide-react'
@@ -440,6 +442,8 @@ function ProductInner({ product }: { product: ProductDetail }) {
   const [qty, setQty] = useState(1)
   const [imgIndex, setImgIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const galleryImages = imagesForColor(product.images, color)
+  const activeImageIndex = Math.min(imgIndex, Math.max(0, galleryImages.length - 1))
   // Round 13 made-to-order: standard sizes vs custom measurements on top of a base size.
   const [fitMode, setFitMode] = useState<FitMode>('standard')
   // Measurement state lives as STRINGS (empty = not provided) and survives A↔B toggles.
@@ -628,12 +632,12 @@ function ProductInner({ product }: { product: ProductDetail }) {
             role="group"
             aria-roledescription="gallery"
             aria-label="Product gallery — use the arrow keys to browse"
-            tabIndex={product.images.length > 1 ? 0 : undefined}
+            tabIndex={galleryImages.length > 1 ? 0 : undefined}
             onKeyDown={(e) => {
-              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+              if (galleryImages.length > 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                 e.preventDefault()
                 const delta = e.key === 'ArrowRight' ? 1 : -1
-                setImgIndex((i) => (i + delta + product.images.length) % product.images.length)
+                setImgIndex((i) => (i + delta + galleryImages.length) % galleryImages.length)
               }
             }}
           >
@@ -642,15 +646,15 @@ function ProductInner({ product }: { product: ProductDetail }) {
               aria-label="Expand image"
               aria-haspopup="dialog"
               onClick={() => {
-                if (product.images.length > 0) setLightboxOpen(true)
+                if (galleryImages.length > 0) setLightboxOpen(true)
               }}
               className="block w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-ring"
             >
               <ProductImage
-                key={product.images[imgIndex]?.url ?? 'none'}
-                src={product.images[imgIndex]?.url}
-                alt={product.images[imgIndex]?.alt ?? product.name}
-                label={product.name}
+                key={galleryImages[activeImageIndex]?.url ?? 'none'}
+                src={galleryImages[activeImageIndex]?.url}
+                alt={galleryImages[activeImageIndex]?.alt ?? product.name}
+                label={galleryImages.length ? product.name : `Images coming soon for ${color ?? 'this colour'}`}
                 ratio="aspect-[3/4]"
                 eager
                 className="w-full"
@@ -661,15 +665,15 @@ function ProductInner({ product }: { product: ProductDetail }) {
                 Archive price
               </span>
             ) : null}
-            {product.images.length > 1 ? (
+            {galleryImages.length > 1 ? (
               <span
                 className="absolute right-4 top-4 border border-line bg-background/95 px-2.5 py-1 font-mono text-[0.62rem] tracking-[0.12em] text-muted-foreground tabular-nums"
                 aria-hidden
               >
-                {String(imgIndex + 1).padStart(2, '0')} / {String(product.images.length).padStart(2, '0')}
+                {String(activeImageIndex + 1).padStart(2, '0')} / {String(galleryImages.length).padStart(2, '0')}
               </span>
             ) : null}
-            {product.images.length > 0 ? (
+            {galleryImages.length > 0 ? (
               <button
                 type="button"
                 aria-label="Expand image"
@@ -681,18 +685,18 @@ function ProductInner({ product }: { product: ProductDetail }) {
               </button>
             ) : null}
           </div>
-          {product.images.length > 1 ? (
-            <div className="mt-3 flex gap-3">
-              {product.images.map((img, i) => (
+          {galleryImages.length > 1 ? (
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+              {galleryImages.map((img, i) => (
                 <button
                   key={img.url}
                   type="button"
                   onClick={() => setImgIndex(i)}
-                  aria-label={`View ${img.url.endsWith('.mp4') ? 'video' : 'image'} ${i + 1} of ${product.images.length}`}
-                  aria-pressed={imgIndex === i}
+                  aria-label={`View ${img.url.endsWith('.mp4') ? 'video' : 'image'} ${i + 1} of ${galleryImages.length}`}
+                  aria-pressed={activeImageIndex === i}
                   className={cn(
-                    'relative w-20 border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
-                    imgIndex === i ? 'border-foreground' : 'border-transparent hover:border-line-strong',
+                    'relative w-20 shrink-0 border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                    activeImageIndex === i ? 'border-foreground' : 'border-transparent hover:border-line-strong',
                   )}
                 >
                   <ProductImage src={img.url} alt={img.alt ?? product.name} label="" ratio="aspect-[3/4]" />
@@ -706,10 +710,10 @@ function ProductInner({ product }: { product: ProductDetail }) {
             </div>
           ) : null}
 
-          {/* ————— zoom lightbox (shares imgIndex with the gallery) ————— */}
+          {/* ————— zoom lightbox (shares activeImageIndex with the gallery) ————— */}
           <GalleryLightbox
-            images={product.images}
-            index={imgIndex}
+            images={galleryImages}
+            index={activeImageIndex}
             open={lightboxOpen}
             onOpenChange={setLightboxOpen}
             onNavigate={setImgIndex}
@@ -778,6 +782,8 @@ function ProductInner({ product }: { product: ProductDetail }) {
                   aria-checked={color === c.name}
                   onClick={() => {
                     setColor(c.name)
+                    setImgIndex(0)
+                    setLightboxOpen(false)
                     if (oneSize) setSize('One Size')
                   }}
                   className={cn(

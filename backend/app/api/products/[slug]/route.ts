@@ -1,5 +1,5 @@
-import { db } from '@/lib/db'
-import { fail, isNewProduct, ok, orderSizes, orderVariantsBySizeColor, round1 } from '@/lib/api-helpers'
+import { sql, sqlIn, sqlJoin } from '@/lib/db'
+import { cachedJson, fail, isNewProduct, okCached, orderSizes, orderVariantsBySizeColor, round1 } from '@/lib/api-helpers'
 
 /** Related slot count on the storefront PDP. */
 const MAX_RELATED = 4
@@ -13,6 +13,42 @@ type RelatedProduct = {
   variants: Array<{ id: string; size: string; color: string; stock: number }>
 }
 
+type RelatedRow = Omit<RelatedProduct, 'images' | 'variants'> & {
+  images: Array<{ url: string }> | null
+  variants: Array<{ id: string; size: string; color: string; stock: number }> | null
+}
+
+/** Normalise a related-pieces row (json_agg yields null for empty sets). */
+function toRelatedProduct(r: RelatedRow): RelatedProduct {
+  return { ...r, images: r.images ?? [], variants: r.variants ?? [] }
+}
+
+/** Active fill products (newest first): first-two images + all variants. */
+async function fetchRelatedProducts(
+  excludeIds: readonly string[],
+  categoryId: string | null,
+  take: number,
+): Promise<RelatedProduct[]> {
+  const conds = [sql`p."isActive" = true`]
+  if (excludeIds.length > 0) conds.push(sql`p.id NOT IN ${sqlIn([...excludeIds])}`)
+  if (categoryId !== null) conds.push(sql`p."categoryId" = ${categoryId}`)
+  const rows = await sql<RelatedRow[]>`
+    SELECT
+      p.id, p.slug, p.name, p.price,
+      (SELECT json_agg(json_build_object('url', src.url) ORDER BY src.position ASC)
+        FROM (SELECT url, position FROM "ProductImage" WHERE "productId" = p.id ORDER BY position ASC LIMIT 2) src
+      ) AS images,
+      (SELECT json_agg(json_build_object('id', v.id, 'size', v.size, 'color', v.color, 'stock', v.stock) ORDER BY v.id ASC)
+        FROM "ProductVariant" v WHERE v."productId" = p.id
+      ) AS variants
+    FROM "Product" p
+    WHERE ${sqlJoin(conds, ' AND ')}
+    ORDER BY p."createdAt" DESC
+    LIMIT ${take}
+  `
+  return rows.map(toRelatedProduct)
+}
+
 /**
  * GET /api/products/[slug] — full product detail.
  * 404 `{ error: 'Product not found' }` when missing or inactive.
@@ -20,16 +56,60 @@ type RelatedProduct = {
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
-  const product = await db.product.findUnique({
-    where: { slug },
-    include: {
-      category: true,
-      images: { orderBy: { position: 'asc' } },
-      variants: true,
-      reviews: { where: { status: 'APPROVED' }, orderBy: { createdAt: 'desc' } },
-    },
-  })
-  if (!product || !product.isActive) return fail(404, 'Product not found')
+  const body = await cachedJson(`product:${slug}`, 60_000, () => loadProductDetail(slug))
+  if (!body) return fail(404, 'Product not found')
+  return okCached(body)
+}
+
+async function loadProductDetail(slug: string) {
+  const rows = await sql<{
+    id: string
+    slug: string
+    name: string
+    subtitle: string | null
+    description: string
+    details: string | null
+    material: string | null
+    care: string | null
+    price: number
+    compareAtPrice: number | null
+    categoryId: string | null
+    isActive: boolean
+    isFeatured: boolean
+    createdAt: Date
+    categorySlug: string | null
+    categoryName: string | null
+    images: Array<{ url: string; alt: string | null; color: string | null }> | null
+    variants: Array<{ id: string; size: string; color: string; colorHex: string; sku: string; stock: number }> | null
+  }[]>`
+    SELECT
+      p.id, p.slug, p.name, p.subtitle, p.description, p.details, p.material, p.care,
+      p.price, p."compareAtPrice", p."categoryId", p."isActive", p."isFeatured", p."createdAt",
+      c.slug AS "categorySlug", c.name AS "categoryName",
+      (SELECT json_agg(json_build_object('url', pi.url, 'alt', pi.alt, 'color', pi.color) ORDER BY pi.position ASC)
+        FROM "ProductImage" pi WHERE pi."productId" = p.id) AS images,
+      (SELECT json_agg(json_build_object('id', v.id, 'size', v.size, 'color', v.color, 'colorHex', v."colorHex", 'sku', v.sku, 'stock', v.stock) ORDER BY v.id ASC)
+        FROM "ProductVariant" v WHERE v."productId" = p.id) AS variants
+    FROM "Product" p
+    LEFT JOIN "Category" c ON c.id = p."categoryId"
+    WHERE p.slug = ${slug}
+    LIMIT 1
+  `
+  const product = rows[0]
+  if (!product || !product.isActive) return null
+
+  const images = product.images ?? []
+  const variants = product.variants ?? []
+  const category =
+    product.categorySlug !== null ? { slug: product.categorySlug, name: product.categoryName ?? '' } : null
+  const reviews = await sql<
+    { id: string; author: string; rating: number; title: string | null; body: string; createdAt: Date }[]
+  >`
+    SELECT id, author, rating, title, body, "createdAt"
+    FROM "Review"
+    WHERE "productId" = ${product.id} AND status = 'APPROVED'
+    ORDER BY "createdAt" DESC
+  `
 
   // Related: curated "Complete the look" pieces first (admin-managed, ordered),
   // then same-category fill, then any active pieces — always up to 4 total.
@@ -66,48 +146,39 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   }
 
   // 1. Curated relations (position asc; inactive related pieces are skipped).
-  const curated = await db.productRelation.findMany({
-    where: { productId: product.id, related: { isActive: true } },
-    orderBy: { position: 'asc' },
-    take: MAX_RELATED,
-    include: {
-      related: {
-        include: {
-          images: { orderBy: { position: 'asc' }, take: 2 },
-          variants: { select: { id: true, size: true, color: true, stock: true } },
-        },
-      },
-    },
-  })
+  const curatedRows = await sql<RelatedRow[]>`
+    SELECT
+      r.id, r.slug, r.name, r.price,
+      (SELECT json_agg(json_build_object('url', src.url) ORDER BY src.position ASC)
+        FROM (SELECT url, position FROM "ProductImage" WHERE "productId" = r.id ORDER BY position ASC LIMIT 2) src
+      ) AS images,
+      (SELECT json_agg(json_build_object('id', v.id, 'size', v.size, 'color', v.color, 'stock', v.stock) ORDER BY v.id ASC)
+        FROM "ProductVariant" v WHERE v."productId" = r.id
+      ) AS variants
+    FROM "ProductRelation" pr
+    JOIN "Product" r ON r.id = pr."relatedId"
+    WHERE pr."productId" = ${product.id} AND r."isActive" = true
+    ORDER BY pr.position ASC
+    LIMIT ${MAX_RELATED}
+  `
+  const curated = curatedRows.map(toRelatedProduct)
   for (const row of curated) {
-    if (pushRelated(row.related)) curatedCount++
+    if (pushRelated(row)) curatedCount++
   }
 
   // 2. Same-category fill (newest first, excluding already-included pieces).
   if (relatedItems.length < MAX_RELATED && product.categoryId) {
-    const categoryFill: RelatedProduct[] = await db.product.findMany({
-      where: { isActive: true, id: { notIn: [...includedIds] }, categoryId: product.categoryId },
-      orderBy: { createdAt: 'desc' },
-      take: MAX_RELATED - relatedItems.length,
-      include: {
-        images: { orderBy: { position: 'asc' }, take: 2 },
-        variants: { select: { id: true, size: true, color: true, stock: true } },
-      },
-    })
+    const categoryFill = await fetchRelatedProducts(
+      [...includedIds],
+      product.categoryId,
+      MAX_RELATED - relatedItems.length,
+    )
     for (const p of categoryFill) pushRelated(p)
   }
 
   // 3. Any active pieces when still short (newest first).
   if (relatedItems.length < MAX_RELATED) {
-    const anyFill: RelatedProduct[] = await db.product.findMany({
-      where: { isActive: true, id: { notIn: [...includedIds] } },
-      orderBy: { createdAt: 'desc' },
-      take: MAX_RELATED - relatedItems.length,
-      include: {
-        images: { orderBy: { position: 'asc' }, take: 2 },
-        variants: { select: { id: true, size: true, color: true, stock: true } },
-      },
-    })
+    const anyFill = await fetchRelatedProducts([...includedIds], null, MAX_RELATED - relatedItems.length)
     for (const p of anyFill) {
       if (pushRelated(p)) anyFillCount++
     }
@@ -124,17 +195,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     relatedSource = 'category'
   }
 
-  const variants = orderVariantsBySizeColor(product.variants)
+  const orderedVariants = orderVariantsBySizeColor(variants)
   const colorMap = new Map<string, string>()
-  for (const v of product.variants) {
+  for (const v of variants) {
     if (!colorMap.has(v.color)) colorMap.set(v.color, v.colorHex)
   }
-  const reviewCount = product.reviews.length
+  const reviewCount = reviews.length
   const rating = reviewCount
-    ? round1(product.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount)
+    ? round1(reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount)
     : null
 
-  return ok({
+  return {
     product: {
       id: product.id,
       slug: product.slug,
@@ -142,9 +213,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       subtitle: product.subtitle,
       price: product.price,
       compareAtPrice: product.compareAtPrice,
-      primaryImage: product.images[0]?.url ?? null,
+      primaryImage: images[0]?.url ?? null,
       colors: [...colorMap.entries()].map(([name, hex]) => ({ name, hex })),
-      sizes: orderSizes(new Set(product.variants.map((v) => v.size))),
+      sizes: orderSizes(new Set(variants.map((v) => v.size))),
       rating,
       reviewCount,
       isNew: isNewProduct(product.createdAt),
@@ -154,9 +225,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       details: product.details
         ? product.details.split('\n').map((d) => d.trim()).filter(Boolean)
         : [],
-      category: product.category ? { slug: product.category.slug, name: product.category.name } : null,
-      images: product.images.map((img) => ({ url: img.url, alt: img.alt })),
-      variants: variants.map((v) => ({
+      category,
+      images: images.map((img) => ({ url: img.url, alt: img.alt, color: img.color ?? null })),
+      variants: orderedVariants.map((v) => ({
         id: v.id,
         size: v.size,
         color: v.color,
@@ -164,7 +235,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         stock: v.stock,
         sku: v.sku,
       })),
-      reviews: product.reviews.map((r) => ({
+      reviews: reviews.map((r) => ({
         id: r.id,
         author: r.author,
         rating: r.rating,
@@ -175,5 +246,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       related: relatedItems,
       relatedSource,
     },
-  })
+  }
 }

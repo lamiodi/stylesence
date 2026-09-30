@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { cookies } from 'next/headers'
 import type { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { sql, cuid } from '@/lib/db'
 import type { CustomMeasurements } from '@/lib/types'
 
 /**
@@ -49,9 +49,11 @@ export async function getCartFromCookie(): Promise<{ cartId: string; cookieId: s
   const jar = await cookies()
   const cookieId = jar.get(CART_COOKIE)?.value
   if (!cookieId || !CART_COOKIE_PATTERN.test(cookieId)) return null
-  const cart = await db.cart.findUnique({ where: { cookieId }, select: { id: true } })
-  if (!cart) return null
-  return { cartId: cart.id, cookieId }
+  const rows = await sql<{ id: string }[]>`
+    SELECT id FROM "Cart" WHERE "cookieId" = ${cookieId} LIMIT 1
+  `
+  if (!rows[0]) return null
+  return { cartId: rows[0].id, cookieId }
 }
 
 /** Read the cart cookie and return the cart, lazily creating the row (and a fresh uuid when needed). */
@@ -59,57 +61,78 @@ export async function getOrCreateCart(): Promise<{ cartId: string; cookieId: str
   const jar = await cookies()
   const existing = jar.get(CART_COOKIE)?.value
   const cookieId = existing && CART_COOKIE_PATTERN.test(existing) ? existing : crypto.randomUUID()
-  const cart = await db.cart.upsert({
-    where: { cookieId },
-    update: {},
-    create: { cookieId },
-  })
-  return { cartId: cart.id, cookieId }
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO "Cart" (id, "cookieId", "createdAt", "updatedAt")
+    VALUES (${cuid()}, ${cookieId}, now(), now())
+    ON CONFLICT ("cookieId") DO UPDATE SET "updatedAt" = now()
+    RETURNING id
+  `
+  return { cartId: rows[0].id, cookieId }
 }
 
 /**
  * Build the contract cart shape. Items are oldest-first
  * (CartItem has no createdAt column; cuid ids preserve insertion order).
+ * One joined query: items + variant + product + first product image.
  */
 export async function buildCartPayload(cartId: string): Promise<CartPayload | null> {
-  const cart = await db.cart.findUnique({
-    where: { id: cartId },
-    include: {
-      items: {
-        orderBy: { id: 'asc' },
-        include: {
-          variant: {
-            include: { product: { include: { images: { orderBy: { position: 'asc' }, take: 1 } } } },
-          },
-        },
-      },
-    },
-  })
-  if (!cart) return null
+  const cartRows = await sql<{ id: string }[]>`
+    SELECT id FROM "Cart" WHERE id = ${cartId} LIMIT 1
+  `
+  if (!cartRows[0]) return null
 
-  const items = cart.items.map((item) => ({
+  type Row = {
+    id: string
+    qty: number
+    sizeMode: string
+    customMeasurements: string | null
+    notes: string | null
+    vId: string
+    vSize: string
+    vColor: string
+    vColorHex: string
+    vStock: number
+    pSlug: string
+    pName: string
+    pPrice: number
+    pImage: string | null
+  }
+  const rows = await sql<Row[]>`
+    SELECT
+      ci.id, ci.qty, ci."sizeMode", ci."customMeasurements", ci.notes,
+      v.id AS "vId", v.size AS "vSize", v.color AS "vColor", v."colorHex" AS "vColorHex", v.stock AS "vStock",
+      p.slug AS "pSlug", p.name AS "pName", p.price AS "pPrice",
+      (SELECT pi.url FROM "ProductImage" pi WHERE pi."productId" = p.id ORDER BY pi.position ASC LIMIT 1) AS "pImage"
+    FROM "CartItem" ci
+    JOIN "ProductVariant" v ON v.id = ci."variantId"
+    JOIN "Product" p ON p.id = v."productId"
+    WHERE ci."cartId" = ${cartId}
+    ORDER BY ci.id ASC
+  `
+
+  const items = rows.map((item) => ({
     id: item.id,
     qty: item.qty,
     variant: {
-      id: item.variant.id,
-      size: item.variant.size,
-      color: item.variant.color,
-      colorHex: item.variant.colorHex,
-      stock: item.variant.stock,
+      id: item.vId,
+      size: item.vSize,
+      color: item.vColor,
+      colorHex: item.vColorHex,
+      stock: item.vStock,
     },
     product: {
-      slug: item.variant.product.slug,
-      name: item.variant.product.name,
-      price: item.variant.product.price,
-      primaryImage: item.variant.product.images[0]?.url ?? null,
+      slug: item.pSlug,
+      name: item.pName,
+      price: item.pPrice,
+      primaryImage: item.pImage,
     },
     sizeMode: (item.sizeMode === 'custom' ? 'custom' : 'standard') as 'standard' | 'custom',
     customMeasurements: parseMeasurements(item.customMeasurements),
     notes: item.notes,
   }))
 
-  const subtotal = cart.items.reduce((sum, i) => sum + i.variant.product.price * i.qty, 0)
-  const itemCount = cart.items.reduce((sum, i) => sum + i.qty, 0)
+  const subtotal = rows.reduce((sum, i) => sum + i.pPrice * i.qty, 0)
+  const itemCount = rows.reduce((sum, i) => sum + i.qty, 0)
   return { items, subtotal, itemCount }
 }
 

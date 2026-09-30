@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useMoney } from '@/lib/store/currency'
+import { cldOptimize, cldSrcSet } from '@/lib/cloudinary'
 
 /**
  * Price display with optional struck-through compare-at price. Naira stays
@@ -45,6 +46,7 @@ export function ProductImage({
   ratio = 'aspect-[3/4]',
   eager = false,
   position,
+  sizes,
 }: {
   src: string | null | undefined
   alt: string
@@ -54,6 +56,8 @@ export function ProductImage({
   eager?: boolean
   /** Optional object-position override for art-directed crops (e.g. hero poster). */
   position?: string
+  /** HTML sizes hint for the generated srcSet (defaults to a grid-card guess). */
+  sizes?: string
 }) {
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -113,7 +117,9 @@ export function ProductImage({
         />
       ) : (
         <img
-          src={src}
+          src={cldOptimize(src)}
+          srcSet={cldSrcSet(src) ?? undefined}
+          sizes={sizes ?? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'}
           alt={alt}
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"

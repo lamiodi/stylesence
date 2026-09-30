@@ -20,7 +20,8 @@
  * In production instrumentation.ts schedules it (REAPER_ENABLED /
  * REAPER_DRY_RUN / PENDING_TTL_DAYS envs — see render.yaml).
  */
-import { db } from '../lib/db'
+import { sql } from '../lib/db'
+import type { Order, OrderItem } from '../lib/db-types'
 import { settleGatewayPayment } from '../lib/order-settle'
 import { refundPromoUsage } from '../lib/promo'
 import { verifyPaystack, verifyStripe } from '../lib/payments'
@@ -43,19 +44,22 @@ export interface ReapSummary {
  * is guarded (settle is exactly-once; cancel flips on PENDING_PAYMENT). */
 export async function reapPendingOrders(dryRun: boolean, ttlDays = DEFAULT_TTL_DAYS): Promise<ReapSummary> {
   const cutoff = new Date(Date.now() - ttlDays * 24 * 60 * 60 * 1000)
-  const stale = await db.order.findMany({
-    where: {
-      status: 'PENDING_PAYMENT',
-      paymentMethod: { in: ['paystack', 'stripe'] },
-      paymentReference: { not: null },
-      createdAt: { lt: cutoff },
-    },
-    include: { items: true },
-  })
+  const stale = await sql<(Order & { items: OrderItem[] | null })[]>`
+    SELECT o.*,
+      (SELECT json_agg(src.*)
+        FROM (SELECT * FROM "OrderItem" oi WHERE oi."orderId" = o.id ORDER BY oi.id ASC) src
+      ) AS items
+    FROM "Order" o
+    WHERE o.status = 'PENDING_PAYMENT'
+      AND o."paymentMethod" IN ('paystack', 'stripe')
+      AND o."paymentReference" IS NOT NULL
+      AND o."createdAt" < ${cutoff}
+  `
+  const staleRows: (Order & { items: OrderItem[] })[] = stale.map((o) => ({ ...o, items: o.items ?? [] }))
 
-  const summary: ReapSummary = { cutoff, candidates: stale.length, settled: 0, cancelled: 0, skipped: 0, dryRun }
+  const summary: ReapSummary = { cutoff, candidates: staleRows.length, settled: 0, cancelled: 0, skipped: 0, dryRun }
 
-  for (const order of stale) {
+  for (const order of staleRows) {
     const reference = order.paymentReference!
     try {
       const result =
@@ -95,21 +99,21 @@ export async function reapPendingOrders(dryRun: boolean, ttlDays = DEFAULT_TTL_D
         continue
       }
 
-      await db.$transaction(async (tx) => {
+      await sql.begin(async (tx) => {
         // Same restock contract as an admin cancel (legacy rows without a
         // variant link are skipped, not failed).
         for (const item of order.items) {
           if (!item.variantId) continue
-          await tx.productVariant.updateMany({
-            where: { id: item.variantId },
-            data: { stock: { increment: item.qty } },
-          })
+          await tx`
+            UPDATE "ProductVariant" SET stock = stock + ${item.qty}
+            WHERE id = ${item.variantId}
+          `
         }
         await refundPromoUsage(tx, order.promoCode, order.promoCodes)
-        await tx.order.update({
-          where: { id: order.id, status: 'PENDING_PAYMENT' },
-          data: { status: 'CANCELLED' },
-        })
+        await tx`
+          UPDATE "Order" SET status = 'CANCELLED', "updatedAt" = now()
+          WHERE id = ${order.id} AND status = 'PENDING_PAYMENT'
+        `
       })
       summary.cancelled++
       console.log(`[reaper] cancelled + restocked ${order.orderNumber} (${gatewayStatus})`)
@@ -121,7 +125,7 @@ export async function reapPendingOrders(dryRun: boolean, ttlDays = DEFAULT_TTL_D
 
   console.log(
     `[reaper] pass complete — ${summary.candidates} candidates, ${summary.settled} settled, ` +
-      `${summary.cancelled} cancelled, ${summary.skipped} skipped${dryRun ? ' (dry-run)' : ''}`,
+    `${summary.cancelled} cancelled, ${summary.skipped} skipped${dryRun ? ' (dry-run)' : ''}`,
   )
   return summary
 }

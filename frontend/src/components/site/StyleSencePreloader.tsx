@@ -23,7 +23,7 @@ export default function StyleSencePreloader({
   ready,
   logoSrc = '/stylesence-logo.png',
   maxWaitMs = 6000,
-  minMs = 1400,
+  minMs = 500,
   onExit,
 }: StyleSencePreloaderProps) {
   const [visible, setVisible] = useState(() => !ready);
@@ -64,7 +64,7 @@ export default function StyleSencePreloader({
     if (!visible) return;
     const timeout = window.setTimeout(
       () => setMinElapsed(true),
-      Number.isFinite(minMs) ? Math.max(0, minMs) : 1400,
+      Number.isFinite(minMs) ? Math.max(0, minMs) : 500,
     );
     return () => window.clearTimeout(timeout);
   }, [visible, minMs]);

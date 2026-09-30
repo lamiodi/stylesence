@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import type { Customer } from '@/lib/db-types'
+import { sql, sqlJoin } from '@/lib/db'
 import { fail, ok, readValidated, toCustomerProfile } from '@/lib/api-helpers'
 import { getCustomerFromCookies } from '@/lib/auth'
 import { customerPatchInput } from '@/lib/validators'
@@ -36,6 +37,20 @@ export async function PATCH(req: Request) {
   if (input.defaultState !== undefined) data.defaultState = input.defaultState
   if (Object.keys(data).length === 0) return fail(400, 'Nothing to update')
 
-  const updated = await db.customer.update({ where: { id: customer.id }, data })
+  // Partial UPDATE built from the patched keys only; Prisma's @updatedAt
+  // behaviour is preserved by always setting "updatedAt" = now().
+  const assignments = [sql`"updatedAt" = now()`]
+  if (data.name !== undefined) assignments.push(sql`name = ${data.name}`)
+  if (data.phone !== undefined) assignments.push(sql`phone = ${data.phone}`)
+  if (data.defaultAddress !== undefined) assignments.push(sql`"defaultAddress" = ${data.defaultAddress}`)
+  if (data.defaultCity !== undefined) assignments.push(sql`"defaultCity" = ${data.defaultCity}`)
+  if (data.defaultState !== undefined) assignments.push(sql`"defaultState" = ${data.defaultState}`)
+
+  const rows = await sql<Customer[]>`
+    UPDATE "Customer" SET ${sqlJoin(assignments, ', ')}
+    WHERE id = ${customer.id}
+    RETURNING *
+  `
+  const updated = rows[0]
   return ok({ customer: toCustomerProfile(updated) })
 }

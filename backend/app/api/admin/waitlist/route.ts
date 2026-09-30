@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 
@@ -9,16 +9,33 @@ const WAITLIST_STATUSES = ['pending', 'notified'] as const
 const MAX_ROWS = 500
 
 /** Only the fields the admin waitlist panel needs — variant → product. */
-const ROW_INCLUDE = {
-  variant: {
-    select: {
-      size: true,
-      color: true,
-      stock: true,
-      product: { select: { name: true, slug: true, isActive: true } },
-    },
-  },
-} as const
+type WaitlistRow = {
+  id: string
+  email: string
+  createdAt: Date
+  notifiedAt: Date | null
+  variantId: string
+  size: string
+  color: string
+  stock: number
+  productName: string
+  productSlug: string
+  productActive: boolean
+}
+
+function selectRows(notifiedIsNull: boolean, order: ReturnType<typeof sql>) {
+  return sql<WaitlistRow[]>`
+    SELECT sa.id, sa.email, sa."createdAt", sa."notifiedAt",
+           v.id AS "variantId", v.size, v.color, v.stock,
+           p.name AS "productName", p.slug AS "productSlug", p."isActive" AS "productActive"
+    FROM "StockAlert" sa
+    JOIN "ProductVariant" v ON v.id = sa."variantId"
+    JOIN "Product" p ON p.id = v."productId"
+    WHERE ${notifiedIsNull ? sql`sa."notifiedAt" IS NULL` : sql`sa."notifiedAt" IS NOT NULL`}
+    ORDER BY ${order}
+    LIMIT ${MAX_ROWS}
+  `
+}
 
 /**
  * GET /api/admin/waitlist?status=pending|notified — consolidated back-in-stock
@@ -44,48 +61,29 @@ export async function GET(req: Request) {
   }
 
   // Summary from the FULL set (two counts + distinct emails), regardless of filter or cap.
-  const [pendingCount, notifiedCount, uniqueEmails] = await Promise.all([
-    db.stockAlert.count({ where: { notifiedAt: null } }),
-    db.stockAlert.count({ where: { notifiedAt: { not: null } } }),
-    db.stockAlert.findMany({ select: { email: true }, distinct: ['email'] }).then((rows) => rows.length),
-  ])
+  const summaryRows = await sql<{ pending: number; notified: number; uniqueEmails: number }[]>`
+    SELECT COUNT(*) FILTER (WHERE "notifiedAt" IS NULL)::int AS pending,
+           COUNT(*) FILTER (WHERE "notifiedAt" IS NOT NULL)::int AS notified,
+           COUNT(DISTINCT email)::int AS "uniqueEmails"
+    FROM "StockAlert"
+  `
   const summary = {
-    total: pendingCount + notifiedCount,
-    pending: pendingCount,
-    notified: notifiedCount,
-    uniqueEmails,
+    total: summaryRows[0].pending + summaryRows[0].notified,
+    pending: summaryRows[0].pending,
+    notified: summaryRows[0].notified,
+    uniqueEmails: summaryRows[0].uniqueEmails,
   }
 
   // Rows in the merged order (pending first, oldest first; then notified, most recent first).
-  let rows
+  let rows: WaitlistRow[]
   if (status === 'pending') {
-    rows = await db.stockAlert.findMany({
-      where: { notifiedAt: null },
-      orderBy: { createdAt: 'asc' },
-      take: MAX_ROWS,
-      include: ROW_INCLUDE,
-    })
+    rows = await selectRows(true, sql`sa."createdAt" ASC`)
   } else if (status === 'notified') {
-    rows = await db.stockAlert.findMany({
-      where: { notifiedAt: { not: null } },
-      orderBy: [{ notifiedAt: 'desc' }, { createdAt: 'desc' }],
-      take: MAX_ROWS,
-      include: ROW_INCLUDE,
-    })
+    rows = await selectRows(false, sql`sa."notifiedAt" DESC, sa."createdAt" DESC`)
   } else {
     const [pendingRows, notifiedRows] = await Promise.all([
-      db.stockAlert.findMany({
-        where: { notifiedAt: null },
-        orderBy: { createdAt: 'asc' },
-        take: MAX_ROWS,
-        include: ROW_INCLUDE,
-      }),
-      db.stockAlert.findMany({
-        where: { notifiedAt: { not: null } },
-        orderBy: [{ notifiedAt: 'desc' }, { createdAt: 'desc' }],
-        take: MAX_ROWS,
-        include: ROW_INCLUDE,
-      }),
+      selectRows(true, sql`sa."createdAt" ASC`),
+      selectRows(false, sql`sa."notifiedAt" DESC, sa."createdAt" DESC`),
     ])
     rows = [...pendingRows, ...notifiedRows].slice(0, MAX_ROWS)
   }
@@ -95,13 +93,13 @@ export async function GET(req: Request) {
     email: r.email,
     createdAt: r.createdAt,
     notifiedAt: r.notifiedAt,
-    productName: r.variant.product.name,
-    productSlug: r.variant.product.slug,
-    productActive: r.variant.product.isActive,
+    productName: r.productName,
+    productSlug: r.productSlug,
+    productActive: r.productActive,
     variantId: r.variantId,
-    size: r.variant.size,
-    color: r.variant.color,
-    stock: r.variant.stock,
+    size: r.size,
+    color: r.color,
+    stock: r.stock,
   }))
 
   const applicableTotal =

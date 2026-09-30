@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
+import type { Review } from '@/lib/db-types'
 import { fail, ok, toAdminReview } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 
@@ -14,10 +15,12 @@ export async function GET(req: Request) {
     return fail(400, 'Invalid status filter')
   }
 
-  const reviews = await db.review.findMany({
-    where: status ? { status } : undefined,
-    orderBy: { createdAt: 'desc' },
-    include: { product: { select: { name: true, slug: true } } },
-  })
+  const reviews = await sql<(Review & { product: { name: string; slug: string } })[]>`
+    SELECT r.*, json_build_object('name', p.name, 'slug', p.slug) AS product
+    FROM "Review" r
+    JOIN "Product" p ON p.id = r."productId"
+    ${status ? sql`WHERE r.status = ${status}` : sql``}
+    ORDER BY r."createdAt" DESC
+  `
   return ok({ reviews: reviews.map(toAdminReview) })
 }

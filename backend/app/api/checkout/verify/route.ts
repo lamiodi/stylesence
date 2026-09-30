@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
+import { getOrderByNumber } from '@/lib/orders'
 import { fail, ok } from '@/lib/api-helpers'
 import { verifyPaystack, verifyStripe } from '@/lib/payments'
 import { settleGatewayPayment } from '@/lib/order-settle'
@@ -15,10 +16,7 @@ export async function GET(req: Request) {
   const reference = url.searchParams.get('reference')
   if (!orderNumber || !reference) return fail(400, 'Missing order or reference')
 
-  const order = await db.order.findUnique({
-    where: { orderNumber },
-    include: { items: true },
-  })
+  const order = await getOrderByNumber(orderNumber)
   if (!order) return fail(404, 'Order not found')
 
   // A successful transaction for a different order must never settle this one.
@@ -48,8 +46,10 @@ export async function GET(req: Request) {
     }
 
     // A cancellation can race the gateway lookup; report the stored result.
-    const current = await db.order.findUnique({ where: { id: order.id }, select: { status: true } })
-    const status = current?.status ?? order.status
+    const current = await sql<{ status: string }[]>`
+      SELECT status FROM "Order" WHERE id = ${order.id} LIMIT 1
+    `
+    const status = current[0]?.status ?? order.status
     return ok({ order: orderNumber, status, verified: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(status) })
   } catch (err) {
     console.error('[api/checkout/verify] verification failed:', err)

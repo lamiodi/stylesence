@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql, cuid } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { newsletterInput } from '@/lib/validators'
 import { sendWelcomeNewsletterEmail } from '@/lib/email'
@@ -14,15 +14,15 @@ export async function POST(req: Request) {
   if (!parsed.ok) return parsed.response
   const { email } = parsed.data
 
-  const existing = await db.newsletterSubscriber.findUnique({
-    where: { email },
-    select: { id: true },
-  })
+  const existing = await sql<{ id: string }[]>`
+    SELECT id FROM "NewsletterSubscriber" WHERE email = ${email} LIMIT 1
+  `
 
-  if (!existing) {
-    await db.newsletterSubscriber.create({
-      data: { email, source: 'footer' },
-    })
+  if (!existing[0]) {
+    await sql`
+      INSERT INTO "NewsletterSubscriber" (id, email, source, "createdAt")
+      VALUES (${cuid()}, ${email}, 'footer', now())
+    `
 
     // Send the luxury welcome email + ATELIER10 voucher code via Resend
     sendWelcomeNewsletterEmail(email).catch((err) =>

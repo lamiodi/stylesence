@@ -11,6 +11,7 @@ import { CoverflowCarousel } from '@/components/ui/coverflow-carousel'
 import { ProductImage } from '@/components/site/price'
 import { formatDate } from '@/lib/money'
 import { useMoney } from '@/lib/store/currency'
+import { cldOptimize, cldSrcSet } from '@/lib/cloudinary'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import { WelcomeModal } from '@/components/site/welcome-modal'
 import { HowItWorksModal } from '@/components/site/how-it-works-modal'
@@ -151,6 +152,9 @@ export function HomePage() {
             <video
               src={HERO_VIDEO}
               poster={HERO_POSTER}
+              /* The preloaded poster paints the hero; the video only needs its
+                 metadata up front so the moov fetch never races the LCP image. */
+              preload="metadata"
               autoPlay
               loop
               muted
@@ -239,7 +243,14 @@ export function HomePage() {
                 .map((p) => {
                   const src = slideImage(p)
                   return src
-                    ? { src, alt: p.name, title: p.name, subtitle: format(p.price), href: `/product/${p.slug}` }
+                    ? {
+                        src: cldOptimize(src),
+                        srcSet: cldSrcSet(src, [240, 400, 640, 960]) ?? undefined,
+                        alt: p.name,
+                        title: p.name,
+                        subtitle: format(p.price),
+                        href: `/product/${p.slug}`,
+                      }
                     : null
                 })
                 .filter((s): s is NonNullable<typeof s> => s !== null)}

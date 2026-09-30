@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { getOrderByNumber } from '@/lib/orders'
 import { fail, ok } from '@/lib/api-helpers'
 import { parseMeasurements } from '@/lib/cart'
 import { paystackConfigured, stripeConfigured, verifyPaystack, verifyStripe } from '@/lib/payments'
@@ -24,10 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ orderNum
   const { orderNumber } = await params
   const email = new URL(req.url).searchParams.get('email')?.trim().toLowerCase() || ''
 
-  const order = await db.order.findUnique({
-    where: { orderNumber },
-    include: { items: { orderBy: { id: 'asc' } } },
-  })
+  const order = await getOrderByNumber(orderNumber)
   if (!order) return fail(404, 'Order not found')
 
   if (order.status === 'PENDING_PAYMENT' && order.paymentReference) {

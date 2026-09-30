@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
+import type { NewsletterSubscriber } from '@/lib/db-types'
 import { fail, ok } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 
@@ -7,7 +8,9 @@ export async function GET() {
   const admin = await requireAdmin()
   if (!admin) return fail(401, 'Unauthorized')
 
-  const subscribers = await db.newsletterSubscriber.findMany({ orderBy: { createdAt: 'desc' } })
+  const subscribers = await sql<NewsletterSubscriber[]>`
+    SELECT * FROM "NewsletterSubscriber" ORDER BY "createdAt" DESC
+  `
   return ok({
     subscribers: subscribers.map((s) => ({
       id: s.id,

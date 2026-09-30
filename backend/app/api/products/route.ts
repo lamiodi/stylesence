@@ -1,6 +1,5 @@
-import type { Prisma } from '@prisma/client'
-import { db } from '@/lib/db'
-import { ok, isNewProduct, orderSizes, round1 } from '@/lib/api-helpers'
+import { sql, sqlJoin } from '@/lib/db'
+import { okCached, cachedJson, isNewProduct, orderSizes, round1 } from '@/lib/api-helpers'
 
 /**
  * GET /api/products
@@ -32,7 +31,7 @@ type CardSource = {
   isFeatured: boolean
   createdAt: Date
   images: Array<{ url: string }>
-  variants: Array<{ size: string; color: string; colorHex: string }>
+  variants: Array<{ size: string; color: string; colorHex: string; stock: number }>
   reviews: Array<{ rating: number }>
 }
 
@@ -63,6 +62,56 @@ function toCard(product: CardSource) {
   }
 }
 
+type ProductRow = {
+  id: string
+  slug: string
+  name: string
+  subtitle: string | null
+  price: number
+  compareAtPrice: number | null
+  isActive: boolean
+  isFeatured: boolean
+  createdAt: Date
+  images: Array<{ url: string }> | null
+  variants: Array<{ size: string; color: string; colorHex: string; stock: number }> | null
+  reviews: Array<{ rating: number }> | null
+}
+
+/** Base scope (facets): active + category + q only — one joined query, no N+1. */
+async function loadBaseScope(categorySlug: string | null, q: string | null): Promise<CardSource[]> {
+  const conds = [sql`p."isActive" = true`]
+  if (categorySlug) {
+    conds.push(sql`p."categoryId" = (SELECT id FROM "Category" c WHERE c.slug = ${categorySlug})`)
+  }
+  if (q) {
+    const like = `%${q}%`
+    conds.push(sql`(p.name LIKE ${like} OR p.subtitle LIKE ${like} OR p.description LIKE ${like})`)
+  }
+  const rows = await sql<ProductRow[]>`
+    SELECT p.id, p.slug, p.name, p.subtitle, p.price, p."compareAtPrice",
+           p."isActive", p."isFeatured", p."createdAt",
+           (SELECT json_agg(src.*)
+              FROM (SELECT pi.url FROM "ProductImage" pi WHERE pi."productId" = p.id ORDER BY pi.position ASC) src
+           ) AS images,
+           (SELECT json_agg(src.*)
+              FROM (SELECT pv.size, pv.color, pv."colorHex", pv.stock
+                    FROM "ProductVariant" pv WHERE pv."productId" = p.id) src
+           ) AS variants,
+           (SELECT json_agg(src.*)
+              FROM (SELECT r.rating FROM "Review" r
+                    WHERE r."productId" = p.id AND r.status = 'APPROVED') src
+           ) AS reviews
+    FROM "Product" p
+    WHERE ${sqlJoin(conds, ' AND ')}
+  `
+  return rows.map((p) => ({
+    ...p,
+    images: p.images ?? [],
+    variants: p.variants ?? [],
+    reviews: p.reviews ?? [],
+  }))
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const categorySlug = url.searchParams.get('category')?.trim() || null
@@ -79,25 +128,13 @@ export async function GET(req: Request) {
   const page = Math.max(1, parseIntParam(url.searchParams.get('page')) ?? 1)
   const perPage = Math.min(48, Math.max(1, parseIntParam(url.searchParams.get('perPage')) ?? 12))
 
-  // Base scope (facets): active + category + q only.
-  const where: Prisma.ProductWhereInput = { isActive: true }
-  if (categorySlug) where.category = { slug: categorySlug }
-  if (q) {
-    where.OR = [
-      { name: { contains: q } },
-      { subtitle: { contains: q } },
-      { description: { contains: q } },
-    ]
-  }
-
-  const products = await db.product.findMany({
-    where,
-    include: {
-      images: { orderBy: { position: 'asc' } },
-      variants: true,
-      reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
-    },
-  })
+  // Base scope (facets): active + category + q only. Cached 60s in-process —
+  // the key covers exactly the base-scope inputs (sort/page don't affect it).
+  const products = await cachedJson(
+    `products:${categorySlug ?? ''}:${q ?? ''}`,
+    60_000,
+    () => loadBaseScope(categorySlug, q),
+  )
 
   // Facets over the base scope.
   const colorCounts = new Map<string, { hex: string; count: number }>()
@@ -160,5 +197,5 @@ export async function GET(req: Request) {
   const start = (page - 1) * perPage
   const pageProducts = rows.slice(start, start + perPage).map((r) => r.card)
 
-  return ok({ products: pageProducts, total, page, perPage, facets })
+  return okCached({ products: pageProducts, total, page, perPage, facets })
 }

@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { db } from '@/lib/db'
+import { getOrderByNumber, getOrderByPaymentReference } from '@/lib/orders'
 import { settleGatewayPayment } from '@/lib/order-settle'
 
 export async function GET() {
@@ -25,8 +25,8 @@ export async function POST(req: Request) {
     .digest('hex')
 
   // Constant-time comparison — a plain !== leaks timing on the secret prefix.
-  const sigBuffer = Buffer.from(signature ?? '', 'utf8')
-  const hashBuffer = Buffer.from(hash, 'utf8')
+  const sigBuffer = Buffer.from(signature ?? '', 'utf-8')
+  const hashBuffer = Buffer.from(hash, 'utf-8')
   const signatureOk =
     sigBuffer.length === hashBuffer.length && crypto.timingSafeEqual(sigBuffer, hashBuffer)
 
@@ -49,16 +49,10 @@ export async function POST(req: Request) {
 
     let order = null
     if (orderNumber) {
-      order = await db.order.findUnique({
-        where: { orderNumber },
-        include: { items: true },
-      })
+      order = await getOrderByNumber(orderNumber)
     }
     if (!order && reference) {
-      order = await db.order.findFirst({
-        where: { paymentReference: reference },
-        include: { items: true },
-      })
+      order = await getOrderByPaymentReference(reference)
     }
 
     if (order && order.status === 'PENDING_PAYMENT') {

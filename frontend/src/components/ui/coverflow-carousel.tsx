@@ -11,6 +11,8 @@ const useIsoLayoutEffect =
 
 export interface CoverflowSlide {
   src: string;
+  /** Optional width-variant srcSet (Cloudinary) — falls back to plain src. */
+  srcSet?: string;
   alt: string;
   title?: string;
   subtitle?: string;
@@ -322,7 +324,11 @@ export function CoverflowCarousel({
                   >
                     <img
                       src={slide.src}
+                      srcSet={slide.srcSet}
+                      sizes="(max-width: 640px) 60vw, 27vw"
                       alt={slide.alt}
+                      loading={index < 3 ? "eager" : "lazy"}
+                      decoding="async"
                       draggable={false}
                       className="h-full w-full select-none object-cover"
                     />
@@ -330,7 +336,11 @@ export function CoverflowCarousel({
                 ) : (
                   <img
                     src={slide.src}
+                    srcSet={slide.srcSet}
+                    sizes="(max-width: 640px) 60vw, 27vw"
                     alt={slide.alt}
+                    loading={index < 3 ? "eager" : "lazy"}
+                    decoding="async"
                     draggable={false}
                     className="h-full w-full select-none object-cover"
                   />

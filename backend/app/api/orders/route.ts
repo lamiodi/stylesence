@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok } from '@/lib/api-helpers'
 import { emailLookupInput } from '@/lib/validators'
 
@@ -19,18 +19,16 @@ export async function GET(req: Request) {
   }
   const email = parsed.data.email
 
-  const orders = await db.order.findMany({
-    where: { email },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-    select: {
-      orderNumber: true,
-      status: true,
-      total: true,
-      createdAt: true,
-      items: { select: { qty: true } },
-    },
-  })
+  const orders = await sql<
+    { orderNumber: string; status: string; total: number; createdAt: Date; itemCount: number }[]
+  >`
+    SELECT o."orderNumber", o.status, o.total, o."createdAt",
+      (SELECT COALESCE(SUM(oi.qty), 0)::int FROM "OrderItem" oi WHERE oi."orderId" = o.id) AS "itemCount"
+    FROM "Order" o
+    WHERE o.email = ${email}
+    ORDER BY o."createdAt" DESC
+    LIMIT 20
+  `
 
   return ok({
     email,
@@ -38,7 +36,7 @@ export async function GET(req: Request) {
       orderNumber: o.orderNumber,
       status: o.status,
       total: o.total,
-      itemCount: o.items.reduce((sum, i) => sum + i.qty, 0),
+      itemCount: o.itemCount,
       createdAt: o.createdAt,
     })),
   })

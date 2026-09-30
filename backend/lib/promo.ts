@@ -1,5 +1,5 @@
-import type { Prisma } from '@prisma/client'
-import { db } from '@/lib/db'
+import { sql, type TxSql, sqlIn } from '@/lib/db'
+import type { PromoCode } from '@/lib/db-types'
 
 /**
  * Shared promo-code evaluation used by /api/promo/validate and /api/checkout.
@@ -58,7 +58,9 @@ export async function evaluatePromoStack(
     return { ok: false, status: 400, error: 'One promo code per bag.' }
   }
 
-  const rows = await db.promoCode.findMany({ where: { code: { in: codes } } })
+  const rows = await sql<PromoCode[]>`
+    SELECT * FROM "PromoCode" WHERE code IN ${sqlIn(codes)}
+  `
   const byCode = new Map(rows.map((r) => [r.code, r]))
 
   // Per-code baseline rules (same messages the single-code flow always gave).
@@ -91,10 +93,10 @@ export async function evaluatePromoStack(
   // Single-use per customer: one redemption per email across past, non-cancelled
   // orders — checked against the primary field AND the stacked promoCodes list.
   if (email && codes.some((c) => byCode.get(c)?.singleUsePerCustomer)) {
-    const history = await db.order.findMany({
-      where: { email, status: { not: 'CANCELLED' } },
-      select: { promoCode: true, promoCodes: true },
-    })
+    const history = await sql<{ promoCode: string | null; promoCodes: string | null }[]>`
+      SELECT "promoCode", "promoCodes" FROM "Order"
+      WHERE email = ${email} AND status <> 'CANCELLED'
+    `
     const used = new Set<string>()
     for (const o of history) {
       if (o.promoCode) used.add(o.promoCode)
@@ -138,7 +140,7 @@ export async function evaluatePromoStack(
  * usageCount > 0 so it can never drive the counter negative.
  */
 export async function refundPromoUsage(
-  tx: Prisma.TransactionClient,
+  tx: TxSql,
   promoCode: string | null,
   promoCodes: string | null,
 ): Promise<void> {
@@ -149,9 +151,10 @@ export async function refundPromoUsage(
     ].filter(Boolean),
   )
   for (const code of codes) {
-    await tx.promoCode.updateMany({
-      where: { code, usageCount: { gt: 0 } },
-      data: { usageCount: { decrement: 1 } },
-    })
+    await tx`
+      UPDATE "PromoCode"
+      SET "usageCount" = "usageCount" - 1, "updatedAt" = now()
+      WHERE code = ${code} AND "usageCount" > 0
+    `
   }
 }

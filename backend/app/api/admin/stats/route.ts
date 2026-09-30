@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok, round1 } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 
@@ -23,21 +23,25 @@ export async function GET() {
   const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
   const windowStart = new Date(todayUtc.getTime() - 29 * DAY_MS) // 30 calendar days, oldest first
 
-  const orders = await db.order.findMany({
-    orderBy: { createdAt: 'desc' },
-    select: {
-      orderNumber: true,
-      email: true,
-      fullName: true,
-      total: true,
-      status: true,
-      createdAt: true,
-      promoCode: true,
-      promoCodes: true,
-      discount: true,
-      items: { select: { qty: true } },
-    },
-  })
+  type OrderRow = {
+    orderNumber: string
+    email: string
+    fullName: string
+    total: number
+    status: string
+    createdAt: Date
+    promoCode: string | null
+    promoCodes: string | null
+    discount: number
+    itemCount: number
+  }
+  const orders = await sql<OrderRow[]>`
+    SELECT o."orderNumber", o.email, o."fullName", o.total, o.status, o."createdAt",
+           o."promoCode", o."promoCodes", o.discount,
+           (SELECT COALESCE(SUM(oi.qty), 0)::int FROM "OrderItem" oi WHERE oi."orderId" = o.id) AS "itemCount"
+    FROM "Order" o
+    ORDER BY o."createdAt" DESC
+  `
 
   const nonCancelled = orders.filter((o) => o.status !== 'CANCELLED')
   const revenueTotal = nonCancelled.reduce((sum, o) => sum + o.total, 0)
@@ -78,24 +82,34 @@ export async function GET() {
     total: o.total,
     status: o.status,
     createdAt: o.createdAt,
-    itemCount: o.items.reduce((sum, i) => sum + i.qty, 0),
+    itemCount: o.itemCount,
   }))
 
-  const products = await db.product.findMany({ select: { isActive: true } })
-  const lowStock = await db.productVariant.findMany({
-    where: { stock: { lte: 3 } },
-    orderBy: [{ stock: 'asc' }, { id: 'asc' }],
-    take: 12,
-    include: { product: { select: { name: true } } },
-  })
+  const productAgg = await sql<{ total: number; active: number }[]>`
+    SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE "isActive")::int AS active
+    FROM "Product"
+  `
+  const lowStock = await sql<{ productName: string; size: string; color: string; stock: number }[]>`
+    SELECT p.name AS "productName", v.size, v.color, v.stock
+    FROM "ProductVariant" v
+    JOIN "Product" p ON p.id = v."productId"
+    WHERE v.stock <= 3
+    ORDER BY v.stock ASC, v.id ASC
+    LIMIT 12
+  `
 
-  const reviews = await db.review.findMany({ select: { status: true, rating: true } })
+  const reviews = await sql<{ status: string; rating: number }[]>`
+    SELECT status, rating FROM "Review"
+  `
   const approvedRatings = reviews.filter((r) => r.status === 'APPROVED').map((r) => r.rating)
   const avgRating = approvedRatings.length
     ? round1(approvedRatings.reduce((sum, r) => sum + r, 0) / approvedRatings.length)
     : null
 
-  const subscribers = await db.newsletterSubscriber.count()
+  const subscriberRows = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n FROM "NewsletterSubscriber"
+  `
+  const subscribers = subscriberRows[0].n
   const customers = new Set(orders.map((o) => o.email)).size
 
   // Promo performance: order-derived usage (CANCELLED excluded from impact figures).
@@ -117,10 +131,13 @@ export async function GET() {
       promoByCode.set(code, entry)
     }
   }
-  const promoCodes = await db.promoCode.findMany({
-    select: { code: true, label: true, type: true, value: true, usageCount: true, maxUsage: true, isActive: true },
-    orderBy: { usageCount: 'desc' },
-  })
+  const promoCodes = await sql<
+    { code: string; label: string | null; type: string; value: number; usageCount: number; maxUsage: number | null; isActive: boolean }[]
+  >`
+    SELECT code, label, type, value, "usageCount", "maxUsage", "isActive"
+    FROM "PromoCode"
+    ORDER BY "usageCount" DESC
+  `
   const promoTop = promoCodes
     .map((c) => ({
       code: c.code,
@@ -145,10 +162,10 @@ export async function GET() {
       recent,
     },
     products: {
-      total: products.length,
-      active: products.filter((p) => p.isActive).length,
+      total: productAgg[0].total,
+      active: productAgg[0].active,
       lowStock: lowStock.map((v) => ({
-        productName: v.product.name,
+        productName: v.productName,
         variant: { size: v.size, color: v.color },
         stock: v.stock,
       })),

@@ -348,9 +348,10 @@ export const productInput = z.object({
       z.object({
         url: z.string().trim().min(1, 'Image URL is required').max(500, 'Image URL must be at most 500 characters'),
         alt: optionalText(200, 'Image alt text'),
+        color: nullableText(40, 'Image colour'),
       })
     )
-    .max(12, 'At most 12 images')
+    .max(60, 'At most 60 images')
     .optional(),
   variants: z
     .array(
@@ -397,10 +398,11 @@ export const productPatchInput = z.object({
       z.object({
         url: z.string().trim().min(1, 'Image URL is required').max(500, 'Image URL must be at most 500 characters'),
         alt: optionalText(200, 'Image alt text'),
+        color: nullableText(40, 'Image colour'),
       })
     )
     .min(1, 'A piece needs at least one image')
-    .max(12, 'At most 12 images')
+    .max(60, 'At most 60 images')
     .optional(),
   variantStocks: z
     .array(

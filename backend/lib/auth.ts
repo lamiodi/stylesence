@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { cookies } from 'next/headers'
-import type { AdminUser, Customer } from '@prisma/client'
-import { db } from '@/lib/db'
+import type { AdminUser, Customer } from '@/lib/db-types'
+import { sql, cuid } from '@/lib/db'
 
 /**
  * Simple cookie-based admin sessions (no NextAuth by design — see worklog contract).
@@ -56,13 +56,16 @@ export function verifyPassword(password: string, stored: string): boolean {
 export async function createAdminSession(adminUserId: string): Promise<{ token: string; expiresAt: Date }> {
   const token = crypto.randomUUID() + crypto.randomUUID()
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
-  await db.adminSession.create({ data: { token, adminUserId, expiresAt } })
+  await sql`
+    INSERT INTO "AdminSession" (id, token, "adminUserId", "expiresAt", "createdAt")
+    VALUES (${cuid()}, ${token}, ${adminUserId}, ${expiresAt}, now())
+  `
   return { token, expiresAt }
 }
 
 /** Delete a session row by token (used by logout); silently ignores missing rows. */
 export async function deleteAdminSession(token: string): Promise<void> {
-  await db.adminSession.deleteMany({ where: { token } })
+  await sql`DELETE FROM "AdminSession" WHERE token = ${token}`
 }
 
 /** Read `ss_admin` cookie, validate the session and return the admin user (or null). */
@@ -70,13 +73,21 @@ export async function getAdminFromCookies(): Promise<AdminUser | null> {
   const jar = await cookies()
   const token = jar.get(ADMIN_COOKIE)?.value
   if (!token) return null
-  const session = await db.adminSession.findUnique({ where: { token }, include: { adminUser: true } })
-  if (!session) return null
-  if (session.expiresAt.getTime() <= Date.now()) {
-    await db.adminSession.delete({ where: { id: session.id } }).catch(() => undefined)
+  const rows = await sql<(AdminUser & { sessionId: string; expiresAt: Date })[]>`
+    SELECT u.*, s.id AS "sessionId", s."expiresAt"
+    FROM "AdminSession" s
+    JOIN "AdminUser" u ON u.id = s."adminUserId"
+    WHERE s.token = ${token}
+    LIMIT 1
+  `
+  const row = rows[0]
+  if (!row) return null
+  if (row.expiresAt.getTime() <= Date.now()) {
+    await sql`DELETE FROM "AdminSession" WHERE id = ${row.sessionId}`.catch(() => undefined)
     return null
   }
-  return session.adminUser
+  const { sessionId: _sessionId, expiresAt: _expiresAt, ...admin } = row
+  return admin
 }
 
 /** Alias used by admin routes: returns the admin user or null (route then replies 401). */
@@ -140,13 +151,16 @@ export function customerCookieOptions() {
 export async function createCustomerSession(customerId: string): Promise<{ token: string; expiresAt: Date }> {
   const token = crypto.randomUUID() + crypto.randomUUID()
   const expiresAt = new Date(Date.now() + CUSTOMER_SESSION_TTL_MS)
-  await db.customerSession.create({ data: { token, customerId, expiresAt } })
+  await sql`
+    INSERT INTO "CustomerSession" (id, token, "customerId", "expiresAt", "createdAt")
+    VALUES (${cuid()}, ${token}, ${customerId}, ${expiresAt}, now())
+  `
   return { token, expiresAt }
 }
 
 /** Delete a customer session row by token (used by logout); silently ignores missing rows. */
 export async function deleteCustomerSession(token: string): Promise<void> {
-  await db.customerSession.deleteMany({ where: { token } })
+  await sql`DELETE FROM "CustomerSession" WHERE token = ${token}`
 }
 
 /** Read `ss_customer` cookie, validate the session and return the customer (or null). */
@@ -154,13 +168,20 @@ export async function getCustomerFromCookies(): Promise<Customer | null> {
   const jar = await cookies()
   const token = jar.get(CUSTOMER_COOKIE)?.value
   if (!token) return null
-  const session = await db.customerSession.findUnique({ where: { token }, include: { customer: true } })
-  if (!session) return null
-  if (session.expiresAt.getTime() <= Date.now()) {
-    await db.customerSession.delete({ where: { id: session.id } }).catch(() => undefined)
+  const rows = await sql<(Customer & { sessionId: string; expiresAt: Date })[]>`
+    SELECT c.*, s.id AS "sessionId", s."expiresAt"
+    FROM "CustomerSession" s
+    JOIN "Customer" c ON c.id = s."customerId"
+    WHERE s.token = ${token}
+    LIMIT 1
+  `
+  const row = rows[0]
+  if (!row) return null
+  if (row.expiresAt.getTime() <= Date.now()) {
+    await sql`DELETE FROM "CustomerSession" WHERE id = ${row.sessionId}`.catch(() => undefined)
     return null
   }
-  return session.customer
+  return row
 }
 
 /* ------------------------------------------------------------------ *

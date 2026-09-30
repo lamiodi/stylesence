@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { z } from 'zod'
-import type { Customer, Order, OrderItem, Product, ProductImage, ProductVariant, Review } from '@prisma/client'
+import type { Customer, Order, OrderItem, Product, ProductImage, ProductVariant, Review } from '@/lib/db-types'
 
 /**
  * Shared helpers for the Style Sence JSON API.
@@ -10,6 +10,43 @@ import type { Customer, Order, OrderItem, Product, ProductImage, ProductVariant,
 /** Success JSON response helper. */
 export function ok<T>(data: T, init?: ResponseInit): NextResponse {
   return NextResponse.json(data, init)
+}
+
+/**
+ * Success JSON response for near-static storefront reads: cacheable at the
+ * Vercel edge (s-maxage) and stale-while-revalidate. Never use for cart,
+ * customer, or admin responses.
+ */
+export function okCached<T>(data: T, edgeSeconds = 60): NextResponse {
+  const res = NextResponse.json(data)
+  res.headers.set(
+    'Cache-Control',
+    `public, max-age=0, s-maxage=${edgeSeconds}, stale-while-revalidate=${edgeSeconds * 5}`,
+  )
+  return res
+}
+
+/* ------------------------------------------------------------------ *
+ * Tiny in-process TTL cache for storefront reads (single Render
+ * instance, so this covers every visitor). Admin write routes call
+ * bumpStorefrontCache() to invalidate immediately after edits.
+ * ------------------------------------------------------------------ */
+
+type CacheEntry = { at: number; body: unknown }
+const storefrontCache = new Map<string, CacheEntry>()
+
+/** Serve `loader()`'s result from the in-process cache when younger than `ttlMs`. */
+export async function cachedJson<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
+  const hit = storefrontCache.get(key)
+  if (hit && Date.now() - hit.at < ttlMs) return hit.body as T
+  const body = await loader()
+  storefrontCache.set(key, { at: Date.now(), body })
+  return body
+}
+
+/** Drop all cached storefront reads — called by admin write routes after edits. */
+export function bumpStorefrontCache(): void {
+  storefrontCache.clear()
 }
 
 /** Error JSON response helper — always `{ error: message }`. */
@@ -101,11 +138,26 @@ export function isNewProduct(createdAt: Date): boolean {
  * Admin response shapes (shared between list + single + patch routes).
  * ------------------------------------------------------------------ */
 
-export type AdminProductSource = Product & {
+export type AdminProductSource = {
+  id: string
+  slug: string
+  name: string
+  subtitle: string | null
+  description: string
+  details: string | null
+  material: string | null
+  care: string | null
+  price: number
+  compareAtPrice: number | null
+  isActive: boolean
+  isFeatured: boolean
+  categoryId: string | null
+  createdAt: Date
+  updatedAt: Date
   category: { slug: string; name: string } | null
-  images: ProductImage[]
+  images: Array<{ url: string; alt: string | null; color: string | null; position: number }>
   /** Variants may carry a filtered `_count.stockAlerts` (un-notified waitlist entries) when the caller includes it — only the admin list does. */
-  variants: (ProductVariant & { _count?: { stockAlerts: number } })[]
+  variants: Array<{ id: string; size: string; color: string; colorHex: string; stock: number; sku: string; _count?: { stockAlerts: number } }>
   reviews: { status: string }[]
   /** Outgoing curated "Complete the look" rows — only populated when included by the caller. */
   curatedRelations?: { position: number; related: { slug: string } }[] | null
@@ -129,7 +181,7 @@ export function toAdminProduct(p: AdminProductSource) {
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
     category: p.category ? { slug: p.category.slug, name: p.category.name } : null,
-    images: p.images.map((img) => ({ url: img.url, alt: img.alt, position: img.position })),
+    images: p.images.map((img) => ({ url: img.url, alt: img.alt, color: img.color, position: img.position })),
     variants: orderVariantsBySizeColor(p.variants).map((v) => ({
       id: v.id,
       size: v.size,

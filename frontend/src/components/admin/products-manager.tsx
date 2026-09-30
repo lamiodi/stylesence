@@ -1,5 +1,7 @@
 'use client'
 
+import { ProductColorsEditor } from './product-colors-editor'
+
 /**
  * Admin — Products panel.
  * Catalogue table with live active/featured toggles (optimistic PATCH),
@@ -88,7 +90,7 @@ interface AdminProduct {
   reviewCount: number
   /** Curated "Complete the look" piece slugs, in display order. */
   curatedRelated: string[]
-  images: { url: string; alt: string | null; position: number }[]
+  images: { url: string; alt: string | null; color?: string | null; position: number }[]
   variants: AdminVariant[]
 }
 
@@ -437,10 +439,11 @@ function RelatedPiecesEditor({
 interface EditableImage {
   url: string
   alt: string
+  color?: string | null
 }
 
 /** Gallery cap per piece (position-ordered replace-set in the admin API). */
-const MAX_MEDIA = 12
+const MAX_MEDIA = 60
 const MAX_IMAGE_MB = 10
 const MAX_VIDEO_MB = 100
 
@@ -539,7 +542,11 @@ function MediaEditor({
   onChange,
   nameHint,
   allowEmpty = false,
+  colors,
+  onUploadingChange,
 }: {
+  colors: string[]
+  onUploadingChange: (uploading: boolean) => void
   images: EditableImage[]
   onChange: (images: EditableImage[]) => void
   nameHint: string
@@ -547,6 +554,8 @@ function MediaEditor({
   allowEmpty?: boolean
 }) {
   const [addUrl, setAddUrl] = useState('')
+  const [mediaColor, setMediaColor] = useState('__all')
+  const assignedColor = colors.includes(mediaColor) ? mediaColor : null
   const [uploadState, setUploadState] = useState<{
     done: number
     total: number
@@ -578,6 +587,7 @@ function MediaEditor({
     let firstError = ''
     // Local continuity for the limit check — `images` stays stale inside this
     // loop because the parent state updates asynchronously.
+    onUploadingChange(true)
     let current = [...images]
 
     for (let i = 0; i < media.length; i++) {
@@ -602,14 +612,14 @@ function MediaEditor({
         const url = await uploadDirect(file, sign, (pct) =>
           setUploadState({ done: i, total: media.length, pct, name: file.name }),
         )
-        current = [...current, { url, alt: nameToAlt(file) }]
+        current = [...current, { url, alt: nameToAlt(file), color: assignedColor }]
         added++
         onChange(current)
       } catch {
         // Signing or the direct path failed — fall back to the server relay.
         try {
           const url = await uploadRelay(file)
-          current = [...current, { url, alt: nameToAlt(file) }]
+          current = [...current, { url, alt: nameToAlt(file), color: assignedColor }]
           added++
           onChange(current)
         } catch (err: unknown) {
@@ -621,6 +631,7 @@ function MediaEditor({
     }
 
     setUploadState(null)
+    onUploadingChange(false)
     if (added > 0) toast.success(`Uploaded ${added} file${added === 1 ? '' : 's'} to Cloudinary.`)
     if (skipped > 0)
       toast.error(
@@ -653,7 +664,7 @@ function MediaEditor({
       toast.error(`The gallery holds up to ${MAX_MEDIA} items.`)
       return
     }
-    onChange([...images, { url: trimmed, alt: '' }])
+    onChange([...images, { url: trimmed, alt: '', color: assignedColor }])
     setAddUrl('')
   }
 
@@ -667,17 +678,31 @@ function MediaEditor({
   }
 
   return (
-    <div className="space-y-3">
+    <fieldset disabled={uploading} className="space-y-3 min-w-0">
       <div>
         <p className="eyebrow">Gallery — images &amp; video, in order</p>
         <p className="mt-1.5 text-[0.62rem] leading-snug text-muted-foreground">
           The first item is the shop card; the rest form the product gallery. Upload picks up any
           image format plus video (videos play on the piece’s page), one or many files at a time.
+          Assign each item to a colour, or choose Shared to show it with every colour.
+          Select a colour below before uploading to assign new files automatically.
           Reorder with the arrows or refine the alt text
           {allowEmpty ? '.' : ' — a piece always keeps at least one image.'}
         </p>
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="media-colour-filter">View / upload colour</Label>
+        <select id="media-colour-filter" className="h-10 w-full border border-line-strong bg-background px-3 text-sm"
+          value={mediaColor} onChange={e => setMediaColor(e.target.value)}>
+          <option value="__all">All media ({images.length}) — uploads are shared</option>
+          <option value="__shared">Shared across colours</option>
+          {colors.map(c => <option key={c} value={c}>{c} ({images.filter(img => img.color === c).length})</option>)}
+        </select>
+      </div>
+      {mediaColor !== '__all' && !images.some(img => mediaColor === '__shared' ? !img.color : img.color === mediaColor) ? (
+        <p className="text-sm text-muted-foreground">No media in this group yet. Upload files or assign existing media to this colour.</p>
+      ) : null}
       {images.length === 0 ? (
         <p className="border border-dashed border-line-strong px-4 py-5 text-center text-sm italic text-muted-foreground">
           {allowEmpty
@@ -687,6 +712,7 @@ function MediaEditor({
       ) : (
         <ul className="max-h-72 divide-y divide-line overflow-y-auto border border-line scroll-elegant">
           {images.map((img, i) => {
+            if (mediaColor !== '__all' && (mediaColor === '__shared' ? !!img.color : img.color !== mediaColor)) return null
             const rowLabel = img.url.split('/').pop() || img.url
             const video = isVideoUrl(img.url)
             return (
@@ -720,6 +746,13 @@ function MediaEditor({
                     ) : null}
                     {img.url}
                   </p>
+                  <select className="h-9 w-full border border-line bg-background px-2 text-xs"
+                    aria-label={`Colour for media ${i + 1}`} value={img.color ?? ''}
+                    onChange={e => onChange(images.map((item, index) => index === i ? { ...item, color: e.target.value || null } : item))}>
+                    <option value="">Shared across colours</option>
+                    {img.color && !colors.includes(img.color) ? <option value={img.color}>{img.color} — reassign this image</option> : null}
+                    {colors.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                   <Input
                     value={img.alt}
                     onChange={(e) => setAlt(i, e.target.value)}
@@ -825,7 +858,7 @@ function MediaEditor({
           <span className="sr-only">media by URL</span>
         </Button>
       </div>
-    </div>
+    </fieldset>
   )
 }
 
@@ -866,9 +899,10 @@ function ProductDialog({
   const [care, setCare] = useState(product?.care ?? '')
   const [isActive, setIsActive] = useState(product?.isActive ?? true)
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured ?? false)
+  const [mediaUploading, setMediaUploading] = useState(false)
   const [newImages, setNewImages] = useState<EditableImage[]>([])
   const [editImages, setEditImages] = useState<EditableImage[]>(
-    mode === 'edit' && product ? product.images.map((img) => ({ url: img.url, alt: img.alt ?? '' })) : [],
+    mode === 'edit' && product ? product.images.map((img) => ({ url: img.url, alt: img.alt ?? '', color: img.color ?? null })) : [],
   )
   const [relatedSlugs, setRelatedSlugs] = useState<string[]>(product?.curatedRelated ?? [])
   const [variants, setVariants] = useState<VariantRow[]>(
@@ -884,7 +918,25 @@ function ProductDialog({
       : DEFAULT_VARIANT_ROWS,
   )
 
+  const colorNames = [...new Set(variants.map(v => v.color.trim()).filter(Boolean))]
+  const renameImageColor = (oldName: string, newName: string) => {
+    const rename = (items: EditableImage[]) => items.map(img => img.color === oldName ? { ...img, color: newName } : img)
+    setEditImages(rename)
+    setNewImages(rename)
+  }
+
   const submit = () => {
+    if (mediaUploading) return
+    const media = mode === 'edit' ? editImages : newImages
+    if (media.some(img => img.color && !colorNames.includes(img.color))) {
+      toast.error('Assign media from removed or renamed colours to an available colour before saving.')
+      return
+    }
+    const pairs = variants.map(v => `${v.color.trim().toLowerCase()}|${v.size.trim().toLowerCase()}`)
+    if (new Set(pairs).size !== pairs.length) {
+      toast.error('Each colour and size combination must appear only once.')
+      return
+    }
     const trimmedName = name.trim()
     const parsedPrice = Math.round(Number(price))
     if (!trimmedName) {
@@ -935,8 +987,9 @@ function ProductDialog({
       body.isActive = isActive
       body.isFeatured = isFeatured
       if (newImages.length > 0) {
-        body.images = newImages.map(({ url, alt }) => ({
+        body.images = newImages.map(({ url, alt, color }) => ({
           url,
+          color: color || null,
           alt: alt.trim() || `${trimmedName} — ${subtitle.trim() || 'product'}`,
         }))
       }
@@ -957,7 +1010,7 @@ function ProductDialog({
       body.relatedSlugs = relatedSlugs
       // Media pipeline — full image-set replace, position = gallery order.
       if (editImages.length > 0) {
-        body.images = editImages.map(({ url, alt }) => ({ url, alt: alt.trim() || undefined }))
+        body.images = editImages.map(({ url, alt, color }) => ({ url, alt: alt.trim() || undefined, color: color || null }))
       }
       // Full variant-set edit — rows with id update, new rows create, missing ones delete.
       body.variants = variantRows
@@ -967,7 +1020,7 @@ function ProductDialog({
   }
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={open => { if (!mediaUploading && !busy) onOpenChange(open) }}>
       <DialogContent className="max-h-[88vh] overflow-y-auto scroll-elegant border-line bg-background sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-light">
@@ -1122,9 +1175,13 @@ function ProductDialog({
             </div>
           </div>
 
+          <ProductColorsEditor variants={variants} onChange={setVariants} onRename={renameImageColor} />
+
           {mode === 'create' ? (
             <MediaEditor
               images={newImages}
+              colors={colorNames}
+              onUploadingChange={setMediaUploading}
               onChange={setNewImages}
               nameHint={name.trim() || 'the new piece'}
               allowEmpty
@@ -1132,6 +1189,8 @@ function ProductDialog({
           ) : (
             <MediaEditor
               images={editImages}
+              colors={colorNames}
+              onUploadingChange={setMediaUploading}
               onChange={setEditImages}
               nameHint={product?.name ?? 'the piece'}
             />
@@ -1167,14 +1226,14 @@ function ProductDialog({
             variant="outline"
             className="border-line-strong uppercase tracking-[0.16em] text-[0.62rem]"
             onClick={() => onOpenChange(false)}
-            disabled={busy}
+            disabled={busy || mediaUploading}
           >
             Cancel
           </Button>
           <Button
             className="uppercase tracking-[0.16em] text-[0.62rem]"
             onClick={submit}
-            disabled={busy}
+            disabled={busy || mediaUploading}
           >
             {busy ? 'Saving…' : mode === 'create' ? 'Add piece' : 'Save changes'}
           </Button>

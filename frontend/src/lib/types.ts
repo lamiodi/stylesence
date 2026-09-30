@@ -91,7 +91,7 @@ export interface ProductDetail {
   care: string | null
   details: string[]
   category: { slug: string; name: string } | null
-  images: { url: string; alt: string | null }[]
+  images: { url: string; alt: string | null; color?: string | null }[]
   variants: ProductVariant[]
   rating: number | null
   reviewCount: number

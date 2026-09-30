@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import { sql, cuid } from '@/lib/db'
+import type { PromoCode } from '@/lib/db-types'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 import { promoInput } from '@/lib/validators'
@@ -11,7 +12,9 @@ export async function GET() {
   const admin = await requireAdmin()
   if (!admin) return fail(401, 'Unauthorized')
 
-  const promos = await db.promoCode.findMany({ orderBy: { createdAt: 'desc' } })
+  const promos = await sql<PromoCode[]>`
+    SELECT * FROM "PromoCode" ORDER BY "createdAt" DESC
+  `
   return ok({
     promos: promos.map((p) => ({
       id: p.id,
@@ -39,22 +42,23 @@ export async function POST(req: Request) {
   if (!parsed.ok) return parsed.response
   const input = parsed.data
 
-  const clash = await db.promoCode.findUnique({ where: { code: input.code }, select: { id: true } })
-  if (clash) return fail(400, `Code ${input.code} already exists.`)
+  const clash = await sql<{ id: string }[]>`
+    SELECT id FROM "PromoCode" WHERE code = ${input.code} LIMIT 1
+  `
+  if (clash[0]) return fail(400, `Code ${input.code} already exists.`)
 
-  const promo = await db.promoCode.create({
-    data: {
-      code: input.code,
-      label: input.label ?? null,
-      type: input.type,
-      value: input.value,
-      minSubtotal: input.minSubtotal,
-      maxUsage: input.maxUsage ?? null,
-      singleUsePerCustomer: input.singleUsePerCustomer ?? false,
-      stackable: input.stackable ?? false,
-      isActive: input.isActive ?? true,
-      expiresAt: input.expiresAt ?? null,
-    },
-  })
+  const rows = await sql<PromoCode[]>`
+    INSERT INTO "PromoCode" (
+      id, code, label, type, value, "minSubtotal", "maxUsage", "usageCount",
+      "singleUsePerCustomer", stackable, "isActive", "expiresAt", "createdAt", "updatedAt"
+    ) VALUES (
+      ${cuid()}, ${input.code}, ${input.label ?? null}, ${input.type}, ${input.value},
+      ${input.minSubtotal}, ${input.maxUsage ?? null}, 0,
+      ${input.singleUsePerCustomer ?? false}, ${input.stackable ?? false}, ${input.isActive ?? true},
+      ${input.expiresAt ?? null}, now(), now()
+    )
+    RETURNING *
+  `
+  const promo = rows[0]
   return ok({ promo }, { status: 201 })
 }

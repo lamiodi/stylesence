@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { getCustomerFromCookies } from '@/lib/auth'
 import {
@@ -26,11 +26,9 @@ export async function POST(req: Request) {
   const offending = await findOffendingWishlistSlug(submitted)
   if (offending) return fail(400, `Unknown product slug: ${offending}`)
 
-  const existing = await db.wishlistItem.findMany({
-    where: { customerId: customer.id },
-    orderBy: { position: 'asc' },
-    select: { slug: true },
-  })
+  const existing = await sql<{ slug: string }[]>`
+    SELECT slug FROM "WishlistItem" WHERE "customerId" = ${customer.id} ORDER BY position ASC
+  `
 
   const merged = dedupeSlugs([...submitted, ...existing.map((row) => row.slug)]).slice(0, 60)
   await replaceWishlist(customer.id, merged)

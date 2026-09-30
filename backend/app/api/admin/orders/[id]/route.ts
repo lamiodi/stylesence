@@ -1,4 +1,5 @@
-import { db } from '@/lib/db'
+import { sql } from '@/lib/db'
+import type { Order, OrderItem } from '@/lib/db-types'
 import { fail, ok, readValidated, toAdminOrder } from '@/lib/api-helpers'
 import { requireAdmin } from '@/lib/auth'
 import { orderPatchInput } from '@/lib/validators'
@@ -24,10 +25,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return fail(400, 'Invalid order status')
   }
 
-  const existing = await db.order.findUnique({
-    where: { id },
-    select: { id: true, status: true, promoCode: true, promoCodes: true },
-  })
+  const existingRows = await sql<
+    { id: string; status: string; promoCode: string | null; promoCodes: string | null }[]
+  >`
+    SELECT id, status, "promoCode", "promoCodes" FROM "Order" WHERE id = ${id} LIMIT 1
+  `
+  const existing = existingRows[0]
   if (!existing) return fail(404, 'Order not found')
 
   const next = parsed.data.status
@@ -35,27 +38,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const crossingIntoCancelled = next === 'CANCELLED' && !wasCancelled
   const leavingCancelled = wasCancelled && next !== 'CANCELLED'
 
-  let order
+  let order: Order & { items: OrderItem[] }
   try {
-    order = await db.$transaction(async (tx) => {
+    order = await sql.begin(async (tx) => {
       if (crossingIntoCancelled || leavingCancelled) {
-        const items = await tx.orderItem.findMany({
-          where: { orderId: id },
-          select: { variantId: true, qty: true },
-        })
+        const items = await tx<{ variantId: string | null; qty: number }[]>`
+          SELECT "variantId", qty FROM "OrderItem" WHERE "orderId" = ${id}
+        `
         for (const item of items) {
           if (!item.variantId) continue // legacy/custom rows without a variant link
-          const updated = await tx.productVariant.updateMany({
-            where: crossingIntoCancelled
-              ? { id: item.variantId }
-              : { id: item.variantId, stock: { gte: item.qty } },
-            data: {
-              stock: crossingIntoCancelled
-                ? { increment: item.qty }
-                : { decrement: item.qty },
-            },
-          })
-          if (updated.count !== 1) {
+          const updated = crossingIntoCancelled
+            ? await tx<{ id: string }[]>`
+                UPDATE "ProductVariant" SET stock = stock + ${item.qty}
+                WHERE id = ${item.variantId}
+                RETURNING id
+              `
+            : await tx<{ id: string }[]>`
+                UPDATE "ProductVariant" SET stock = stock - ${item.qty}
+                WHERE id = ${item.variantId} AND stock >= ${item.qty}
+                RETURNING id
+              `
+          if (updated.length !== 1) {
             if (crossingIntoCancelled) {
               // Variant row gone (deleted product) — nothing to restock; skip.
               console.warn(`[api/admin/orders] variant ${item.variantId} missing on cancel-restock — skipped`)
@@ -70,11 +73,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           await refundPromoUsage(tx, existing.promoCode, existing.promoCodes)
         }
       }
-      return tx.order.update({
-        where: { id },
-        data: { status: next },
-        include: { items: { orderBy: { id: 'asc' } } },
-      })
+      const updatedOrder = await tx<Order[]>`
+        UPDATE "Order" SET status = ${next}, "updatedAt" = now()
+        WHERE id = ${id}
+        RETURNING *
+      `
+      const items = await tx<OrderItem[]>`
+        SELECT * FROM "OrderItem" WHERE "orderId" = ${id} ORDER BY id ASC
+      `
+      return { ...updatedOrder[0], items }
     })
   } catch (err) {
     console.error('[api/admin/orders] status change failed:', err)

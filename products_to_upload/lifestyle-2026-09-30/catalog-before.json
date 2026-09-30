@@ -1,0 +1,978 @@
+[
+  {
+    "id": "cmu8i0731000b95dkim5dets8",
+    "slug": "the-camille-trouser-set",
+    "name": "The Camille Trouser Set — polka-dot top + trousers",
+    "subtitle": "Polka-dot top + high-waisted tailored trousers",
+    "description": "A tailored study in contrast and ease. Features an elegant draped polka-dot top paired with fluid, high-waisted wide-leg trousers that drape cleanly from hip to hem. Crafted for day-to-night versatility and modern sophistication.",
+    "details": "polka-dot top + trousers\nStandard Production: 7–10 working days\nExpress Production: 2–3 working days available on request\nTailoring customizations supported (trouser inseam, waistband fit, sleeve length)\nGarment measurements (inches) — S & M: shoulder 17, blouse length 25, sleeve 27, trouser length 44\nGarment measurements (inches) — L & XXL: shoulder 18, blouse length 26, sleeve 27, trouser length 45",
+    "material": "Premium Lightweight Crepe / Silk Blend",
+    "care": "Gentle hand wash cold or dry clean. Hang to dry away from direct sunlight. Warm iron or vertical steam.",
+    "price": 149999,
+    "compareAtPrice": 155000,
+    "categoryId": "cmu8hxxct0003957ci5sjswrx",
+    "isActive": true,
+    "isFeatured": true,
+    "createdAt": "2026-09-19T14:44:11.869Z",
+    "updatedAt": "2026-09-29T18:14:09.633Z",
+    "images": [
+      {
+        "id": "cmumyn51f002oas2dtjkynk8y",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053123/stylesence/products/IMG_2416_mfhure.jpg",
+        "alt": "The Camille Trouser Set — polka-dot top + trousers — view 1",
+        "position": 0
+      },
+      {
+        "id": "cmumyn51f002pas2d66otpgun",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053125/stylesence/products/IMG_9738_lnw9tk.jpg",
+        "alt": "The Camille Trouser Set — polka-dot top + trousers — view 2",
+        "position": 1
+      },
+      {
+        "id": "cmumyn51f002qas2db32um511",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/w_1600,q_auto,f_auto/v1790056402/stylesence/products/camille-duo-cafe.jpg",
+        "alt": "The Camille Trouser Set with the Camille Skirt Set",
+        "position": 2
+      },
+      {
+        "id": "cmumyn51f002ras2djw5lgj0g",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "url": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790053140/stylesence/products/IMG_6843_b7eomt.mp4",
+        "alt": "The Camille Trouser Set — polka-dot top + trousers — movement & tailoring video",
+        "position": 3
+      },
+      {
+        "id": "cmumyn51f002sas2dph3nujrb",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703442/stylesence/products/aqzzlaowvm4jtfhtfjqm.png",
+        "alt": null,
+        "position": 4
+      },
+      {
+        "id": "cmumyn51f002tas2d155v9iwx",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703479/stylesence/products/fyfaep8aqjwyounguvu3.png",
+        "alt": null,
+        "position": 5
+      }
+    ],
+    "variants": [
+      {
+        "id": "cmumwb16y0009956kw59cmvei",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "S",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-RPGN-blue-cream-s",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb1b2000b956k5ztfv6pp",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "M",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-ATXR-blue-cream-m",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb1gt000d956k4dvee6h2",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "L",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-K90R-blue-cream-l",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb1lo000f956k7m2n8oab",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "XXL",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-YPQ7-blue-cream-xxl",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7f7jn000k95zcjmipe1h5",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "XXL",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT02-MON-XXL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7f7jn000g95zcr9ho4jzs",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "S",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT02-MON-S",
+        "stock": 5
+      },
+      {
+        "id": "cmuc7f7jn000h95zce6bqtrh4",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "M",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT02-MON-M",
+        "stock": 4
+      },
+      {
+        "id": "cmuc7f7jn000i95zcerb1ekxz",
+        "productId": "cmu8i0731000b95dkim5dets8",
+        "size": "L",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT02-MON-L",
+        "stock": 6
+      }
+    ]
+  },
+  {
+    "id": "cmu8i0b8x002595dkbbsq4017",
+    "slug": "the-arewa-set",
+    "name": "The Àrẹ̀wà Set",
+    "subtitle": "Hand-woven Aso Oke structured set",
+    "description": "A celebration of Yoruba weaving heritage rendered in a striking contemporary cut. Features authentic hand-loomed Aso Oke cloth with distinct artisanal texture, sculpted into a statement skirt set that honors ancestral craftsmanship with modern atelier poise.",
+    "details": "Standard Production: 10–14 working days (hand-loomed)\nExpress Production: Inquire with concierge\nHandcrafted individually by master weavers\nCut to your measurements — the size rail is a closest-fit reference for the atelier",
+    "material": "100% Hand-woven Aso Oke Cotton / Metallic Thread",
+    "care": "Specialist dry clean only. Do not machine wash. Store flat or on structured wooden hanger.",
+    "price": 350000,
+    "compareAtPrice": null,
+    "categoryId": "cmu8hxx7h0002957c7sx65bp9",
+    "isActive": true,
+    "isFeatured": true,
+    "createdAt": "2026-09-19T14:44:17.265Z",
+    "updatedAt": "2026-09-29T18:14:09.828Z",
+    "images": [
+      {
+        "id": "cmumyezii002eas2df67mpbop",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "url": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790696787/stylesence/products/we9gtrkgh8evvszvuivc.mp4",
+        "alt": null,
+        "position": 0
+      },
+      {
+        "id": "cmumyezii002fas2d29e55hv2",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790696800/stylesence/products/arnwq92fneczpy5pbisj.jpg",
+        "alt": null,
+        "position": 1
+      },
+      {
+        "id": "cmumyezii002gas2d4n3ohj2c",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703088/stylesence/products/l4zqyfttwc8bxsfwosat.png",
+        "alt": null,
+        "position": 2
+      },
+      {
+        "id": "cmumyezii002has2ddfaz2o0o",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703110/stylesence/products/nfxrglkneioqydpnehsd.png",
+        "alt": null,
+        "position": 3
+      }
+    ],
+    "variants": [
+      {
+        "id": "cmuc7fqr9002a95zcxgyuun5r",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "size": "S",
+        "color": "Red",
+        "colorHex": "#8E1B2C",
+        "sku": "PRODUCT05-HER-S",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fqr9002b95zciarorfec",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "size": "M",
+        "color": "Red",
+        "colorHex": "#8E1B2C",
+        "sku": "PRODUCT05-HER-M",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fqr9002c95zcik8p2gac",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "size": "L",
+        "color": "Red",
+        "colorHex": "#8E1B2C",
+        "sku": "PRODUCT05-HER-L",
+        "stock": 5
+      },
+      {
+        "id": "cmuc7fqr9002995zcg9df6qv9",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "size": "XS",
+        "color": "Red",
+        "colorHex": "#8E1B2C",
+        "sku": "PRODUCT05-HER-XS",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fqr9002d95zc188xu5cv",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "size": "XL",
+        "color": "Red",
+        "colorHex": "#8E1B2C",
+        "sku": "PRODUCT05-HER-XL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fqr9002e95zcwxh6ow7w",
+        "productId": "cmu8i0b8x002595dkbbsq4017",
+        "size": "XXL",
+        "color": "Red",
+        "colorHex": "#8E1B2C",
+        "sku": "PRODUCT05-HER-XXL",
+        "stock": 6
+      }
+    ]
+  },
+  {
+    "id": "cmu8i0a1d001d95dkrw0w7x8o",
+    "slug": "the-ariella-dress-long",
+    "name": "The Ariella Long Dress",
+    "subtitle": "Floor-skimming column gown with fluid drapery",
+    "description": "The full-length expression of our signature Ariella silhouette. Cut to skim the contours without constriction, releasing into an elongated column that sweeps the floor with graceful presence. Features refined artisanal finishes and a flattering neckline designed to highlight jewelry and poise.",
+    "details": "Standard Production: 7–10 working days\nExpress Production: 2–3 working days available on request\nTailoring preferences: Provide heel height for exact floor-kissing hem length\nMade to your measurements — each dress is cut to order; the size rail is a closest-fit reference",
+    "material": "100% Silk Charmeuse / Fluid Heavy Satin",
+    "care": "Dry clean only. Store on padded hanger away from direct sun. Vertical steam only.",
+    "price": 159999,
+    "compareAtPrice": 190000,
+    "categoryId": "cmu8hxx7h0002957c7sx65bp9",
+    "isActive": true,
+    "isFeatured": true,
+    "createdAt": "2026-09-19T14:44:15.697Z",
+    "updatedAt": "2026-09-29T18:14:09.972Z",
+    "images": [
+      {
+        "id": "cmumygo77002ias2dba6prmua",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053161/stylesence/products/IMG_2426_hkgkfv.jpg",
+        "alt": "The Ariella Dress (Long) — view 1",
+        "position": 0
+      },
+      {
+        "id": "cmumygo77002jas2doju0dc9l",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053162/stylesence/products/IMG_2432_ltticl.jpg",
+        "alt": "The Ariella Dress (Long) — view 2",
+        "position": 1
+      },
+      {
+        "id": "cmumygo77002kas2dcbfgualq",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703181/stylesence/products/sygvfoqdincxbb36uksp.png",
+        "alt": null,
+        "position": 2
+      }
+    ],
+    "variants": [
+      {
+        "id": "cmumwb6v1001h956k57158qa8",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XS",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-722X-off-white-xs",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb5uv0015956kv0bpxr1y",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XS",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-OYCS-red-xs",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb70a001j956kr601vzrl",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "S",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-G54M-off-white-s",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb5zs0017956km8c10ybk",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "S",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-VXO8-red-s",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb74x001l956kxpfciuvt",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "M",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-5F8F-off-white-m",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb63v0019956kjpgf6c40",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "M",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-B2GC-red-m",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb7a1001n956kll7pyxdy",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "L",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-SSZZ-off-white-l",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb694001b956k50l6ibqi",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "L",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-4KGM-red-l",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb7jh001p956kb2vp1bso",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XL",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-TW5C-off-white-xl",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb6ep001d956ko4p4d6m4",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XL",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-902E-red-xl",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb7o0001r956kcxpf6ytr",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XXL",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-6N2V-off-white-xxl",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb6n9001f956k6yjrg84k",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XXL",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-1QU4-red-xxl",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001w95zc25ecg439",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "L",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT04-POW-L",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001l95zco75b9dr9",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XL",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT04-BLU-XL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001r95zcd2qe6bnj",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XL",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT04-BUT-XL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001x95zczst6tn22",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XL",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT04-POW-XL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3e001h95zc55b16x6p",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XS",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT04-BLU-XS",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001n95zc749r82mz",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XS",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT04-BUT-XS",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001t95zc2fvlrgdo",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XS",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT04-POW-XS",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001i95zcqn6sc8ei",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "S",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT04-BLU-S",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001o95zcybgf78gg",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "S",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT04-BUT-S",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001u95zcinjxbun0",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "S",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT04-POW-S",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001j95zc01nqc0t2",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "M",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT04-BLU-M",
+        "stock": 5
+      },
+      {
+        "id": "cmuc7fn3f001m95zcpxkyrqhc",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XXL",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT04-BLU-XXL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001s95zc58jukdrz",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XXL",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT04-BUT-XXL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001p95zcjpw49na7",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "M",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT04-BUT-M",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001y95zcnjn9fxo6",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "XXL",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT04-POW-XXL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001v95zc33whvdar",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "M",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT04-POW-M",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001k95zcj6qitqt6",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "L",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT04-BLU-L",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fn3f001q95zcgssas8pn",
+        "productId": "cmu8i0a1d001d95dkrw0w7x8o",
+        "size": "L",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT04-BUT-L",
+        "stock": 6
+      }
+    ]
+  },
+  {
+    "id": "cmu8i08jx000m95dko4bhspum",
+    "slug": "the-ariella-dress-short",
+    "name": "The Ariella Short Dress",
+    "subtitle": "Sculpted mini silhouette with fluid drape",
+    "description": "An effortlessly feminine mini dress defined by graceful gathers, subtle contouring, and luminous fabric. Styled with delicate shoulder lines and a flirty yet composed hemline. Ideal for garden soirees, intimate celebrations, and elevated resort evenings.",
+    "details": "Standard Production: 7–10 working days\nExpress Production: 2–3 working days available on request\nTailoring preferences: Specify preferred hemline drop (above knee / mid-thigh)\nMade to your measurements — each dress is cut to order; the size rail is a closest-fit reference",
+    "material": "Silk Charmeuse / Viscose Crepe",
+    "care": "Dry clean recommended or delicate hand wash cold. Steam gently on reverse.",
+    "price": 159999,
+    "compareAtPrice": 165000,
+    "categoryId": "cmu8hxx7h0002957c7sx65bp9",
+    "isActive": true,
+    "isFeatured": true,
+    "createdAt": "2026-09-19T14:44:13.772Z",
+    "updatedAt": "2026-09-29T21:18:23.330Z",
+    "images": [
+      {
+        "id": "cmun6hmsr000jag2elnm4tais",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "url": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790053157/stylesence/products/IMG_6842_wlfho7.mp4",
+        "alt": "The Ariella Dress (Short) — movement & tailoring video",
+        "position": 0
+      },
+      {
+        "id": "cmun6hmsr000kag2edye4lsgw",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703356/stylesence/products/m0frufetagfzmr8jpyhz.png",
+        "alt": null,
+        "position": 1
+      },
+      {
+        "id": "cmun6hmsr000lag2eg3kxvpdy",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790716689/stylesence/products/WhatsApp_Image_2026-09-29_at_11.18.10_AM_ogfbs7.jpg",
+        "alt": "WhatsApp Image 2026 09 29 at 11.18.10 AM",
+        "position": 2
+      }
+    ],
+    "variants": [
+      {
+        "id": "cmumwb4p30013956k90xtrobh",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XXL",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-MWTR-off-white-xxl",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb3ru000r956krmaev33j",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XXL",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-JHEL-red-xxl",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb40w000t956ksa9qbj99",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XS",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-4JXA-off-white-xs",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb32n000h956kcfncl3t0",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XS",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-4HBU-red-xs",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb47p000v956kgq56tfne",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "S",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-FVX8-off-white-s",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb38c000j956kyzli75pk",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "S",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-P0C2-red-s",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb4bs000x956ky1d6uikr",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "M",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-E25C-off-white-m",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb3d8000l956kkja4gdi3",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "M",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-E6SY-red-m",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb4g8000z956kwrz4dgll",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "L",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-VMWL-off-white-l",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb3im000n956kq1cbktfm",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "L",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-MT0Z-red-l",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb4ks0011956kqiwtzbj1",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XL",
+        "color": "Off White",
+        "colorHex": "#EDE7DC",
+        "sku": "SS-1A7N-off-white-xl",
+        "stock": 6
+      },
+      {
+        "id": "cmumwb3ne000p956k7oo9f1dk",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XL",
+        "color": "Red",
+        "colorHex": "#B3222D",
+        "sku": "SS-4FGV-red-xl",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000p95zc2gwv9164",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XS",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT03-BLU-XS",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000v95zc3938qciv",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XS",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT03-BUT-XS",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev001195zcaot3ca6f",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XS",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT03-POW-XS",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000q95zcvifwxag9",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "S",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT03-BLU-S",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000w95zcg4yx0wxs",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "S",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT03-BUT-S",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev001295zcfamcuaj2",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "S",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT03-POW-S",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000r95zcjvl4z8i2",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "M",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT03-BLU-M",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000x95zcdt8o082s",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "M",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT03-BUT-M",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev001395zc0zimrfmq",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "M",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT03-POW-M",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000s95zcux1hnc1w",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "L",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT03-BLU-L",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000y95zc1dd0mjfr",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "L",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT03-BUT-L",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev001495zcz055qni7",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "L",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT03-POW-L",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000t95zcd4vxb21l",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XL",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT03-BLU-XL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000z95zchs409bs3",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XL",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT03-BUT-XL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev001595zcru040pv7",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XL",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT03-POW-XL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev000u95zcviizckm1",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XXL",
+        "color": "Blush",
+        "colorHex": "#E8C5C8",
+        "sku": "PRODUCT03-BLU-XXL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkev001095zceht8pdrg",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XXL",
+        "color": "Butter Yellow",
+        "colorHex": "#F4E7B5",
+        "sku": "PRODUCT03-BUT-XXL",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7fkew001695zc8y7wvewr",
+        "productId": "cmu8i08jx000m95dko4bhspum",
+        "size": "XXL",
+        "color": "Powder Blue",
+        "colorHex": "#B6CCE2",
+        "sku": "PRODUCT03-POW-XXL",
+        "stock": 6
+      }
+    ]
+  },
+  {
+    "id": "cmu8i057i000195dkjvorubcm",
+    "slug": "the-camille-skirt-set",
+    "name": "The Camille Skirt Set — polka-dot top + skirt",
+    "subtitle": "Polka-dot top + flowing skirt coordinated set",
+    "description": "Polka-dot coordinated set featuring an elegant, softly draped polka-dot top paired with a matching flowing skirt. Designed to move seamlessly from refined daytime gatherings to evening occasions. Wear as an unbroken coordinated silhouette or style as distinct statement separates.",
+    "details": "polka-dot top + skirt\nStandard Production: 7–10 working days\nExpress Production: 2–3 working days available on request\nTailoring customizations supported (skirt length, waistband fit, neckline adjustment)\nGarment measurements (inches) — S & M: shoulder 17, blouse length 25, sleeve 27, skirt length 44\nGarment measurements (inches) — L & XXL: shoulder 18, blouse length 26, sleeve 27, skirt length 45",
+    "material": "Premium Lightweight Crepe / Silk Blend",
+    "care": "Gentle hand wash cold or dry clean. Hang to dry away from direct sunlight. Warm steam as needed.",
+    "price": 149999,
+    "compareAtPrice": 155000,
+    "categoryId": "cmu8hxxct0003957ci5sjswrx",
+    "isActive": true,
+    "isFeatured": true,
+    "createdAt": "2026-09-19T14:44:09.434Z",
+    "updatedAt": "2026-09-29T18:14:10.117Z",
+    "images": [
+      {
+        "id": "cmumyosv3002uas2dlcnylfib",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053103/stylesence/products/IMG_2418_bxyfvx.jpg",
+        "alt": "The Camille Skirt Set — polka-dot top + skirt — view 1",
+        "position": 0
+      },
+      {
+        "id": "cmumyosv3002vas2dih13pmkm",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "url": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790697230/stylesence/products/xfpgs9yjfc4bq6retxau.mp4",
+        "alt": null,
+        "position": 1
+      },
+      {
+        "id": "cmumyosv3002was2df7uzkcmf",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "url": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703557/stylesence/products/hhif06xgc1xmfiw2sdyu.png",
+        "alt": null,
+        "position": 2
+      }
+    ],
+    "variants": [
+      {
+        "id": "cmuc7ep54000795zcgd535mnk",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "L",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT01-MON-L",
+        "stock": 5
+      },
+      {
+        "id": "cmuc7ep54000595zcrrr629cj",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "S",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT01-MON-S",
+        "stock": 6
+      },
+      {
+        "id": "cmumwaz2x0001956kkfpgm7st",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "S",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-4CAJ-blue-cream-s",
+        "stock": 6
+      },
+      {
+        "id": "cmumwazc70003956kwosq4toj",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "M",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-Y1RG-blue-cream-m",
+        "stock": 6
+      },
+      {
+        "id": "cmumwazgu0005956knafbzyom",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "L",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-VY8V-blue-cream-l",
+        "stock": 6
+      },
+      {
+        "id": "cmumwazlg0007956kizazu3mw",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "XXL",
+        "color": "Blue & Cream",
+        "colorHex": "#3E5C76",
+        "sku": "SS-4QJ6-blue-cream-xxl",
+        "stock": 6
+      },
+      {
+        "id": "cmuc7ep54000695zc3xmqqc2r",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "M",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT01-MON-M",
+        "stock": 4
+      },
+      {
+        "id": "cmuc7ep54000995zcnjzqa1l2",
+        "productId": "cmu8i057i000195dkjvorubcm",
+        "size": "XXL",
+        "color": "Black & White",
+        "colorHex": "#1A1A1A",
+        "sku": "PRODUCT01-MON-XXL",
+        "stock": 6
+      }
+    ]
+  }
+]

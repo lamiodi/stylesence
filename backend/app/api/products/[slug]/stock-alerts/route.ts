@@ -1,5 +1,4 @@
-import { Prisma } from '@prisma/client'
-import { db } from '@/lib/db'
+import { sql, cuid } from '@/lib/db'
 import { fail, ok, readValidated } from '@/lib/api-helpers'
 import { stockAlertInput } from '@/lib/validators'
 import { checkIpRateLimit, clientKey } from '@/lib/rate-limit'
@@ -22,16 +21,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!parsed.ok) return parsed.response
   const input = parsed.data
 
-  const product = await db.product.findUnique({
-    where: { slug },
-    select: { id: true, isActive: true },
-  })
+  const products = await sql<{ id: string; isActive: boolean }[]>`
+    SELECT id, "isActive" FROM "Product" WHERE slug = ${slug} LIMIT 1
+  `
+  const product = products[0]
   if (!product || !product.isActive) return fail(404, 'This piece has been retired.')
 
-  const variant = await db.productVariant.findUnique({
-    where: { id: input.variantId },
-    select: { productId: true, stock: true },
-  })
+  const variants = await sql<{ productId: string; stock: number }[]>`
+    SELECT "productId", stock FROM "ProductVariant" WHERE id = ${input.variantId} LIMIT 1
+  `
+  const variant = variants[0]
   if (!variant || variant.productId !== product.id) {
     return fail(404, 'This size is not available on this piece.')
   }
@@ -40,12 +39,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   }
 
   try {
-    await db.stockAlert.create({
-      data: { email: input.email, variantId: input.variantId },
-    })
+    await sql`
+      INSERT INTO "StockAlert" (id, email, "variantId", "notifiedAt", "createdAt")
+      VALUES (${cuid()}, ${input.email}, ${input.variantId}, NULL, now())
+    `
   } catch (e) {
     // Already waiting on this exact (variant, email) pair — same happy outcome.
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+    if ((e as { code?: string }).code === '23505') {
       return ok({ ok: true, alreadyWaiting: true })
     }
     throw e
