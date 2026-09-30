@@ -127,11 +127,12 @@ export interface DeliveryZone {
  * The four interstate bands mirror the KTI card: West ₦7,500; the South-East,
  * South-South, Kwara, Abuja FCT and Kano tier ₦10,000; Benue ₦10,500; and the
  * rest of the card ₦12,500. Lagos is not on the KTI card — the studio runs it
- * locally at ₦5,000. The card photo cuts the North-East off after Gombe;
- * Adamawa, Bauchi, Borno, Taraba and Yobe are banded with Gombe at ₦12,500
- * pending the full card. */
+ * locally: ₦6,000 to the Island, ₦7,000 to the Mainland. The card photo cuts
+ * the North-East off after Gombe; Adamawa, Bauchi, Borno, Taraba and Yobe are
+ * banded with Gombe at ₦12,500 pending the full card. */
 export const DELIVERY_ZONES: readonly DeliveryZone[] = [
-  { id: 'lagos', label: 'Lagos', price: 5000, eta: '1–3 business days', method: 'local' },
+  { id: 'lagos-island', label: 'Lagos — Island', price: 6000, eta: '1–3 business days', method: 'local' },
+  { id: 'lagos-mainland', label: 'Lagos — Mainland', price: 7000, eta: '1–3 business days', method: 'local' },
   { id: 'ng-west', label: 'Ogun, Oyo, Osun, Ondo and Ekiti', price: 7500, eta: '3–5 business days', method: 'nationwide' },
   { id: 'ng-base', label: 'South-East, South-South, Kwara, FCT — Abuja and Kano', price: 10000, eta: '3–5 business days', method: 'nationwide' },
   { id: 'ng-benue', label: 'Benue', price: 10500, eta: '3–5 business days', method: 'nationwide' },
@@ -146,9 +147,12 @@ export const DELIVERY_ZONES: readonly DeliveryZone[] = [
   })),
 ]
 
-/** KTI interstate band per Nigerian state — Lagos is served by the local zone
- * above and never appears here. Keys mirror geo.ts NG_PROVINCES exactly. */
+/** Delivery zone id per Nigerian province — keys mirror geo.ts NG_PROVINCES
+ * exactly. Lagos splits into Island and Mainland for the studio's local run;
+ * every other state prices on its KTI interstate band. */
 const NG_STATE_BANDS: Readonly<Record<string, string>> = {
+  // Lagos (studio-local run)
+  'Lagos — Island': 'lagos-island', 'Lagos — Mainland': 'lagos-mainland',
   // West
   Ogun: 'ng-west', Oyo: 'ng-west', Osun: 'ng-west', Ondo: 'ng-west', Ekiti: 'ng-west',
   // East & South-South
@@ -168,7 +172,6 @@ const NG_STATE_BANDS: Readonly<Record<string, string>> = {
 
 export function deliveryZone(country: string, state: string): DeliveryZone | null {
   if (country === 'Nigeria') {
-    if (state === 'Lagos') return DELIVERY_ZONES.find(z => z.id === 'lagos')!
     const band = NG_STATE_BANDS[state]
     if (!band) return null
     return { ...DELIVERY_ZONES.find(z => z.id === band)!, label: state }
@@ -193,7 +196,7 @@ export function shippingError(country: string, state: string, method: ShippingMe
   return null
 }
 export const SHIPPING_METHODS = {
-  local: { label: 'Lagos Delivery', eta: '1–3 business days', note: 'Flat rate within Lagos.' },
+  local: { label: 'Lagos Delivery', eta: '1–3 business days', note: 'Flat rate within Lagos — island or mainland.' },
   nationwide: { label: 'Nationwide Delivery', eta: '3–7 business days', note: 'Flat rate by destination state.' },
   international: { label: 'DHL Express International', eta: DHL_ETA, note: 'Priced by destination and parcel weight — each piece counts as up to 2kg. A DHL tracking number is issued once payment is confirmed. Import duties and taxes are paid by the recipient.' },
 } as const

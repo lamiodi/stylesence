@@ -28,7 +28,7 @@ async function main() {
     phone: '+234 801 234 5678',
     address: '12 Admiralty Way, Lekki Phase 1',
     city: 'Lagos',
-    state: 'Lagos',
+    state: 'Lagos — Island',
     shippingMethod: 'express',
     shipping: 0,
     subtotal: 185000,

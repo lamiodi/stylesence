@@ -552,7 +552,7 @@ const ORDER_NAMES = [
   ['Claire Bennett', 'claire.b@example.com'], ['Sofia Lindgren', 'sofia.l@example.com'],
 ]
 const ORDER_CITIES: [string, string][] = [
-  ['Lagos', 'Lagos'], ['Abuja', 'FCT'], ['Port Harcourt', 'Rivers'], ['Ibadan', 'Oyo'],
+  ['Lagos', 'Lagos — Island'], ['Abuja', 'FCT'], ['Port Harcourt', 'Rivers'], ['Ibadan', 'Oyo'],
   ['Enugu', 'Enugu'], ['Kano', 'Kano'], ['Uyo', 'Akwa Ibom'], ['Benin City', 'Edo'],
 ]
 const STREETS = ['Adeola Odeku Street', 'Awolowo Road', 'Bishop Aboyade Cole Street', 'Kingsway Road', 'Ahmadu Bello Way', 'Glover Road', 'Ekukinam Street', 'Etim Inyang Crescent']

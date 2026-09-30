@@ -29,13 +29,14 @@ export const POPULAR_COUNTRIES = [
   'United States', 'Canada', 'United Arab Emirates', 'Germany', 'France',
 ] as const
 
-/** Nigeria — all 36 states + FCT (Abuja). */
+/** Nigeria — all 36 states + FCT (Abuja); Lagos splits into Island and
+ * Mainland so the studio's local run can price the two sides differently. */
 const NG_PROVINCES = [
   'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
   'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT — Abuja', 'Gombe',
-  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
-  'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
-  'Taraba', 'Yobe', 'Zamfara',
+  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara',
+  'Lagos — Island', 'Lagos — Mainland', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun',
+  'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
 ]
 
 const US_PROVINCES = [

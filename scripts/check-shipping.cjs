@@ -21,13 +21,13 @@ const shipping = load('backend/lib/shipping.ts');
 const geo = load('frontend/src/lib/geo.ts');
 // [country, state, 1-piece zone price, method, 2-piece checkout price] — international
 // rows differ because the DHL card is weight-based: 2 pieces bill as 4kg.
-const cases=[['Nigeria','Lagos',5000,'local',5000],['Nigeria','Ogun',7500,'nationwide',7500],['Nigeria','Oyo',7500,'nationwide',7500],['Nigeria','FCT — Abuja',10000,'nationwide',10000],['Nigeria','Rivers',10000,'nationwide',10000],['Nigeria','Benue',10500,'nationwide',10500],['Nigeria','Kano',10000,'nationwide',10000],['Nigeria','Sokoto',12500,'nationwide',12500],['Ghana','Greater Accra',78000,'international',128000],['Kenya','Nairobi',90000,'international',170000],['United Kingdom','England',75000,'international',130000],['Germany','Berlin',95000,'international',174500],['Canada','Ontario',90000,'international',170000],['Japan','Tokyo',115000,'international',188000]];
+const cases=[['Nigeria','Lagos — Island',6000,'local',6000],['Nigeria','Lagos — Mainland',7000,'local',7000],['Nigeria','Ogun',7500,'nationwide',7500],['Nigeria','Oyo',7500,'nationwide',7500],['Nigeria','FCT — Abuja',10000,'nationwide',10000],['Nigeria','Rivers',10000,'nationwide',10000],['Nigeria','Benue',10500,'nationwide',10500],['Nigeria','Kano',10000,'nationwide',10000],['Nigeria','Sokoto',12500,'nationwide',12500],['Ghana','Greater Accra',78000,'international',128000],['Kenya','Nairobi',90000,'international',170000],['United Kingdom','England',75000,'international',130000],['Germany','Berlin',95000,'international',174500],['Canada','Ontario',90000,'international',170000],['Japan','Tokyo',115000,'international',188000]];
 for(const [country,state,price,method] of cases){const zone=shipping.deliveryZone(country,state);assert.equal(zone.price,price);assert.equal(zone.method,method);assert.equal(shipping.shippingError(country,state,method),null);}
 for(const country of geo.COUNTRY_NAMES){
   for(const state of geo.provincesFor(country)??['Region'])assert.ok(shipping.deliveryZone(country,state),country+' '+state);
 }
 assert.ok(shipping.shippingError('Nigeria','Kano','local'));
-assert.ok(shipping.shippingError('Nigeria','Lagos','international'));
+assert.ok(shipping.shippingError('Nigeria','Lagos — Island','international'));
 assert.ok(shipping.shippingError('United Kingdom','England','nationwide'));
 assert.equal(shipping.deliveryZone('Nigeria','Made up'),null);
 // Unmapped destinations order at the rest-of-the-world rate — nobody is stranded.
@@ -65,7 +65,7 @@ async function verifyTest(status,reference,expectedStatus,expectedVerified){
 (async()=>{
   for(const [country,state,,method,checkoutPrice] of cases)await checkoutTest(country,state,method,checkoutPrice);
   await checkoutTest('Nigeria','Kano','local',null);
-  await checkoutTest('Nigeria','Lagos','international',null);
+  await checkoutTest('Nigeria','Lagos — Island','international',null);
   await checkoutTest('United Kingdom','England','nationwide',null);
   await checkoutTest('Nigeria','Bogus','nationwide',null);
   await checkoutTest('Vanuatu','Region','international',170000);

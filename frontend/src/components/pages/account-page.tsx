@@ -44,8 +44,9 @@ import type { CustomerOrderSummary, CustomerView } from '@/lib/types'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const NG_STATES = [
-  'Lagos', 'FCT — Abuja', 'Rivers', 'Oyo', 'Enugu', 'Kano', 'Akwa Ibom', 'Edo',
-  'Kaduna', 'Ogun', 'Anambra', 'Delta', 'Abia', 'Imo', 'Plateau', 'Cross River',
+  'Lagos — Island', 'Lagos — Mainland', 'FCT — Abuja', 'Rivers', 'Oyo', 'Enugu',
+  'Kano', 'Akwa Ibom', 'Edo', 'Kaduna', 'Ogun', 'Anambra', 'Delta', 'Abia', 'Imo',
+  'Plateau', 'Cross River',
 ]
 
 const STATUS_LABELS: Record<string, string> = {

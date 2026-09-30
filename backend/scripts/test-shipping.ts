@@ -78,8 +78,11 @@ const uk = deliveryZone('United Kingdom', 'London')
 check(uk?.method === 'international' && uk.dhl !== undefined, 'UK resolves to an international DHL zone')
 check(zonePrice(uk, 1) === 75000, 'UK 1 piece = ₦75,000')
 check(zonePrice(uk, 3) === 170000, 'UK 3 pieces (6kg) = ₦170,000')
-const lagos = deliveryZone('Nigeria', 'Lagos')
-check(lagos?.method === 'local' && zonePrice(lagos, 5) === 5000, 'Lagos stays flat ₦5,000 regardless of pieces')
+const lagosIsland = deliveryZone('Nigeria', 'Lagos — Island')
+check(lagosIsland?.method === 'local' && zonePrice(lagosIsland, 5) === 6000, 'Lagos Island stays flat ₦6,000 regardless of pieces', lagosIsland && zonePrice(lagosIsland, 5))
+const lagosMainland = deliveryZone('Nigeria', 'Lagos — Mainland')
+check(lagosMainland?.method === 'local' && zonePrice(lagosMainland, 5) === 7000, 'Lagos Mainland stays flat ₦7,000 regardless of pieces', lagosMainland && zonePrice(lagosMainland, 5))
+check(deliveryZone('Nigeria', 'Lagos') === null, 'bare "Lagos" is no longer a selectable province')
 
 // ——— Nigeria: per-state KTI interstate card (every band + boundary states) ———
 const NG_CARD: [string, number][] = [
