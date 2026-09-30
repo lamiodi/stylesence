@@ -227,11 +227,14 @@ export function HomePage() {
         <Reveal delay={0.1} className="mt-6">
           {loadingNew ? (
             <div className="container-site" aria-hidden>
-              <div className="h-72 animate-pulse bg-secondary/60 sm:h-96" />
+              <div className="h-64 animate-pulse bg-secondary/60 sm:h-[400px]" />
             </div>
           ) : (
             <CoverflowCarousel
               label="New arrivals pieces"
+              /* Cards sized up 20% (was clamp(148px, 22vw, 260px)) — everything
+                 in the ring derives from this, so the rake scales with it. */
+              cardWidth="clamp(178px, 26.4vw, 312px)"
               slides={(newArrivals?.products ?? [])
                 .map((p) => {
                   const src = slideImage(p)
