@@ -28,7 +28,7 @@ import { useWishlist } from '@/lib/store/wishlist'
 import { useRecentlyViewed } from '@/lib/store/recently-viewed'
 import { useMounted } from '@/hooks/use-mounted'
 import { useCustomer } from '@/hooks/use-customer'
-import { MEASUREMENT_FIELDS, type CustomMeasurements, type MeasurementKey, type ProductDetail } from '@/lib/types'
+import { MEASUREMENT_FIELDS, PRODUCTION_TIERS, type CustomMeasurements, type MeasurementKey, type ProductDetail } from '@/lib/types'
 import { DELIVERY_ZONES } from '@/lib/shipping'
 
 /** Fee range across the zones of one method — from the reviewed table, never hand-copied. */
@@ -1041,8 +1041,8 @@ function ProductInner({ product }: { product: ProductDetail }) {
               <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
                 Every piece is made to order — standard production{' '}
                 <span className="font-mono tabular-nums">7–10</span> working days · express{' '}
-                <span className="font-mono tabular-nums">2–3</span> working days (costs extra —
-                the studio will contact you).
+                <span className="font-mono tabular-nums">2–3</span> working days (adds{' '}
+                {format(PRODUCTION_TIERS.express.fee)}, charged at checkout).
               </p>
               <p className="text-[0.72rem] leading-relaxed text-muted-foreground">
                 {deliveryTiers}

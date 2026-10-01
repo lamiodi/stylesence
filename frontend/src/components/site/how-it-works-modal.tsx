@@ -19,7 +19,7 @@ const STEPS = [
   {
     icon: Clock3,
     title: 'Cut to order in Lagos',
-    body: 'Each piece is made for you, not pulled from a shelf — standard production is 7–10 working days, express 2–3.',
+    body: 'Each piece is made for you, not pulled from a shelf — standard production is 7–10 working days, express 2–3 for ₦30,000.',
   },
   {
     icon: Package,

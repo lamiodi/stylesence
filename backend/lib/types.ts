@@ -225,11 +225,11 @@ export function formatMeasurements(m: CustomMeasurements | null | undefined): st
 
 /* ——— Round 13: production timeline ——— */
 
-/** Made-to-order production tiers. Express is contact-priced: the surcharge
- *  is arranged by the studio after ordering, never charged at checkout. */
+/** Made-to-order production tiers. Express adds a flat fee, charged at
+ *  checkout as part of the order total (owner-set 2026-10-01). */
 export const PRODUCTION_TIERS = {
   standard: { label: 'Standard Production', eta: '7–10 working days', fee: 0 },
-  express: { label: 'Express Production', eta: '2–3 working days', fee: 0 },
+  express: { label: 'Express Production', eta: '2–3 working days', fee: 30000 },
 } as const
 export type ProductionTier = keyof typeof PRODUCTION_TIERS
 

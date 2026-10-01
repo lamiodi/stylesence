@@ -185,17 +185,6 @@ export function Header() {
                   <div className="border-t border-line px-6 py-4">
                     <button
                       type="button"
-                      onClick={() => {
-                        setNavOpen(false)
-                        setCurrencyModalOpen(true)
-                      }}
-                      className="flex w-full items-center gap-2.5 py-2 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                      <Globe className="h-4 w-4" />
-                      Currency &amp; country — {mounted ? currencyLabel : '₦ NGN'}
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                       className="flex items-center gap-2.5 py-2 text-sm text-muted-foreground hover:text-foreground"
                     >
@@ -264,7 +253,9 @@ export function Header() {
               aria-label={`Currency and country — currently ${mounted ? currencyLabel : '₦ NGN'}`}
               className={cn(
                 'mr-1 hidden h-9 items-center gap-1.5 border border-line px-2.5 font-mono text-[0.62rem] tracking-[0.08em] text-foreground/80 transition-colors hover:border-espresso hover:text-espresso',
-                'min-[420px]:flex',
+                // Desktop-only — on mobile the selector lives in the homepage
+                // welcome popup instead of crowding the navbar.
+                'md:flex',
               )}
             >
               <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />

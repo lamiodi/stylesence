@@ -590,8 +590,8 @@ export function CheckoutPage() {
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium">{t.label}</span>
                           {key === 'express' ? (
-                            <span className="text-[0.72rem] uppercase tracking-[0.12em] text-muted-foreground">
-                              Costs extra
+                            <span className="font-mono text-[0.72rem] tabular-nums text-muted-foreground">
+                              +{estimate(t.fee)}
                             </span>
                           ) : (
                             <span className="text-[0.8rem] text-muted-foreground">Included</span>
@@ -605,9 +605,9 @@ export function CheckoutPage() {
               </RadioGroup>
               <p className="mt-3 text-[0.72rem] leading-relaxed text-muted-foreground">
                 Express moves your piece to the front of the cutting queue — production
-                within 2–3 working days instead of the standard 7–10. The express
-                surcharge is arranged by the studio — we will contact you after
-                ordering.
+                within 2–3 working days instead of the standard 7–10. The{' '}
+                {formatNaira(PRODUCTION_TIERS.express.fee)} express fee is included in your
+                order total and charged with payment.
               </p>
             </section>
 

@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Check, Globe } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { CURRENCIES } from '@/lib/fx'
+import { useCurrency } from '@/lib/store/currency'
 
 /**
  * Homepage welcome modal — the house-list offer (the ATELIER10 code the
@@ -34,6 +36,12 @@ export function WelcomeModal() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
+
+  // Currency/country entry point — the navbar pill is desktop-only, so this
+  // popup is where mobile visitors meet the selector.
+  const currencyCountry = useCurrency((s) => s.country)
+  const currencyCode = useCurrency((s) => s.currency)
+  const openCurrencyModal = useCurrency((s) => s.setModalOpen)
 
   const international = useMemo(() => {
     try {
@@ -177,6 +185,29 @@ export function WelcomeModal() {
               </p>
             </form>
           )}
+
+          <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
+            <div className="min-w-0">
+              <p className="eyebrow flex items-center gap-1.5 !text-[0.58rem]">
+                <Globe className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+                Shopping from {currencyCountry ?? 'Nigeria'}
+              </p>
+              <p className="mt-1 text-[0.7rem] leading-relaxed text-muted-foreground">
+                Prices shown in {CURRENCIES[currencyCode].label} — checkout is always settled
+                in naira.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                openCurrencyModal(true)
+              }}
+              className="shrink-0 border border-line-strong px-3.5 py-2.5 text-[0.6rem] font-medium uppercase tracking-[0.16em] text-foreground transition-colors hover:border-foreground"
+            >
+              Change
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
