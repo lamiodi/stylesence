@@ -22,5 +22,5 @@ export const SITE_URL = (
  * entrance overlay until this frame can actually paint (fail-open).
  */
 export const HERO_POSTER_URL =
-  "https://res.cloudinary.com/qaruxkhf/video/upload/so_1,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg";
+  "https://res.cloudinary.com/qaruxkhf/video/upload/so_1,w_1080,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg";
 

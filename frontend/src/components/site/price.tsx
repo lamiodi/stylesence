@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useMoney } from '@/lib/store/currency'
-import { cldOptimize, cldSrcSet } from '@/lib/cloudinary'
+import { cldOptimize, cldSrcSet, cldTransform } from '@/lib/cloudinary'
 
 /**
  * Price display with optional struck-through compare-at price. Naira stays
@@ -102,7 +102,9 @@ export function ProductImage({
       />
       {isVideo ? (
         <video
-          src={src}
+          /* Raw upload URLs deliver the original multi-MB file; cap to a
+             960w eco rendition — one derived asset per video, cached. */
+          src={cldTransform(src, 'w_960,q_auto:eco')}
           autoPlay
           loop
           muted

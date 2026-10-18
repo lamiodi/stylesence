@@ -21,12 +21,14 @@ import type { ProductsResponse, Category, JournalCard, LookView } from '@/lib/ty
  * Hero film — the Àrẹ̀wà Set in motion. The video is trimmed to start at 1s
  * (so_1) and the poster is that exact frame, so the still paints instantly
  * while the video streams and the hand-off is seamless. Reduced-motion
- * visitors get the still, never the motion.
+ * visitors get the still, never the motion. Both are capped at 1080w (video
+ * at eco quality) — this autoplays on every homepage visit and Cloudinary
+ * bills every delivered byte.
  */
 const HERO_VIDEO =
-  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,q_auto/v1790053166/stylesence/products/IMG_7612_yc1iae.mp4'
+  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,w_1080,q_auto:eco/v1790053166/stylesence/products/IMG_7612_yc1iae.mp4'
 const HERO_POSTER =
-  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg'
+  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,w_1080,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -44,7 +46,7 @@ function slideImage(p: { primaryImage: string | null; secondaryImage: string | n
   if (!src) return null
   if (!/\.(mp4|webm)(\?|$)/i.test(src)) return src
   return src
-    .replace('/upload/', '/upload/so_1,q_auto,f_jpg/')
+    .replace('/upload/', '/upload/so_1,q_auto,f_jpg,w_640/')
     .replace(/\.(mp4|webm)(\?|$)/i, '.jpg')
 }
 

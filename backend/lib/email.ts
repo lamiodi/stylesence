@@ -158,6 +158,18 @@ export interface OrderEmailData {
   }[]
 }
 
+/**
+ * Item thumbnails in order emails: Cloudinary originals are multi-MB client
+ * photos and every email open bills full delivery bytes, so recompress to a
+ * 100px rendition (videos become their 1s still). Inserted as its own chain
+ * component before the version segment, so plain and already-transformed
+ * URLs both stay valid; non-Cloudinary URLs pass through untouched.
+ */
+function emailThumb(raw: string): string {
+  const chain = /\.(mp4|webm|mov)(\?|$)/i.test(raw) ? 'so_1,w_100,q_auto,f_jpg' : 'w_100,q_auto,f_jpg'
+  return raw.replace(/(\/upload\/(?:[^/?]+\/)?)(v\d+\/)/, `$1${chain}/$2`)
+}
+
 export async function sendOrderConfirmationEmail(order: OrderEmailData) {
   const siteUrl = getFrontendUrl()
   // The tracking page lives at /track and pre-fills from ?order= (not ?lookup=).
@@ -170,7 +182,7 @@ export async function sendOrderConfirmationEmail(order: OrderEmailData) {
       <td width="55" valign="top" style="padding-right: 12px;">
         ${
           item.imageUrl
-            ? `<img src="${item.imageUrl}" alt="${item.productName}" width="50" height="65" style="object-fit: cover; border: 1px solid #e5e3dc; display: block;" />`
+            ? `<img src="${emailThumb(item.imageUrl)}" alt="${item.productName}" width="50" height="65" style="object-fit: cover; border: 1px solid #e5e3dc; display: block;" />`
             : `<div style="width: 50px; height: 65px; background: #f0eee6;"></div>`
         }
       </td>
@@ -410,7 +422,7 @@ export async function sendManualOrderReceivedEmail(order: OrderEmailData) {
       <td width="55" valign="top" style="padding-right: 12px;">
         ${
           item.imageUrl
-            ? `<img src="${item.imageUrl}" alt="${item.productName}" width="50" height="65" style="object-fit: cover; border: 1px solid #e5e3dc; display: block;" />`
+            ? `<img src="${emailThumb(item.imageUrl)}" alt="${item.productName}" width="50" height="65" style="object-fit: cover; border: 1px solid #e5e3dc; display: block;" />`
             : `<div style="width: 50px; height: 65px; background: #f0eee6;"></div>`
         }
       </td>

@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { cldOptimize, cldTransform } from '@/lib/cloudinary'
 
 /**
  * Full-screen image zoom lightbox for the PDP gallery.
@@ -120,7 +121,7 @@ export function GalleryLightbox({
               {current.url.endsWith('.mp4') || current.url.endsWith('.webm') ? (
                 <video
                   key={safeIndex}
-                  src={current.url}
+                  src={cldTransform(current.url, 'w_1280,q_auto:eco')}
                   controls
                   autoPlay
                   loop
@@ -130,7 +131,7 @@ export function GalleryLightbox({
               ) : reduced ? (
                 <img
                   key={safeIndex}
-                  src={current.url}
+                  src={cldOptimize(current.url)}
                   alt={current.alt ?? label}
                   className="absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
                 />
@@ -138,7 +139,7 @@ export function GalleryLightbox({
                 <AnimatePresence initial={false}>
                   <motion.img
                     key={safeIndex}
-                    src={current.url}
+                    src={cldOptimize(current.url)}
                     alt={current.alt ?? label}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
