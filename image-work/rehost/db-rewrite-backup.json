@@ -1,0 +1,443 @@
+[
+  {
+    "table": "Category",
+    "pkCol": "id",
+    "pk": "cmu8hxx7h0002957c7sx65bp9",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/w_900,q_auto,f_auto/v1790056421/stylesence/editorial/polka-shirt-dress.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-1.webp"
+  },
+  {
+    "table": "Category",
+    "pkCol": "id",
+    "pk": "cmu8hxxct0003957ci5sjswrx",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/w_900,q_auto,f_auto/v1790056408/stylesence/editorial/camille-duo-cream.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-duo.webp"
+  },
+  {
+    "table": "JournalPost",
+    "pkCol": "id",
+    "pk": "cmu8hz3me00dz957cld10jfud",
+    "column": "coverImage",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/w_1200,q_auto,f_auto/v1790056408/stylesence/editorial/camille-duo-cream.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-duo.webp"
+  },
+  {
+    "table": "JournalPost",
+    "pkCol": "id",
+    "pk": "cmu8hz3xb00e0957cj4hgeswx",
+    "column": "coverImage",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/w_1200,q_auto,f_auto/v1790056412/stylesence/editorial/camille-bomber-shorts.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-1.webp"
+  },
+  {
+    "table": "JournalPost",
+    "pkCol": "id",
+    "pk": "cmu8hz42z00e1957cg8uzbidg",
+    "column": "coverImage",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/w_1200,q_auto,f_auto/v1790056413/stylesence/products/camille-skirt-slate.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-studio.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmulgm0i8000bao2y257pg1pd",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053123/stylesence/products/IMG_2416_mfhure.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmulo7i45000zao2yxpwbrkxm",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053123/stylesence/products/IMG_2416_mfhure.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmulonspj0015ao2yqcqn340v",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053123/stylesence/products/IMG_2416_mfhure.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmumdnzru0003fz2dmc0b9yi3",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/video/upload/so_1,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg",
+    "new": "https://www.stylesence.com/media/hero/poster.jpg"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmumxtle5001was2d5e5lrvk6",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053103/stylesence/products/IMG_2418_bxyfvx.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmumxtle5001xas2dydw2venm",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053161/stylesence/products/IMG_2426_hkgkfv.jpg",
+    "new": "https://www.stylesence.com/media/products/ariella-long-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmumy1rn00028as2dxr0yn6zh",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053123/stylesence/products/IMG_2416_mfhure.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmunfl3ip0036ag2eclrgbmje",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053103/stylesence/products/IMG_2418_bxyfvx.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmunft5t7003fag2e07c8brz8",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053103/stylesence/products/IMG_2418_bxyfvx.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmunoa08r004oag2err7cqxpa",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053103/stylesence/products/IMG_2418_bxyfvx.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmuohofoe003f3925fb252cf64b8d",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053161/stylesence/products/IMG_2426_hkgkfv.jpg",
+    "new": "https://www.stylesence.com/media/products/ariella-long-1.webp"
+  },
+  {
+    "table": "OrderItem",
+    "pkCol": "id",
+    "pk": "cmvbbv7yj00j4204843de0b2e461f",
+    "column": "imageUrl",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053123/stylesence/products/IMG_2416_mfhure.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-1.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn90019c78663f3136617c6",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053123/stylesence/products/IMG_2416_mfhure.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-1.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn9001a67d451a79b35a52e",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053125/stylesence/products/IMG_9738_lnw9tk.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-2.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn9001b6a91397c6e463976",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/w_1600,q_auto,f_auto/v1790056402/stylesence/products/camille-duo-cafe.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-duo.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn9001cdfe3352d21a78ecb",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790053140/stylesence/products/IMG_6843_b7eomt.mp4",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-video.mp4"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn9001decb553d535c091d4",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703442/stylesence/products/aqzzlaowvm4jtfhtfjqm.png",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-studio.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn9001ea884298fa90c2947",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703479/stylesence/products/fyfaep8aqjwyounguvu3.png",
+    "new": "https://www.stylesence.com/media/products/camille-trouser-alt.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn9001f118e24029c32c43b",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753351/stylesence/products/lifestyle-2026-09-30/camille-trouser-blue-cream-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/camille-trouser-blue-cream-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5jrn9001g9f5b687ed37f3893",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753365/stylesence/products/lifestyle-2026-09-30/camille-trouser-black-white-detail.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/camille-trouser-black-white-detail.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmumyezii002eas2df67mpbop",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790696787/stylesence/products/we9gtrkgh8evvszvuivc.mp4",
+    "new": "https://www.stylesence.com/media/products/arewa-video.mp4"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmumyezii002fas2d29e55hv2",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790696800/stylesence/products/arnwq92fneczpy5pbisj.jpg",
+    "new": "https://www.stylesence.com/media/products/arewa-frame.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmumyezii002gas2d4n3ohj2c",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703088/stylesence/products/l4zqyfttwc8bxsfwosat.png",
+    "new": "https://www.stylesence.com/media/products/arewa-angle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmumyezii002has2ddfaz2o0o",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703110/stylesence/products/nfxrglkneioqydpnehsd.png",
+    "new": "https://www.stylesence.com/media/products/arewa-studio.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001hc8a4dede4ae4de43",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790053157/stylesence/products/IMG_6842_wlfho7.mp4",
+    "new": "https://www.stylesence.com/media/products/ariella-short-video.mp4"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001ic40ad95ab1761739",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703356/stylesence/products/m0frufetagfzmr8jpyhz.png",
+    "new": "https://www.stylesence.com/media/products/ariella-short-studio.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001jec45c1b0388fc145",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790716689/stylesence/products/WhatsApp_Image_2026-09-29_at_11.18.10_AM_ogfbs7.jpg",
+    "new": "https://www.stylesence.com/media/products/ariella-short-1.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001kd0ac3d5691bcc257",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753337/stylesence/products/lifestyle-2026-09-30/ariella-short-off-white-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-short-off-white-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001l1cf18cca4d48338c",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753341/stylesence/products/lifestyle-2026-09-30/ariella-short-red-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-short-red-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001m5bcadccf3965dcd7",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753345/stylesence/products/lifestyle-2026-09-30/ariella-short-butter-yellow-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-short-butter-yellow-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn0007da8489b0a0d2a25a",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053161/stylesence/products/IMG_2426_hkgkfv.jpg",
+    "new": "https://www.stylesence.com/media/products/ariella-long-1.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn0008764f8943d94419e4",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053162/stylesence/products/IMG_2432_ltticl.jpg",
+    "new": "https://www.stylesence.com/media/products/ariella-long-2.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn0009b29d4be6ef8103a2",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703181/stylesence/products/sygvfoqdincxbb36uksp.png",
+    "new": "https://www.stylesence.com/media/products/ariella-long-studio.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn000ab9a337a789726468",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753316/stylesence/products/lifestyle-2026-09-30/ariella-long-off-white-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-long-off-white-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn000b03340b19ce08a2ca",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753322/stylesence/products/lifestyle-2026-09-30/ariella-long-red-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-long-red-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn000cbda70244b0226f6e",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753327/stylesence/products/lifestyle-2026-09-30/ariella-long-blush-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-long-blush-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn000d9a82f997f509f94e",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753332/stylesence/products/lifestyle-2026-09-30/ariella-long-butter-yellow-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-long-butter-yellow-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo4sxdn000eda2532749c2213d1",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753357/stylesence/products/lifestyle-2026-09-30/ariella-long-powder-blue-detail.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-long-powder-blue-detail.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001n787671527ae38254",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753348/stylesence/products/lifestyle-2026-09-30/ariella-short-powder-blue-lifestyle.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-short-powder-blue-lifestyle.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5ix1g0015183ec30807492a5c",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790053103/stylesence/products/IMG_2418_bxyfvx.jpg",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-1.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5ix1h001629e96aa483a6ab83",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/video/upload/v1790697230/stylesence/products/xfpgs9yjfc4bq6retxau.mp4",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-poster.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5ix1h00176b66c1237ebee4d7",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790703557/stylesence/products/hhif06xgc1xmfiw2sdyu.png",
+    "new": "https://www.stylesence.com/media/products/camille-skirt-studio.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5ix1h0018090fbf4396137261",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753369/stylesence/products/lifestyle-2026-09-30/camille-skirt-blue-cream-detail.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/camille-skirt-blue-cream-detail.webp"
+  },
+  {
+    "table": "ProductImage",
+    "pkCol": "id",
+    "pk": "cmuo5l0xl001o4bcfd30b17ab59ba",
+    "column": "url",
+    "isJson": false,
+    "old": "https://res.cloudinary.com/qaruxkhf/image/upload/v1790753361/stylesence/products/lifestyle-2026-09-30/ariella-short-blush-detail.webp",
+    "new": "https://www.stylesence.com/media/products/lifestyle/ariella-short-blush-detail.webp"
+  }
+]
