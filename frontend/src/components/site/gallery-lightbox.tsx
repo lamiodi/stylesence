@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { cldOptimize, cldTransform } from '@/lib/cloudinary'
+import { cldOptimize, cldTransform, mediaStill } from '@/lib/cloudinary'
 
 /**
  * Full-screen image zoom lightbox for the PDP gallery.
@@ -47,6 +47,11 @@ export function GalleryLightbox({
   const safeIndex = Math.min(Math.max(0, index), Math.max(0, count - 1))
   const current = images[safeIndex]
   const multi = count > 1
+
+  // A video that fails to load (or has no browser codec) degrades to its
+  // generated poster still; images below degrade via onError src swap.
+  const [vidFailed, setVidFailed] = useState(false)
+  useEffect(() => setVidFailed(false), [safeIndex])
 
   // The dialog is opened without a Radix trigger (both affordances live in the
   // gallery), so Radix has no element to hand focus back to — remember the
@@ -119,20 +124,37 @@ export function GalleryLightbox({
               }}
             >
               {current.url.endsWith('.mp4') || current.url.endsWith('.webm') ? (
-                <video
-                  key={safeIndex}
-                  src={cldTransform(current.url, 'w_1280,q_auto:eco')}
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
-                  className="absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
-                />
+                vidFailed ? (
+                  <img
+                    key={safeIndex}
+                    src={mediaStill(current.url)}
+                    alt={current.alt ?? label}
+                    className="absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
+                  />
+                ) : (
+                  <video
+                    key={safeIndex}
+                    src={cldTransform(current.url, 'w_1280,q_auto:eco')}
+                    poster={current.url.includes('/media/') ? mediaStill(current.url) : undefined}
+                    controls
+                    autoPlay
+                    loop
+                    playsInline
+                    onError={() => setVidFailed(true)}
+                    className="absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
+                  />
+                )
               ) : reduced ? (
                 <img
                   key={safeIndex}
                   src={cldOptimize(current.url)}
                   alt={current.alt ?? label}
+                  onError={(e) => {
+                    const t = e.currentTarget
+                    if (t.dataset.fbk) return
+                    t.dataset.fbk = '1'
+                    t.src = '/media/placeholders/card.webp'
+                  }}
                   className="absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
                 />
               ) : (
@@ -145,6 +167,12 @@ export function GalleryLightbox({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.22, ease: 'easeOut' }}
+                    onError={(e) => {
+                      const t = e.currentTarget
+                      if (t.dataset.fbk) return
+                      t.dataset.fbk = '1'
+                      t.src = '/media/placeholders/card.webp'
+                    }}
                     className="absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
                   />
                 </AnimatePresence>

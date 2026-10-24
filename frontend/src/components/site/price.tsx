@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useMoney } from '@/lib/store/currency'
-import { cldOptimize, cldSrcSet, cldTransform } from '@/lib/cloudinary'
+import { cldOptimize, cldSrcSet, cldTransform, mediaSrcSet, mediaStill } from '@/lib/cloudinary'
 
 /**
  * Price display with optional struck-through compare-at price. Naira stays
@@ -103,8 +103,11 @@ export function ProductImage({
       {isVideo ? (
         <video
           /* Raw upload URLs deliver the original multi-MB file; cap to a
-             960w eco rendition — one derived asset per video, cached. */
+             960w eco rendition — one derived asset per video, cached.
+             Self-hosted /media assets pass through (already web-sized) and
+             get their generated first-frame still as the poster. */
           src={cldTransform(src, 'w_960,q_auto:eco')}
+          poster={src.includes('/media/') ? mediaStill(src) : undefined}
           autoPlay
           loop
           muted
@@ -120,7 +123,7 @@ export function ProductImage({
       ) : (
         <img
           src={cldOptimize(src)}
-          srcSet={cldSrcSet(src) ?? undefined}
+          srcSet={cldSrcSet(src) ?? mediaSrcSet(src) ?? undefined}
           sizes={sizes ?? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'}
           alt={alt}
           loading={eager ? 'eager' : 'lazy'}

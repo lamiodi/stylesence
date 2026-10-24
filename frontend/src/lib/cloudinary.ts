@@ -43,3 +43,30 @@ export function cldSrcSet(url: string, widths: readonly number[] = CLD_WIDTHS): 
     .map((w) => `${cldTransform(url, `f_auto,q_auto,w_${w}`)} ${w}w`)
     .join(", ");
 }
+
+/* ————— Self-hosted media (/media/…) —————
+   Catalog imagery lives in frontend/public/media, deployed with the site and
+   stored in the DB as absolute www URLs. Renditions follow fixed naming:
+   <base>.webp (1280w) + <base>-640.webp per image, <base>-poster.jpg per
+   video, <base>-og.jpg per asset. */
+
+const MEDIA_HOST = "https://www.stylesence.com";
+
+function isLocalMedia(url: string): boolean {
+  return url.startsWith("/media/") || url.startsWith(`${MEDIA_HOST}/media/`);
+}
+
+/**
+ * srcSet over the generated -640/1280 webp renditions of a local media
+ * image; null for anything else (callers fall back to plain src).
+ */
+export function mediaSrcSet(url: string): string | null {
+  if (!isLocalMedia(url) || !/\.webp$/i.test(url)) return null;
+  const base = url.replace(/\.webp$/i, "");
+  return `${base}-640.webp 640w, ${base}.webp 1280w`;
+}
+
+/** Local video → its generated first-frame still; other URLs pass through. */
+export function mediaStill(url: string): string {
+  return isLocalMedia(url) ? url.replace(/\.(mp4|webm|mov)(\?|$)/i, "-poster.jpg") : url;
+}

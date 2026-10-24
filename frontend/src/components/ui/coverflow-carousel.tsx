@@ -330,6 +330,13 @@ export function CoverflowCarousel({
                       loading={index < 3 ? "eager" : "lazy"}
                       decoding="async"
                       draggable={false}
+                      onError={(e) => {
+                        const t = e.currentTarget
+                        if (t.dataset.fbk) return
+                        t.dataset.fbk = "1"
+                        t.srcset = ""
+                        t.src = "/media/placeholders/card.webp"
+                      }}
                       className="h-full w-full select-none object-cover"
                     />
                   </Link>
@@ -342,6 +349,13 @@ export function CoverflowCarousel({
                     loading={index < 3 ? "eager" : "lazy"}
                     decoding="async"
                     draggable={false}
+                    onError={(e) => {
+                      const t = e.currentTarget
+                      if (t.dataset.fbk) return
+                      t.dataset.fbk = "1"
+                      t.srcset = ""
+                      t.src = "/media/placeholders/card.webp"
+                    }}
                     className="h-full w-full select-none object-cover"
                   />
                 )}

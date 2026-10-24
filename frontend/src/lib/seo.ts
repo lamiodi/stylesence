@@ -9,24 +9,29 @@
  * make that impossible to get wrong: one call returns the complete object.
  */
 import type { Metadata } from 'next'
+import { SITE_URL } from '@/lib/site'
 
-/** Brand social preview — the polka-dot duo, face-aware 1200×630 crop. */
-export const OG_IMAGE =
-  'https://res.cloudinary.com/qaruxkhf/image/upload/c_fill,g_auto:face,w_1200,h_630,q_auto,f_jpg/v1790053123/stylesence/products/IMG_2416_mfhure.jpg'
+/** Brand social preview — the polka-dot duo, 1200×630 crop. */
+export const OG_IMAGE = `${SITE_URL}/media/products/camille-trouser-1-og.jpg`
 
 export const OG_IMAGE_ALT = 'Two models in Style Sence polka-dot silk sets'
 
 const BRAND_SUFFIX = 'Style Sence by SKR'
 
 /**
- * Re-crop any Cloudinary asset to the 1200×630 social-preview standard,
- * replacing whatever transformation chain the URL already carries.
- * g_auto:face keeps the model's face inside the wide crop; video assets
- * contribute their first-second poster frame. Non-Cloudinary or missing
- * URLs fall back to the house preview.
+ * Social-preview URL for any asset. Self-hosted /media assets get their
+ * generated 1200×630 `<base>-og.jpg` rendition (videos contribute their
+ * poster frame). Cloudinary assets are re-cropped to the same standard,
+ * replacing whatever transformation chain the URL already carries —
+ * g_auto:face keeps the model's face inside the wide crop. Missing or
+ * foreign URLs fall back to the house preview.
  */
 export function ogImageUrl(url?: string | null): string {
   if (!url) return OG_IMAGE
+  if (url.includes('/media/')) {
+    const abs = url.startsWith('/') ? `${SITE_URL}${url}` : url
+    return `${abs.replace(/\.(webp|jpe?g|png|mp4|webm|mov)(\?|$)/i, '')}-og.jpg`
+  }
   const marker = '/upload/'
   const idx = url.indexOf(marker)
   if (idx === -1) return OG_IMAGE

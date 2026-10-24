@@ -163,9 +163,13 @@ export interface OrderEmailData {
  * photos and every email open bills full delivery bytes, so recompress to a
  * 100px rendition (videos become their 1s still). Inserted as its own chain
  * component before the version segment, so plain and already-transformed
- * URLs both stay valid; non-Cloudinary URLs pass through untouched.
+ * URLs both stay valid. Self-hosted /media URLs are absolute already (and
+ * web-sized); videos swap to their generated -poster.jpg still.
  */
 function emailThumb(raw: string): string {
+  if (raw.includes('/media/')) {
+    return raw.replace(/\.(mp4|webm|mov)(\?|$)/i, '-poster.jpg')
+  }
   const chain = /\.(mp4|webm|mov)(\?|$)/i.test(raw) ? 'so_1,w_100,q_auto,f_jpg' : 'w_100,q_auto,f_jpg'
   return raw.replace(/(\/upload\/(?:[^/?]+\/)?)(v\d+\/)/, `$1${chain}/$2`)
 }

@@ -20,7 +20,7 @@ export const SITE_URL = (
  * Hero LCP — the poster frame of the homepage film. Preloaded from
  * app/layout's <head> and shared with the SPA shell, which holds the
  * entrance overlay until this frame can actually paint (fail-open).
+ * Self-hosted in /public/media (deployed with the site).
  */
-export const HERO_POSTER_URL =
-  "https://res.cloudinary.com/qaruxkhf/video/upload/so_1,w_1080,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg";
+export const HERO_POSTER_URL = "/media/hero/poster.jpg";
 

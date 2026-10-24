@@ -51,7 +51,7 @@ export function AboutPage() {
         </Reveal>
         <Reveal delay={0.12}>
           <ProductImage
-            src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056417/stylesence/editorial/camille-crop-set-blue.jpg"
+            src="/media/products/camille-trouser-duo.webp"
             alt="Polka-dot co-ord set in dusty blue from the collection"
             label="The house uniform"
             ratio="aspect-[4/5]"
@@ -114,7 +114,7 @@ export function AboutPage() {
           </Reveal>
           <Reveal delay={0.12} className="lg:col-span-3">
             <ProductImage
-              src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056415/stylesence/products/ariella-gown-blue.jpg"
+              src="/media/products/ariella-long-1.webp"
               alt="The Ariella gown in powder blue on the staircase"
               label="The long line"
               ratio="aspect-[7/5]"

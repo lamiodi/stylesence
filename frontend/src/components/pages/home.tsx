@@ -11,24 +11,22 @@ import { CoverflowCarousel } from '@/components/ui/coverflow-carousel'
 import { ProductImage } from '@/components/site/price'
 import { formatDate } from '@/lib/money'
 import { useMoney } from '@/lib/store/currency'
-import { cldOptimize, cldSrcSet } from '@/lib/cloudinary'
+import { cldOptimize, cldSrcSet, mediaSrcSet, mediaStill } from '@/lib/cloudinary'
 import { RecentlyViewedStrip } from '@/components/site/recently-viewed'
 import { WelcomeModal } from '@/components/site/welcome-modal'
 import { HowItWorksModal } from '@/components/site/how-it-works-modal'
 import type { ProductsResponse, Category, JournalCard, LookView } from '@/lib/types'
 
 /**
- * Hero film — the Àrẹ̀wà Set in motion. The video is trimmed to start at 1s
- * (so_1) and the poster is that exact frame, so the still paints instantly
- * while the video streams and the hand-off is seamless. Reduced-motion
- * visitors get the still, never the motion. Both are capped at 1080w (video
- * at eco quality) — this autoplays on every homepage visit and Cloudinary
- * bills every delivered byte.
+ * Hero film — the Àrẹ̀wà Set in motion. The poster is the exact first-frame
+ * still, so the still paints instantly while the video streams and the
+ * hand-off is seamless. Reduced-motion visitors get the still, never the
+ * motion. Both are self-hosted 720p transcodes in /public/media, shipped
+ * with the site (the raw originals were 5–35MB — the bytes that blew the
+ * old CDN's free quota).
  */
-const HERO_VIDEO =
-  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,w_1080,q_auto:eco/v1790053166/stylesence/products/IMG_7612_yc1iae.mp4'
-const HERO_POSTER =
-  'https://res.cloudinary.com/qaruxkhf/video/upload/so_1,w_1080,q_auto,f_jpg/v1790053166/stylesence/products/IMG_7612_yc1iae.jpg'
+const HERO_VIDEO = '/media/hero/video.mp4'
+const HERO_POSTER = '/media/hero/poster.jpg'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -38,12 +36,14 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 /**
  * Coverflow cards are plain <img> tags, so a video asset (the Àrẹ̀wà Set's
- * primary is an .mp4) has to become its first-frame still — the same
- * so_1,f_jpg Cloudinary recipe the hero poster uses.
+ * primary is an .mp4) has to become its first-frame still. Self-hosted
+ * media uses the generated <base>-poster.jpg; Cloudinary URLs keep the
+ * so_1,f_jpg recipe.
  */
 function slideImage(p: { primaryImage: string | null; secondaryImage: string | null }): string | null {
   const src = p.primaryImage ?? p.secondaryImage
   if (!src) return null
+  if (src.includes('/media/')) return mediaStill(src)
   if (!/\.(mp4|webm)(\?|$)/i.test(src)) return src
   return src
     .replace('/upload/', '/upload/so_1,q_auto,f_jpg,w_640/')
@@ -247,7 +247,7 @@ export function HomePage() {
                   return src
                     ? {
                         src: cldOptimize(src),
-                        srcSet: cldSrcSet(src, [240, 400, 640, 960]) ?? undefined,
+                        srcSet: cldSrcSet(src, [240, 400, 640, 960]) ?? mediaSrcSet(src) ?? undefined,
                         alt: p.name,
                         title: p.name,
                         subtitle: format(p.price),
@@ -312,7 +312,7 @@ export function HomePage() {
         <Reveal>
           <div className="relative">
             <ProductImage
-              src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056413/stylesence/products/camille-skirt-slate.jpg"
+              src="/media/products/camille-skirt-studio.webp"
               alt="The Camille Skirt Set in slate-blue polka dot, worn on the staircase"
               label="The Camille Skirt Set"
               ratio="aspect-[4/5]"
@@ -451,7 +451,7 @@ export function HomePage() {
         <div className="container-site grid items-center gap-10 lg:grid-cols-5 lg:gap-14">
           <Reveal className="lg:col-span-3">
             <ProductImage
-              src="https://res.cloudinary.com/qaruxkhf/image/upload/w_1400,q_auto,f_auto/v1790056405/stylesence/products/camille-duo-seated.jpg"
+              src="/media/products/camille-trouser-duo.webp"
               alt="Two models in the Camille polka-dot sets — the skirt set and the trouser set"
               label="The Atelier"
               ratio="aspect-[7/5]"

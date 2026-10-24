@@ -168,8 +168,7 @@ export default function RootLayout({
               "try{var t=localStorage.getItem('ss-entrance');if(t&&Date.now()-(+t)<6048e5)document.documentElement.classList.add('ss-entrance-done')}catch(e){}",
           }}
         />
-        {/* CDN warm-up + hero LCP — the storefront's imagery lives on Cloudinary */}
-        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
+        {/* Hero LCP — storefront imagery is self-hosted in /public/media */}
         <link rel="preload" as="image" fetchPriority="high" href={HERO_POSTER_URL} />
         {/* entrance overlay signature — racing the first paint, not chasing it */}
         <link rel="preload" as="image" fetchPriority="high" href="/stylesence-logo.png" />
