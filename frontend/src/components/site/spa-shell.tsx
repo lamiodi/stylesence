@@ -5,7 +5,7 @@
  * Served by the app/[[...slug]] catch-all: the server shell renders for
  * every address; the client router below decides which page shows.
  */
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { HERO_POSTER_URL } from '@/lib/site'
@@ -25,18 +25,49 @@ import { ShopPage } from '@/components/pages/shop'
 import { ProductDetailPage } from '@/components/pages/product-detail'
 import { CartPage } from '@/components/pages/cart-page'
 import { CheckoutPage } from '@/components/pages/checkout'
-import { OrderConfirmationPage } from '@/components/pages/order-confirmation'
-import { WishlistPage } from '@/components/pages/wishlist-page'
-import { JournalPage } from '@/components/pages/journal'
-import { JournalPostPage } from '@/components/pages/journal-post'
-import { AboutPage } from '@/components/pages/about'
-import { HelpPage } from '@/components/pages/help'
-import { TrackOrderPage } from '@/components/pages/track-order'
-import { AccountPage } from '@/components/pages/account-page'
 import { NotFoundPage } from '@/components/pages/not-found'
-import { AdminApp } from '@/components/admin/admin-app'
 import StyleSencePreloader from '@/components/site/StyleSencePreloader'
 import { WishlistSync } from '@/lib/wishlist-sync'
+
+/* Secondary routes load on demand: the storefront's first paint carries only
+   the shopping path. The admin console (and its recharts dependency) no
+   longer ships to every visitor's phone. Suspense fallback mirrors the
+   preloader's tonal look so a lazy navigation reads as a page, not a stall. */
+const OrderConfirmationPage = lazy(() =>
+  import('@/components/pages/order-confirmation').then((m) => ({ default: m.OrderConfirmationPage })))
+const WishlistPage = lazy(() =>
+  import('@/components/pages/wishlist-page').then((m) => ({ default: m.WishlistPage })))
+const JournalPage = lazy(() =>
+  import('@/components/pages/journal').then((m) => ({ default: m.JournalPage })))
+const JournalPostPage = lazy(() =>
+  import('@/components/pages/journal-post').then((m) => ({ default: m.JournalPostPage })))
+const AboutPage = lazy(() =>
+  import('@/components/pages/about').then((m) => ({ default: m.AboutPage })))
+const HelpPage = lazy(() =>
+  import('@/components/pages/help').then((m) => ({ default: m.HelpPage })))
+const TrackOrderPage = lazy(() =>
+  import('@/components/pages/track-order').then((m) => ({ default: m.TrackOrderPage })))
+const AccountPage = lazy(() =>
+  import('@/components/pages/account-page').then((m) => ({ default: m.AccountPage })))
+const AdminApp = lazy(() =>
+  import('@/components/admin/admin-app').then((m) => ({ default: m.AdminApp })))
+
+function RouteSuspense({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="container-site py-24" aria-busy="true">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 w-2/5 bg-secondary" />
+            <div className="aspect-[3/4] w-full max-w-md bg-secondary" />
+          </div>
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  )
+}
 
 function Router() {
   const route = useRoute()
@@ -123,7 +154,11 @@ function Router() {
   // keyed + animated on the very next frame.
   return (
     <main id="main" className="flex-1">
-      {mounted ? <PageFade keyName={key}>{page}</PageFade> : null}
+      {mounted ? (
+        <PageFade keyName={key}>
+          <RouteSuspense>{page}</RouteSuspense>
+        </PageFade>
+      ) : null}
     </main>
   )
 }

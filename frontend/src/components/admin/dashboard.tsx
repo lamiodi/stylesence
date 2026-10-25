@@ -2,20 +2,11 @@
 
 /**
  * Admin — Dashboard panel.
- * KPIs, 30-day revenue chart (recharts), order-status distribution,
- * recent orders, low-stock radar and review moderation summary.
+ * KPIs, 30-day revenue chart (hand-rolled inline SVG), order-status
+ * distribution, recent orders, low-stock radar and review moderation summary.
  */
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { ArrowRight, RefreshCw, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { navigate } from '@/lib/router'
@@ -165,57 +156,20 @@ function Kpi({
 }
 
 /* ------------------------------------------------------------------ *
- * Chart
+ * Chart — inline SVG, no chart library. recharts alone was ~40% of the
+ * storefront's initial JS: the app router ships the whole client graph
+ * for the catch-all SPA route, so anything the admin imports, every
+ * shopper's phone downloads. Straight-segment paths over a 30-point
+ * series read fine at this size.
  * ------------------------------------------------------------------ */
-interface TipItem {
-  dataKey?: string | number
-  name?: string
-  value?: number | string
-  color?: string
-}
-
-function ChartTip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean
-  payload?: TipItem[]
-  label?: string | number
-}) {
-  if (!active || !payload || payload.length === 0) return null
-  const revenue = payload.find((p) => p.dataKey === 'revenue')
-  const orders = payload.find((p) => p.dataKey === 'orders')
-  return (
-    <div className="border border-line-strong bg-card px-3 py-2 text-xs">
-      <p className="eyebrow !text-[0.56rem]">
-        {typeof label === 'string'
-          ? new Date(`${label}T00:00:00`).toLocaleDateString('en-NG', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })
-          : ''}
-      </p>
-      {revenue ? (
-        <p className="mt-1.5 font-mono tabular-nums">
-          {formatNaira(Number(revenue.value ?? 0))}{' '}
-          <span className="font-sans text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
-            revenue
-          </span>
-        </p>
-      ) : null}
-      {orders ? (
-        <p className="mt-0.5 font-mono tabular-nums">
-          {orders.value}{' '}
-          <span className="font-sans text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">
-            orders
-          </span>
-        </p>
-      ) : null}
-    </div>
-  )
-}
+const CHART_W = 640
+const CHART_H = 260
+const PAD_L = 52
+const PAD_R = 34
+const PAD_T = 10
+const PAD_B = 24
+const INNER_W = CHART_W - PAD_L - PAD_R
+const INNER_H = CHART_H - PAD_T - PAD_B
 
 function shortDay(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
@@ -226,64 +180,92 @@ function moneyTick(v: number): string {
 }
 
 function RevenueChart({ data }: { data: SeriesPoint[] }) {
+  const [hover, setHover] = useState<number | null>(null)
+  if (data.length === 0) {
+    return <div className="h-72 sm:h-80 animate-pulse bg-secondary/60" aria-hidden />
+  }
+
+  const maxRev = Math.max(1, ...data.map((d) => d.revenue))
+  const maxOrd = Math.max(1, ...data.map((d) => d.orders))
+  const x = (i: number) => PAD_L + (data.length === 1 ? INNER_W / 2 : (i / (data.length - 1)) * INNER_W)
+  const yRev = (v: number) => PAD_T + INNER_H - (v / maxRev) * INNER_H
+  const yOrd = (v: number) => PAD_T + INNER_H - (v / maxOrd) * INNER_H
+
+  const line = (y: (v: number) => number, key: 'revenue' | 'orders') =>
+    data.map((d, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(d[key]).toFixed(1)}`).join(' ')
+  const revLine = line(yRev, 'revenue')
+  const ordLine = line(yOrd, 'orders')
+  const areaPath = `${revLine} L${x(data.length - 1).toFixed(1)},${(PAD_T + INNER_H).toFixed(1)} L${x(0).toFixed(1)},${(PAD_T + INNER_H).toFixed(1)} Z`
+
+  const revTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => maxRev * t)
+  const labelEvery = Math.max(1, Math.ceil(data.length / 6))
+
+  const hp = hover != null ? data[hover] : null
+  const tipLeft = hover != null ? (x(hover) / CHART_W) * 100 : 0
+
   return (
-    <div className="h-72 sm:h-80" role="img" aria-label="Area chart of daily revenue and order count over the last 30 days">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
-          <defs>
-            <linearGradient id="ss-rev-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="2 4" />
-          <XAxis
-            dataKey="date"
-            tickFormatter={shortDay}
-            tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
-            axisLine={{ stroke: 'var(--line-strong)' }}
-            tickLine={false}
-            minTickGap={28}
+    <div className="relative h-72 sm:h-80" role="img" aria-label="Area chart of daily revenue and order count over the last 30 days">
+      <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="h-full w-full" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="ss-rev-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.22} />
+            <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        {/* horizontal grid + revenue axis labels */}
+        {revTicks.map((v) => (
+          <g key={v}>
+            <line x1={PAD_L} x2={CHART_W - PAD_R} y1={yRev(v)} y2={yRev(v)} stroke="var(--line)" strokeDasharray="2 4" />
+            <text x={PAD_L - 6} y={yRev(v) + 3} textAnchor="end" fontSize={9} fill="var(--muted-foreground)">
+              {moneyTick(v)}
+            </text>
+          </g>
+        ))}
+        <line x1={PAD_L} x2={CHART_W - PAD_R} y1={PAD_T + INNER_H} y2={PAD_T + INNER_H} stroke="var(--line-strong)" />
+        <path d={areaPath} fill="url(#ss-rev-fill)" />
+        <path d={revLine} fill="none" stroke="var(--chart-1)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        <path d={ordLine} fill="none" stroke="var(--chart-2)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        {hp ? (
+          <line x1={x(hover!)} x2={x(hover!)} y1={PAD_T} y2={PAD_T + INNER_H} stroke="var(--line-strong)" />
+        ) : null}
+        {/* per-day hover columns */}
+        {data.map((d, i) => (
+          <rect
+            key={d.date}
+            x={x(i) - INNER_W / data.length / 2}
+            y={PAD_T}
+            width={INNER_W / data.length}
+            height={INNER_H}
+            fill="transparent"
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
           />
-          <YAxis
-            yAxisId="revenue"
-            width={52}
-            tickFormatter={moneyTick}
-            tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            yAxisId="orders"
-            orientation="right"
-            width={28}
-            allowDecimals={false}
-            tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip content={<ChartTip />} cursor={{ stroke: 'var(--line-strong)' }} />
-          <Area
-            yAxisId="revenue"
-            type="monotone"
-            dataKey="revenue"
-            name="Revenue"
-            stroke="var(--chart-1)"
-            strokeWidth={1.5}
-            fill="url(#ss-rev-fill)"
-          />
-          <Line
-            yAxisId="orders"
-            type="monotone"
-            dataKey="orders"
-            name="Orders"
-            stroke="var(--chart-2)"
-            strokeWidth={1.5}
-            dot={false}
-            activeDot={{ r: 3, strokeWidth: 0 }}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+        ))}
+      </svg>
+      {/* x labels as HTML text — SVG text would stretch under preserveAspectRatio=none */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between px-[5.3%] text-[0.6rem] text-muted-foreground">
+        {data
+          .filter((_, i) => i % labelEvery === 0)
+          .map((d) => (
+            <span key={d.date}>{shortDay(d.date)}</span>
+          ))}
+      </div>
+      {hp ? (
+        <div
+          className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 border border-line-strong bg-card px-3 py-2 text-xs"
+          style={{ left: `${Math.min(88, Math.max(12, tipLeft))}%` }}
+        >
+          <p className="eyebrow !text-[0.56rem]">{shortDay(hp.date)}</p>
+          <p className="mt-1.5 font-mono tabular-nums">
+            {formatNaira(hp.revenue)}{' '}
+            <span className="font-sans text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">revenue</span>
+          </p>
+          <p className="mt-0.5 font-mono tabular-nums">
+            {hp.orders}{' '}
+            <span className="font-sans text-[0.62rem] uppercase tracking-[0.14em] text-muted-foreground">orders</span>
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }
